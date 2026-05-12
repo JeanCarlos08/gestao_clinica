@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://REPLACE_WITH_YOUR_BACKEND/:path*"
+      "destination": "https://srv-d7s05rsm0tmc738k72t0/:path*"
     }
   ]
 }
