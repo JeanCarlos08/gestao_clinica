@@ -11,6 +11,7 @@ export default function AtendimentosPage() {
 
   useEffect(() => {
     const fetchAtendimentos = async () => {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
       const token = localStorage.getItem("token");
       
       if (!token) {
@@ -19,7 +20,7 @@ export default function AtendimentosPage() {
       }
 
       try {
-        const response = await fetch("http://localhost:8000/atendimentos", {
+        const response = await fetch(`${API_BASE}/atendimentos`, {
           headers: {
             "Authorization": `Bearer ${token}`
           }
