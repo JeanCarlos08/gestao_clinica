@@ -64,6 +64,11 @@ class Settings:
     auth_username: str = field(default_factory=lambda: _get_secret("APP_ADMIN_USER", "admin"))
     auth_password: Optional[str] = field(default_factory=lambda: _get_secret("APP_ADMIN_PASS"))
     auth_required: bool = field(default_factory=lambda: _get_secret("APP_REQUIRE_AUTH", "true") == "true")
+    
+    # ── Segurança JWT ─────────────────────────────────────────
+    jwt_secret_key: str = field(default_factory=lambda: _get_secret("JWT_SECRET_KEY", "change-me-securely"))
+    jwt_algorithm: str = field(default_factory=lambda: _get_secret("JWT_ALGORITHM", "HS256"))
+    jwt_expiration_minutes: int = field(default_factory=lambda: int(_get_secret("JWT_EXPIRATION_MINUTES", "1440"))) # 24h
 
     @property
     def has_database(self) -> bool:

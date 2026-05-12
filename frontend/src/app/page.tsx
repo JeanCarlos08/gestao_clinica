@@ -1,291 +1,131 @@
-import { Bell, Search, Filter, Plus, Pencil, Eye, Trash2, Download, Calendar, Moon, ChevronRight, ChevronLeft, CheckCircle2, Clock, AlertCircle, FileText, ClipboardList, BarChart2 } from "lucide-react";
+"use client";
 
-export default function AtendimentosPage() {
-  const atendimentos = [
-    { id: 1, empresa: "LITARIA INDUSTRIA CERAMICA DA AMAZONIA LTDA - MATRIZ", cnpj: "14.241.325/0001-28", modalidade: "RAA", status: "Concluído", data: "14/05/2025" },
-    { id: 2, empresa: "LITARIA INDUSTRIA CERAMICA DA AMAZONIA LTDA - MATRIZ", cnpj: "14.241.325/0001-28", modalidade: "RAA", status: "Em andamento", data: "14/05/2025" },
-    { id: 3, empresa: "MIL MADEIRAS", cnpj: "04.193.033/0001-56", modalidade: "RAA", status: "Concluído", data: "14/05/2025" },
-    { id: 4, empresa: "MIL MADEIRAS", cnpj: "04.193.033/0001-56", modalidade: "PCA", status: "Pendente", data: "13/05/2025" },
-    { id: 5, empresa: "MIL MADEIRAS", cnpj: "04.193.033/0001-56", modalidade: "DECORE", status: "Em andamento", data: "13/05/2025" },
-    { id: 6, empresa: "MIL MADEIRAS", cnpj: "04.193.033/0001-56", modalidade: "ALVARÁ", status: "Concluído", data: "13/05/2025" },
-    { id: 7, empresa: "MIL MADEIRAS", cnpj: "04.193.033/0001-56", modalidade: "FRE", status: "Pendente", data: "12/05/2025" },
-    { id: 8, empresa: "LITARIA INDUSTRIA CERAMICA DA AMAZONIA LTDA - MATRIZ", cnpj: "14.241.325/0001-28", modalidade: "JCA", status: "Concluído", data: "12/05/2025" },
-    { id: 9, empresa: "MIL MADEIRAS", cnpj: "04.193.033/0001-56", modalidade: "EDI-CA", status: "Em andamento", data: "12/05/2025" },
-    { id: 10, empresa: "JOAO ALVES SOUZA DA SILVA", cnpj: "07.557.350/0001-00", modalidade: "DAE", status: "Concluído", data: "11/05/2025" },
-  ];
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Star, Lock, User, ArrowRight, Loader2 } from "lucide-react";
+
+export default function LoginPage() {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const router = useRouter();
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    try {
+      const formData = new FormData();
+      formData.append("username", username);
+      formData.append("password", password);
+
+      const response = await fetch("http://localhost:8000/token", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Usuário ou senha incorretos");
+      }
+
+      const data = await response.json();
+      
+      // Salva o token no localStorage (Simples para o MVP)
+      localStorage.setItem("token", data.access_token);
+      
+      // Redireciona para os atendimentos
+      router.push("/atendimentos");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="flex-1 overflow-y-auto overflow-x-hidden p-8 scrollbar-hide">
-      {/* Top Navigation */}
-      <div className="flex justify-end items-center gap-4 mb-8">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={16} />
-          <input 
-            type="text" 
-            placeholder="Pesquisar atendimentos..." 
-            className="bg-[var(--card)] border border-[var(--border)] rounded-full py-2 pl-10 pr-12 text-sm focus:outline-none focus:border-[var(--primary)] w-64 text-white"
-          />
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-1">
-            <kbd className="bg-[var(--background)] px-1.5 py-0.5 rounded text-[10px] text-[var(--text-muted)] border border-[var(--border)]">⌘</kbd>
-            <kbd className="bg-[var(--background)] px-1.5 py-0.5 rounded text-[10px] text-[var(--text-muted)] border border-[var(--border)]">K</kbd>
+    <div className="flex min-h-screen items-center justify-center bg-[#0a0f0a] p-4">
+      <div className="w-full max-w-md">
+        {/* Logo e Título */}
+        <div className="mb-10 text-center">
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#22c55e] text-black shadow-[0_8px_30px_rgb(34,197,94,0.3)]">
+            <Star size={32} fill="black" />
           </div>
-        </div>
-        <button className="text-[var(--text-muted)] hover:text-white transition-colors relative">
-          <Bell size={20} />
-          <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
-        </button>
-        <button className="text-[var(--text-muted)] hover:text-white transition-colors">
-          <Moon size={20} />
-        </button>
-        <img src="https://i.pravatar.cc/150?img=5" alt="Avatar" className="w-8 h-8 rounded-full border border-[var(--border)]" />
-      </div>
-
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="bg-[var(--primary)]/10 text-[var(--primary)] p-2 rounded-lg">
-            <ClipboardList size={24} />
-          </div>
-          <h1 className="text-2xl font-bold">Atendimentos</h1>
-        </div>
-        <p className="text-[var(--text-muted)] text-sm">Gerenciamento de Consultas e Procedimentos</p>
-      </div>
-
-      {/* Metrics */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        <div className="bg-[var(--card)] p-5 rounded-xl border border-[var(--border)] relative overflow-hidden">
-          <div className="text-[11px] text-[var(--text-label)] font-semibold uppercase tracking-wider mb-2">Total de Atendimentos</div>
-          <div className="text-3xl font-bold text-[var(--primary)] mb-1">1.248</div>
-          <div className="text-xs text-[var(--text-muted)]">+12.5% este mês</div>
-          {/* Faux Sparkline */}
-          <svg className="absolute bottom-0 right-0 w-full h-12 opacity-50" viewBox="0 0 100 30" preserveAspectRatio="none">
-            <path d="M0 30 L10 20 L20 25 L30 15 L40 22 L50 10 L60 18 L70 5 L80 12 L90 2 L100 8 L100 30 Z" fill="rgba(34, 197, 94, 0.1)" />
-            <path d="M0 30 L10 20 L20 25 L30 15 L40 22 L50 10 L60 18 L70 5 L80 12 L90 2 L100 8" fill="none" stroke="var(--primary)" strokeWidth="2" />
-          </svg>
-        </div>
-        
-        <div className="bg-[var(--card)] p-5 rounded-xl border border-[var(--border)] relative">
-          <div className="flex justify-between items-start mb-2">
-            <div className="text-[11px] text-[var(--text-label)] font-semibold uppercase tracking-wider">Concluídos</div>
-            <div className="w-8 h-8 rounded-full border-2 border-[var(--status-concluido)] flex items-center justify-center text-[var(--status-concluido)]">
-              <CheckCircle2 size={16} />
-            </div>
-          </div>
-          <div className="text-3xl font-bold mb-1">842</div>
-          <div className="flex items-center gap-2">
-            <div className="h-1 flex-1 bg-[var(--background)] rounded-full overflow-hidden">
-              <div className="h-full bg-[var(--status-concluido)] w-[67.6%] rounded-full"></div>
-            </div>
-            <div className="text-[10px] text-[var(--text-muted)] whitespace-nowrap">67.6% do total</div>
-          </div>
+          <h1 className="text-4xl font-bold tracking-tight text-[#e8f5e8]">Clínica IA</h1>
+          <p className="mt-2 text-[#6b7c6b]">Gestão Clínica Inteligente e Estratégica</p>
         </div>
 
-        <div className="bg-[var(--card)] p-5 rounded-xl border border-[var(--border)] relative">
-          <div className="flex justify-between items-start mb-2">
-            <div className="text-[11px] text-[var(--text-label)] font-semibold uppercase tracking-wider">Em Andamento</div>
-            <div className="w-8 h-8 rounded-full border-2 border-[var(--status-andamento)] flex items-center justify-center text-[var(--status-andamento)]">
-              <Clock size={16} />
-            </div>
-          </div>
-          <div className="text-3xl font-bold mb-1">256</div>
-          <div className="flex items-center gap-2">
-            <div className="h-1 flex-1 bg-[var(--background)] rounded-full overflow-hidden">
-              <div className="h-full bg-[var(--status-andamento)] w-[20.5%] rounded-full"></div>
-            </div>
-            <div className="text-[10px] text-[var(--text-muted)] whitespace-nowrap">20.5% do total</div>
-          </div>
-        </div>
-
-        <div className="bg-[var(--card)] p-5 rounded-xl border border-[var(--border)] relative">
-          <div className="flex justify-between items-start mb-2">
-            <div className="text-[11px] text-[var(--text-label)] font-semibold uppercase tracking-wider">Pendentes</div>
-            <div className="w-8 h-8 rounded-full border-2 border-[var(--status-pendente)] flex items-center justify-center text-[var(--status-pendente)]">
-              <AlertCircle size={16} />
-            </div>
-          </div>
-          <div className="text-3xl font-bold mb-1">150</div>
-          <div className="flex items-center gap-2">
-            <div className="h-1 flex-1 bg-[var(--background)] rounded-full overflow-hidden">
-              <div className="h-full bg-[var(--status-pendente)] w-[12.0%] rounded-full"></div>
-            </div>
-            <div className="text-[10px] text-[var(--text-muted)] whitespace-nowrap">12.0% do total</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="bg-[var(--card)] p-5 rounded-xl border border-[var(--border)] mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <Filter size={16} className="text-[var(--text-muted)]" /> Filtros
-          </div>
-          <ChevronRight size={16} className="text-[var(--text-muted)] rotate-90" />
-        </div>
-        
-        <div className="grid grid-cols-4 gap-4">
-          <div>
-            <label className="block text-[11px] text-[var(--text-label)] font-medium mb-1.5">Pesquisar (Nome/Empresa)</label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={14} />
-              <input type="text" placeholder="Digite para pesquisar..." className="w-full bg-[var(--background)] border border-[var(--border-light)] rounded-lg py-2 pl-9 pr-3 text-sm focus:outline-none focus:border-[var(--primary)] text-white" />
-            </div>
-          </div>
-          <div>
-            <label className="block text-[11px] text-[var(--text-label)] font-medium mb-1.5">Modalidade</label>
-            <select className="w-full bg-[var(--background)] border border-[var(--border-light)] rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-[var(--primary)] text-white appearance-none cursor-pointer">
-              <option>Todas</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-[11px] text-[var(--text-label)] font-medium mb-1.5">Status</label>
-            <select className="w-full bg-[var(--background)] border border-[var(--border-light)] rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-[var(--primary)] text-white appearance-none cursor-pointer">
-              <option>Todos</option>
-            </select>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
+        {/* Card de Login */}
+        <div className="rounded-[2rem] border border-[#1e2e1e] bg-[#111811] p-8 shadow-2xl shadow-black/50">
+          <form onSubmit={handleLogin} className="space-y-6">
             <div>
-              <label className="block text-[11px] text-[var(--text-label)] font-medium mb-1.5">Data inicial</label>
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-[#9ca89c]">
+                Usuário
+              </label>
               <div className="relative">
-                <input type="text" placeholder="dd/mm/aaaa" className="w-full bg-[var(--background)] border border-[var(--border-light)] rounded-lg py-2 pl-3 pr-8 text-sm focus:outline-none focus:border-[var(--primary)] text-white" />
-                <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={14} />
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-[#6b7c6b]" size={18} />
+                <input
+                  type="text"
+                  required
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="ex: juliana.fetosa"
+                  className="w-full rounded-xl border border-[#1e2e1e] bg-[#0a0f0a] py-3.5 pl-12 pr-4 text-[#e8f5e8] transition-all focus:border-[#22c55e] focus:outline-none focus:ring-1 focus:ring-[#22c55e]"
+                />
               </div>
             </div>
+
             <div>
-              <label className="block text-[11px] text-[var(--text-label)] font-medium mb-1.5">Data final</label>
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-[#9ca89c]">
+                Senha
+              </label>
               <div className="relative">
-                <input type="text" placeholder="dd/mm/aaaa" className="w-full bg-[var(--background)] border border-[var(--border-light)] rounded-lg py-2 pl-3 pr-8 text-sm focus:outline-none focus:border-[var(--primary)] text-white" />
-                <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={14} />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-[#6b7c6b]" size={18} />
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full rounded-xl border border-[#1e2e1e] bg-[#0a0f0a] py-3.5 pl-12 pr-4 text-[#e8f5e8] transition-all focus:border-[#22c55e] focus:outline-none focus:ring-1 focus:ring-[#22c55e]"
+                />
               </div>
             </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Actions */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <button className="bg-[var(--card)] border border-[var(--border)] hover:border-[var(--primary)] hover:bg-[var(--card-hover)] p-4 rounded-xl flex items-center justify-between group transition-all text-left">
-          <div className="flex items-center gap-4">
-            <div className="text-[var(--primary)] text-xl font-light">+</div>
-            <div>
-              <div className="text-sm font-semibold text-white mb-0.5">Cadastrar Novo Atendimento</div>
-              <div className="text-xs text-[var(--text-muted)]">Adicionar um novo atendimento ao sistema</div>
-            </div>
-          </div>
-          <ChevronRight size={18} className="text-[var(--text-muted)] group-hover:text-[var(--primary)] transition-colors" />
-        </button>
-        <button className="bg-[var(--card)] border border-[var(--border)] hover:border-[var(--primary)] hover:bg-[var(--card-hover)] p-4 rounded-xl flex items-center justify-between group transition-all text-left">
-          <div className="flex items-center gap-4">
-            <div className="text-yellow-500 text-lg"><Pencil size={18}/></div>
-            <div>
-              <div className="text-sm font-semibold text-white mb-0.5">Editar Atendimento</div>
-              <div className="text-xs text-[var(--text-muted)]">Editar informações de um atendimento</div>
-            </div>
-          </div>
-          <ChevronRight size={18} className="text-[var(--text-muted)] group-hover:text-[var(--primary)] transition-colors" />
-        </button>
-      </div>
+            {error && (
+              <div className="rounded-lg bg-red-500/10 p-3 text-center text-sm text-red-500 border border-red-500/20">
+                {error}
+              </div>
+            )}
 
-      {/* Table */}
-      <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden mb-6">
-        <div className="p-5 border-b border-[var(--border)] flex justify-between items-center">
-          <div className="flex items-center gap-2 font-semibold">
-            <ClipboardList size={18} className="text-[var(--primary)]" />
-            Lista de Atendimentos
-          </div>
-          <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
-            <span>Tamanho da página</span>
-            <select className="bg-[var(--card-hover)] border border-[var(--border-light)] text-white rounded px-2 py-1 text-xs focus:outline-none">
-              <option>20</option>
-            </select>
-            <span className="ml-4">Página</span>
-            <div className="flex items-center gap-1">
-              <button className="w-6 h-6 flex items-center justify-center rounded border border-[var(--border-light)] bg-[var(--background)] hover:bg-[var(--card-hover)]"><ChevronLeft size={12}/></button>
-              <button className="w-6 h-6 flex items-center justify-center rounded border border-[var(--border-light)] bg-[var(--background)] hover:bg-[var(--card-hover)]"><ChevronLeft size={12}/></button>
-              <button className="w-6 h-6 flex items-center justify-center rounded border border-[var(--primary)] bg-[var(--primary)] text-black font-semibold">1</button>
-              <button className="w-6 h-6 flex items-center justify-center rounded border border-[var(--border-light)] bg-[var(--background)] hover:bg-[var(--card-hover)]">3</button>
-              <button className="w-6 h-6 flex items-center justify-center rounded border border-[var(--border-light)] bg-[var(--background)] hover:bg-[var(--card-hover)]">4</button>
-              <button className="w-6 h-6 flex items-center justify-center rounded border border-[var(--border-light)] bg-[var(--background)] hover:bg-[var(--card-hover)]">5</button>
-              <span className="px-1 text-[var(--text-muted)]">...</span>
-              <button className="w-6 h-6 flex items-center justify-center rounded border border-[var(--border-light)] bg-[var(--background)] hover:bg-[var(--card-hover)]">12</button>
-              <button className="w-6 h-6 flex items-center justify-center rounded border border-[var(--border-light)] bg-[var(--background)] hover:bg-[var(--card-hover)]"><ChevronRight size={12}/></button>
-              <button className="w-6 h-6 flex items-center justify-center rounded border border-[var(--border-light)] bg-[var(--background)] hover:bg-[var(--card-hover)]"><ChevronRight size={12}/></button>
-            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-[#22c55e] py-4 font-bold text-black transition-all hover:bg-[#16a34a] disabled:opacity-70"
+            >
+              {loading ? (
+                <Loader2 className="animate-spin" size={20} />
+              ) : (
+                <>
+                  Entrar no Sistema
+                  <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
+                </>
+              )}
+            </button>
+          </form>
+
+          <div className="mt-8 text-center">
+            <a href="#" className="text-xs text-[#6b7c6b] hover:text-[#22c55e] transition-colors">
+              Esqueceu sua senha?
+            </a>
           </div>
         </div>
 
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="border-b border-[var(--border)] text-[10px] uppercase text-[var(--text-label)] tracking-wider">
-              <th className="p-4 font-medium w-12">#</th>
-              <th className="p-4 font-medium">Empresa</th>
-              <th className="p-4 font-medium w-48">CNPJ</th>
-              <th className="p-4 font-medium w-32">Modalidade</th>
-              <th className="p-4 font-medium w-32">Status</th>
-              <th className="p-4 font-medium w-32">Data</th>
-              <th className="p-4 font-medium w-32 text-center">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {atendimentos.map((a) => (
-              <tr key={a.id} className="border-b border-[var(--border)] hover:bg-[var(--card-hover)] transition-colors group">
-                <td className="p-4 text-xs text-[var(--text-muted)]">{a.id}</td>
-                <td className="p-4 text-[13px] font-semibold text-white max-w-xs truncate">{a.empresa}</td>
-                <td className="p-4 text-xs text-[var(--text-muted)]">{a.cnpj}</td>
-                <td className="p-4 text-[13px] text-white">{a.modalidade}</td>
-                <td className="p-4">
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold
-                    ${a.status === 'Concluído' ? 'bg-[var(--status-concluido-bg)] text-[var(--status-concluido)]' : ''}
-                    ${a.status === 'Em andamento' ? 'bg-[var(--status-andamento-bg)] text-[var(--status-andamento)]' : ''}
-                    ${a.status === 'Pendente' ? 'bg-[var(--status-pendente-bg)] text-[var(--status-pendente)]' : ''}
-                  `}>
-                    {a.status}
-                  </span>
-                </td>
-                <td className="p-4 text-[13px] text-[var(--text-muted)]">{a.data}</td>
-                <td className="p-4">
-                  <div className="flex items-center justify-center gap-3">
-                    <button className="text-[var(--primary)] opacity-70 hover:opacity-100 transition-opacity"><Eye size={16}/></button>
-                    <button className="text-[var(--text-muted)] hover:text-white transition-colors"><Pencil size={16}/></button>
-                    <button className="text-red-500 opacity-70 hover:opacity-100 transition-opacity"><Trash2 size={16}/></button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <div className="p-4 text-xs text-[var(--text-muted)]">
-          Mostrando 1 a 10 de 228 registros
-        </div>
-      </div>
-
-      {/* Footer Actions */}
-      <div className="grid grid-cols-[auto_1fr] gap-4 mb-8">
-        <button className="bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-semibold px-6 py-3 rounded-xl flex items-center gap-2 text-sm transition-colors shadow-[0_0_15px_rgba(34,197,94,0.3)]">
-          <Download size={16} /> Exportar CSV
-        </button>
-        <div className="bg-[var(--status-concluido-bg)] border border-[var(--border-light)] rounded-xl p-3 flex items-center gap-3">
-          <CheckCircle2 className="text-[var(--status-concluido)]" size={20} />
-          <div>
-            <div className="text-sm font-semibold text-white">Relatório gerado com sucesso!</div>
-            <div className="text-xs text-[var(--primary)] cursor-pointer hover:underline">Abrir CSV</div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Accordions */}
-      <div className="space-y-2 pb-8">
-        <button className="w-full bg-[var(--card)] border border-[var(--border)] hover:border-[var(--border-light)] p-4 rounded-xl flex items-center justify-between text-sm font-semibold text-white transition-colors">
-          <div className="flex items-center gap-3">
-            <FileText size={18} className="text-[var(--text-muted)]"/> Gerador de Parecer Clínico Automático (IA)
-          </div>
-          <ChevronRight size={16} className="text-[var(--text-muted)] rotate-90" />
-        </button>
-        <button className="w-full bg-[var(--card)] border border-[var(--border)] hover:border-[var(--border-light)] p-4 rounded-xl flex items-center justify-between text-sm font-semibold text-white transition-colors">
-          <div className="flex items-center gap-3">
-            <BarChart2 size={18} className="text-[var(--text-muted)]"/> Gerenciar por atendimento (visualizar/download/editar/status/exportar)
-          </div>
-          <ChevronRight size={16} className="text-[var(--text-muted)] rotate-90" />
-        </button>
+        <p className="mt-8 text-center text-[10px] text-[#6b7c6b]">
+          v2.0.0 · © 2025 Clínica IA<br />
+          Sistema de Gestão Restrito e Auditado
+        </p>
       </div>
     </div>
   );
