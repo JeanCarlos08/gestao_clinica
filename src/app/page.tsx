@@ -21,7 +21,7 @@ export default function LoginPage() {
       formData.append("username", username);
       formData.append("password", password);
 
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api";
 
       const response = await fetch(`${API_BASE}/token`, {
         method: "POST",
