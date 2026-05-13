@@ -50,7 +50,11 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     if not user:
         # Fallback para o admin do .env se não houver no banco
         if form_data.username == settings.auth_username and settings.auth_password:
-            if verify_password(form_data.password, settings.auth_password):
+            # Tenta comparar direto (texto puro) OU via hash para maior flexibilidade
+            is_valid = (form_data.password == settings.auth_password) or \
+                       verify_password(form_data.password, settings.auth_password)
+            
+            if is_valid:
                 access_token = create_access_token(data={"sub": form_data.username, "role": "admin"})
                 return {"access_token": access_token, "token_type": "bearer"}
         
