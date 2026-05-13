@@ -39,8 +39,8 @@ export default function LoginPage() {
       
       // Redireciona para os atendimentos
       router.push("/atendimentos");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao fazer login");
     } finally {
       setLoading(false);
     }

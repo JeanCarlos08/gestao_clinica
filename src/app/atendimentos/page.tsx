@@ -2,10 +2,20 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, Search, Filter, Plus, Pencil, Eye, Trash2, Download, Calendar, Moon, ChevronRight, ChevronLeft, CheckCircle2, Clock, AlertCircle, FileText, ClipboardList, BarChart2, Loader2 } from "lucide-react";
+import { Bell, Search, Filter, Pencil, Eye, Trash2, Download, Calendar, Moon, ChevronRight, ChevronLeft, CheckCircle2, Clock, AlertCircle, FileText, ClipboardList, BarChart2, Loader2 } from "lucide-react";
+
+interface Atendimento {
+  id: string | number;
+  empresa: string;
+  nome: string;
+  modalidade: string;
+  status: string;
+  data: string;
+  hora: string;
+}
 
 export default function AtendimentosPage() {
-  const [atendimentos, setAtendimentos] = useState([]);
+  const [atendimentos, setAtendimentos] = useState<Atendimento[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
