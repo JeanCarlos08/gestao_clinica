@@ -40,9 +40,11 @@ def force_admin_creation():
         """)
 
         # 4. Criar ou Atualizar o admin
-        username = "admin"
+        username = os.getenv("APP_ADMIN_USER", "julianafeitosa")
+        print(f"👤 Usuário: {username}")
+        print("🔑 Senha: (oficial)")
         display_name = "Administrador"
-        password_hash = hash_password("admin123")
+        password_hash = hash_password(os.getenv("APP_ADMIN_PASS", "01202268Jf! "))
         
         print(f"👤 Criando/Atualizando usuário '{username}'...")
         cur.execute("""
@@ -55,7 +57,7 @@ def force_admin_creation():
         conn.commit()
         cur.close()
         conn.close()
-        print("\n✅ SUCESSO! Usuário 'admin' pronto com a senha 'admin123'.")
+        print(f"\n✅ SUCESSO! Usuário '{username}' pronto com a senha oficial.")
         print("🚀 Tente fazer o login agora no navegador.")
 
     except Exception as e:

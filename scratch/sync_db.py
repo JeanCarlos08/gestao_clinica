@@ -25,9 +25,9 @@ def run_migration():
         bootstrap_admin_if_needed()
         print("✅ Usuário admin verificado/criado.")
         
-        print("\n✨ Tudo pronto! Agora você pode logar com:")
-        print("👤 Usuário: admin")
-        print("🔑 Senha: admin123")
+        print("\n✨ Tudo pronto! Agora você pode logar com as credenciais oficiais.")
+        print(f"👤 Usuário: {os.getenv('APP_ADMIN_USER', 'julianafeitosa')}")
+        print("🔑 Senha: (definida no .env)")
     except Exception as e:
         print(f"❌ Erro durante a atualização: {e}")
 
