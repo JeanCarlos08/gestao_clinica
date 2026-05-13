@@ -3,10 +3,5 @@
   "builds": [
     { "src": "package.json", "use": "@vercel/next" }
   ],
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "https://srv-d7s05rsm0tmc738k72t0/:path*"
-    }
-  ]
+  "rewrites": []
 }
