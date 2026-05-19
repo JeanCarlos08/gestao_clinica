@@ -335,6 +335,37 @@ _SCHEMA_STATEMENTS = (
     """,
     "CREATE INDEX IF NOT EXISTS idx_users_username ON users (LOWER(username));",
     "CREATE INDEX IF NOT EXISTS idx_users_role ON users (role);",
+    # ── LGPD: Consentimentos dos titulares (Art. 8º) ──
+    """
+    CREATE TABLE IF NOT EXISTS consentimentos (
+        id              SERIAL PRIMARY KEY,
+        titular_nome    VARCHAR(255) NOT NULL,
+        titular_email   VARCHAR(255),
+        finalidade      TEXT NOT NULL,
+        base_legal      VARCHAR(100) NOT NULL,
+        aceito          BOOLEAN NOT NULL DEFAULT FALSE,
+        aceito_em       TIMESTAMPTZ,
+        revogado        BOOLEAN DEFAULT FALSE,
+        revogado_em     TIMESTAMPTZ,
+        ip_origem       VARCHAR(45),
+        user_agent      TEXT,
+        criado_em       TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    );
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_consentimentos_email ON consentimentos (LOWER(titular_email));",
+    "CREATE INDEX IF NOT EXISTS idx_consentimentos_aceito ON consentimentos (aceito, revogado);",
+    # ── LGPD: Tentativas de login — brute force protection ──
+    """
+    CREATE TABLE IF NOT EXISTS login_attempts (
+        id          SERIAL PRIMARY KEY,
+        username    VARCHAR(100) NOT NULL,
+        ip_address  VARCHAR(45),
+        sucesso     BOOLEAN NOT NULL,
+        tentado_em  TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    );
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_login_attempts_user ON login_attempts (username, tentado_em DESC);",
+    "CREATE INDEX IF NOT EXISTS idx_login_attempts_ip ON login_attempts (ip_address, tentado_em DESC);",
 )
 
 

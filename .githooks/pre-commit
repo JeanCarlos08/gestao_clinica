@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Prevent accidental commits of credentials.json
+STAGED=$(git diff --cached --name-only)
+if echo "$STAGED" | grep -q "credentials.json"; then
+  echo "ERROR: Attempt to commit credentials.json detected. Remove it from the commit and add to .gitignore." >&2
+  exit 1
+fi
+exit 0

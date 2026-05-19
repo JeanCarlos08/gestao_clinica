@@ -1,0 +1,31 @@
+import json
+import os
+from datetime import datetime
+from pathlib import Path
+
+LOG_DIR = Path("logs")
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+AUDIT_LOG = LOG_DIR / "audit.log"
+
+
+def log_event(event_type: str, details: dict) -> None:
+    """Registra um evento de auditoria em formato JSON lines."""
+    entry = {
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "event_type": event_type,
+        "details": details,
+    }
+
+    with open(AUDIT_LOG, "a", encoding="utf-8") as f:
+        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
+def read_events(limit: int = 100) -> list:
+    """Lê os últimos `limit` eventos do log de auditoria."""
+    if not AUDIT_LOG.exists():
+        return []
+
+    with open(AUDIT_LOG, "r", encoding="utf-8") as f:
+        lines = f.readlines()[-limit:]
+
+    return [json.loads(l) for l in lines]

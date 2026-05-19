@@ -54,3 +54,12 @@ __pycache__/
 .env
 .env.local
 .env.*.local
+
+# Credentials and runtime files
+credentials.json
+credentials/*.json
+
+# Application outputs
+laudos/
+logs/
+*.log
