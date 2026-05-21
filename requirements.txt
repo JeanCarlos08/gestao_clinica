@@ -6,6 +6,7 @@ google-auth-oauthlib>=1.2.0
 google-auth-httplib2>=0.2.0
 google-api-python-client>=2.100.0
 google-cloud-secret-manager>=2.16.0
+gunicorn==23.0.0   # ou só "gunicorn"
 fpdf2>=2.7.9
 pandas>=2.2.0
 requests>=2.31.0
