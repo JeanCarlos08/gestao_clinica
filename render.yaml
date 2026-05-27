@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: gestao-clinica-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    envVars:
+      - key: PYTHONPATH
+        value: /app/src
+    healthCheckPath: /docs
+    autoDeploy: true
