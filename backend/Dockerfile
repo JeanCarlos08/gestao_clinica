@@ -1,8 +1,7 @@
-# Dockerfile — mvpdepsicologia v2.0
-# ─────────────────────────────────────────────────────────────
-# Multi-stage build para imagem otimizada
+# Dockerfile — gestao_clinica v2.0
+# Compatível com Render (usa $PORT injetado pela plataforma)
 
-FROM python:3.11-slim AS base
+FROM python:3.11-slim
 
 # Metadados
 LABEL maintainer="mvpdepsicologia"
@@ -27,11 +26,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# ── Dependências Python ───────────────────────────────────────
+# Dependências Python
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# ── Código da aplicação ───────────────────────────────────────
+# Código da aplicação
 COPY . .
 
 # Cria diretórios necessários
@@ -42,12 +41,12 @@ RUN useradd --create-home --shell /bin/bash appuser \
     && chown -R appuser:appuser /app
 USER appuser
 
-# Porta padrão da API
+# Porta padrão (o Render sobrescreve com $PORT)
 EXPOSE 8000
 
 # Healthcheck
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:8000/docs || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:${PORT:-8000}/api/health || exit 1
 
-# Comando de inicialização
-CMD ["uvicorn", "src.infrastructure.api.index:app", "--host", "0.0.0.0", "--port", "8000"]
+# Render injeta $PORT — usamos shell form para que a variável seja expandida
+CMD uvicorn src.infrastructure.api.index:app --host 0.0.0.0 --port ${PORT:-8000}

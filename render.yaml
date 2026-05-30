@@ -4,8 +4,40 @@ services:
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
+    # Render injeta PORT automaticamente — o CMD do Dockerfile lê esta variável
     envVars:
       - key: PYTHONPATH
         value: /app/src
-    healthCheckPath: /docs
+      # ── Banco de dados ──────────────────────────────────────
+      - key: DB_HOST
+        sync: false          # preencher no painel do Render
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_NAME
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      # ── Segurança ───────────────────────────────────────────
+      - key: SECRET_KEY
+        generateValue: true  # Render gera automaticamente
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "60"
+      # ── Auth fallback (.env) ────────────────────────────────
+      - key: AUTH_USERNAME
+        sync: false
+      - key: AUTH_PASSWORD
+        sync: false
+      # ── CORS ────────────────────────────────────────────────
+      - key: ALLOWED_ORIGINS
+        sync: false          # ex: https://seu-frontend.vercel.app
+      # ── App ─────────────────────────────────────────────────
+      - key: APP_NAME
+        value: "Clinica IA"
+      - key: ENVIRONMENT
+        value: production
+    healthCheckPath: /api/health
     autoDeploy: true
