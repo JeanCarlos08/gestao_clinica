@@ -9,10 +9,17 @@ from pathlib import Path
 from typing import Optional
 from dotenv import load_dotenv
 
-# 1. Carrega o .env usando a biblioteca oficial dotenv
+# 1. Carrega o .env — testa múltiplos caminhos (dev local vs Docker/Render)
+# Em produção (Render) as vars são injetadas como env vars — load_dotenv não sobrescreve.
 _BASE_DIR = Path(__file__).resolve().parent
-_ENV_PATH = _BASE_DIR / ".env"
-load_dotenv(_ENV_PATH)
+for _env_candidate in [
+    _BASE_DIR / ".env",                  # backend/src/core/.env
+    _BASE_DIR.parent.parent / ".env",    # backend/src/.env
+    _BASE_DIR.parent.parent.parent / ".env",  # backend/.env  ← local dev
+]:
+    if _env_candidate.exists():
+        load_dotenv(_env_candidate, override=False)
+        break
 
 def _get_secret(key: str, default: Optional[str] = None) -> Optional[str]:
     """
