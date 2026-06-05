@@ -11,11 +11,13 @@ from dotenv import load_dotenv
 
 # 1. Carrega o .env — testa múltiplos caminhos (dev local vs Docker/Render)
 # Em produção (Render) as vars são injetadas como env vars — load_dotenv não sobrescreve.
+# Rastreamento real de _BASE_DIR = backend/src/core/
 _BASE_DIR = Path(__file__).resolve().parent
 for _env_candidate in [
-    _BASE_DIR / ".env",                  # backend/src/core/.env
-    _BASE_DIR.parent.parent / ".env",    # backend/src/.env
-    _BASE_DIR.parent.parent.parent / ".env",  # backend/.env  ← local dev
+    _BASE_DIR / ".env",                        # backend/src/core/.env
+    _BASE_DIR.parent / ".env",                 # backend/src/.env
+    _BASE_DIR.parent.parent / ".env",          # backend/.env  ← dev local
+    _BASE_DIR.parent.parent.parent / ".env",   # <raiz_projeto>/.env
 ]:
     if _env_candidate.exists():
         load_dotenv(_env_candidate, override=False)
