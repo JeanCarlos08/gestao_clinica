@@ -2,38 +2,32 @@ services:
   - type: web
     name: gestao-clinica-api
     runtime: docker
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
+    rootDir: ./backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     envVars:
       - key: PYTHONPATH
         value: /app/src
-      # ── Banco de dados (Neon PostgreSQL) ────────────────────
-      # Use DATABASE_URL completa — é mais simples e confiável
       - key: DATABASE_URL
-        sync: false          # preencher no painel: postgresql://neondb_owner:SENHA@HOST/neondb?sslmode=require
-      # ── Segurança JWT ───────────────────────────────────────
+        sync: false
       - key: JWT_SECRET_KEY
-        generateValue: true  # Render gera automaticamente
+        generateValue: true
       - key: JWT_ALGORITHM
         value: HS256
       - key: JWT_EXPIRATION_MINUTES
         value: "1440"
-      # ── Auth fallback ────────────────────────────────────────
       - key: APP_ADMIN_USER
         sync: false
       - key: APP_ADMIN_PASS
         sync: false
-      # ── CORS ────────────────────────────────────────────────
       - key: ALLOWED_ORIGINS
-        sync: false          # ex: https://seu-frontend.vercel.app,http://localhost:3000
-      # ── App ─────────────────────────────────────────────────
+        sync: false
       - key: APP_NAME
         value: "Clinica IA"
       - key: APP_ENV
         value: production
       - key: LOG_LEVEL
         value: INFO
-      # ── LGPD ─────────────────────────────────────────────────
       - key: DPO_EMAIL
         sync: false
       - key: DPO_NOME
