@@ -62,24 +62,23 @@ export default function LoginPage() {
           font-family: 'Inter', system-ui, sans-serif;
           position: relative;
           overflow: hidden;
-          background: #1a5c35;
+          background: #071a0d;
         }
 
-        /* Fundo: foto da sala + blur + overlay verde */
+        /* Fundo: bokeh verde */
         .lp-bg {
           position: fixed;
           inset: 0;
-          background-image: url('/room-bg.png');
+          background-image: url('/bg-bokeh.png');
           background-size: cover;
           background-position: center;
-          filter: blur(8px) brightness(0.55) saturate(1.2);
-          transform: scale(1.08);
           z-index: 0;
         }
+        /* Overlay sutil para melhorar legibilidade do card */
         .lp-bg-overlay {
           position: fixed;
           inset: 0;
-          background: rgba(15, 70, 35, 0.62);
+          background: rgba(0, 10, 4, 0.28);
           z-index: 1;
         }
 
