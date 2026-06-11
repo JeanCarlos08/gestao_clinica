@@ -47,365 +47,403 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="login-bg">
-      {/* Círculos de profundidade no fundo */}
-      <div className="bg-circle bg-circle-1" />
-      <div className="bg-circle bg-circle-2" />
-      <div className="bg-circle bg-circle-3" />
-
-      {/* Card principal */}
-      <div className="login-card-outer">
-        {/* Topo: botão compartilhar */}
-        <div className="share-bar">
-          <button className="share-btn" type="button">
-            Compartilhar&nbsp;☆
-          </button>
-        </div>
-
-        {/* Avatar + título */}
-        <div className="login-header">
-          <div className="avatar-wrap">
-            <Image
-              src="/avatar.png"
-              alt="Gestão Clínica"
-              width={80}
-              height={80}
-              className="avatar-img"
-              priority
-            />
-          </div>
-          <h1 className="login-title">Gestão Clínica</h1>
-          <p className="login-subtitle">PORTAL ADMINISTRATIVO</p>
-        </div>
-
-        {/* Card branco com formulário */}
-        <div className="login-form-card">
-          <h2 className="form-heading">Acesse sua conta</h2>
-
-          <form onSubmit={handleLogin} className="login-form">
-            {/* Usuário */}
-            <div className="field-group">
-              <label className="field-label">
-                <span className="field-icon">👤</span> Usuário
-              </label>
-              <input
-                id="login-username"
-                type="text"
-                required
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Digite seu usuário"
-                className="field-input"
-                autoComplete="username"
-              />
-            </div>
-
-            {/* Senha */}
-            <div className="field-group">
-              <label className="field-label">
-                <span className="field-icon">🔑</span> Senha
-              </label>
-              <div className="password-wrap">
-                <input
-                  id="login-password"
-                  type={showPassword ? "text" : "password"}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Digite sua senha"
-                  className="field-input password-input"
-                  autoComplete="current-password"
-                />
-                <button
-                  type="button"
-                  className="eye-btn"
-                  onClick={() => setShowPassword((v) => !v)}
-                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            {/* Erro */}
-            {error && (
-              <div className="error-msg">{error}</div>
-            )}
-
-            {/* Botão */}
-            <button
-              id="login-submit"
-              type="submit"
-              disabled={loading || attempts >= 5}
-              className="submit-btn"
-            >
-              {loading ? (
-                <Loader2 className="spin-icon" size={20} />
-              ) : (
-                <>
-                  Entrar<br />Seguramente
-                  <ArrowRight size={16} className="arrow-icon" />
-                </>
-              )}
-            </button>
-          </form>
-        </div>
-
-        {/* Rodapé */}
-        <div className="login-footer">
-          🔒 Acesso seguro&nbsp;•&nbsp;Tentativas: {attempts}/5
-        </div>
-      </div>
-
+    <>
       <style>{`
-        /* Reset e base */
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-        .login-bg {
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        .lp-root {
           min-height: 100vh;
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 16px;
+          padding: 20px;
+          font-family: 'Inter', system-ui, sans-serif;
           position: relative;
           overflow: hidden;
-          background:
-            radial-gradient(ellipse 80% 60% at 20% 30%, rgba(60,140,80,0.45) 0%, transparent 60%),
-            radial-gradient(ellipse 70% 50% at 80% 70%, rgba(40,100,60,0.35) 0%, transparent 55%),
-            radial-gradient(ellipse 90% 80% at 50% 50%, rgba(180,210,180,0.08) 0%, transparent 70%),
-            linear-gradient(160deg, #1c5e35 0%, #0e3d1e 40%, #1a5830 70%, #0b3318 100%);
+          background: #1a5c35;
         }
 
-        /* Círculos de fundo para simular profundidade */
-        .bg-circle {
-          position: absolute;
-          border-radius: 50%;
-          filter: blur(60px);
-          pointer-events: none;
-          opacity: 0.25;
+        /* Fundo: foto da sala + blur + overlay verde */
+        .lp-bg {
+          position: fixed;
+          inset: 0;
+          background-image: url('/room-bg.png');
+          background-size: cover;
+          background-position: center;
+          filter: blur(8px) brightness(0.55) saturate(1.2);
+          transform: scale(1.08);
+          z-index: 0;
         }
-        .bg-circle-1 {
-          width: 500px; height: 500px;
-          background: radial-gradient(circle, #a8d5b0 0%, transparent 70%);
-          top: -150px; left: -150px;
-        }
-        .bg-circle-2 {
-          width: 400px; height: 400px;
-          background: radial-gradient(circle, #c5e8ca 0%, transparent 70%);
-          bottom: -100px; right: -100px;
-        }
-        .bg-circle-3 {
-          width: 300px; height: 300px;
-          background: radial-gradient(circle, #e8f5e8 0%, transparent 70%);
-          top: 50%; left: 50%;
-          transform: translate(-50%, -50%);
-          opacity: 0.08;
+        .lp-bg-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(15, 70, 35, 0.62);
+          z-index: 1;
         }
 
-        /* Card externo (o "telefone" verde) */
-        .login-card-outer {
+        /* Card externo (moldura verde arredondada) */
+        .lp-card {
           position: relative;
           z-index: 10;
           width: 100%;
           max-width: 360px;
-          border-radius: 24px;
+          border-radius: 28px;
           overflow: hidden;
           box-shadow:
-            0 30px 80px rgba(0,0,0,0.5),
-            0 0 0 1px rgba(255,255,255,0.08) inset;
-          background: linear-gradient(160deg, #1e6b3e 0%, #155228 50%, #0f3d20 100%);
-          animation: fadeInUp 0.5s ease forwards;
+            0 32px 80px rgba(0, 0, 0, 0.55),
+            0 0 0 1px rgba(255,255,255,0.10) inset;
+          background: linear-gradient(170deg, #1e7040 0%, #155230 45%, #0f3d22 100%);
+          animation: slideUp 0.45s cubic-bezier(0.16,1,0.3,1) both;
         }
 
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(24px); }
-          to   { opacity: 1; transform: translateY(0); }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(32px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
         }
 
-        /* Barra de compartilhar */
-        .share-bar {
+        /* Barra superior: Compartilhar */
+        .lp-topbar {
           display: flex;
           justify-content: flex-end;
-          padding: 12px 16px 0;
+          align-items: center;
+          padding: 14px 18px 0;
         }
-        .share-btn {
+        .lp-share {
           background: none;
           border: none;
           cursor: pointer;
-          color: rgba(255,255,255,0.75);
-          font-size: 12px;
           font-family: inherit;
+          font-size: 12px;
+          font-weight: 500;
+          color: rgba(255,255,255,0.72);
+          display: flex;
+          align-items: center;
+          gap: 4px;
           transition: color 0.2s;
+          padding: 4px 0;
         }
-        .share-btn:hover { color: #fff; }
+        .lp-share:hover { color: #fff; }
 
-        /* Cabeçalho com avatar e título */
-        .login-header {
+        /* Seção cabeçalho: avatar + título */
+        .lp-header {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0;
+          padding: 10px 24px 22px;
           text-align: center;
-          padding: 12px 24px 24px;
         }
-        .avatar-wrap {
-          width: 84px;
-          height: 84px;
-          border-radius: 16px;
+        .lp-avatar-ring {
+          width: 88px;
+          height: 88px;
+          border-radius: 18px;
           overflow: hidden;
-          margin: 0 auto 16px;
-          border: 3px solid rgba(255,255,255,0.25);
-          box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+          border: 3px solid rgba(255,255,255,0.28);
+          box-shadow:
+            0 8px 24px rgba(0,0,0,0.40),
+            0 0 0 1px rgba(255,255,255,0.06) inset;
+          flex-shrink: 0;
+          margin-bottom: 14px;
         }
-        .avatar-img {
+        .lp-avatar-img {
           width: 100%;
           height: 100%;
           object-fit: cover;
+          object-position: center top;
         }
-        .login-title {
-          font-size: 26px;
+        .lp-title {
+          font-size: 27px;
           font-weight: 800;
           color: #ffffff;
-          letter-spacing: -0.5px;
-          line-height: 1.2;
-          text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+          letter-spacing: -0.6px;
+          line-height: 1.15;
+          text-shadow: 0 2px 12px rgba(0,0,0,0.35);
+          margin-bottom: 5px;
         }
-        .login-subtitle {
-          margin-top: 4px;
-          font-size: 11px;
+        .lp-subtitle {
+          font-size: 10.5px;
           font-weight: 600;
-          letter-spacing: 2.5px;
-          color: rgba(255,255,255,0.65);
+          letter-spacing: 3px;
+          color: rgba(255,255,255,0.58);
           text-transform: uppercase;
         }
 
         /* Card branco do formulário */
-        .login-form-card {
-          margin: 0 14px;
+        .lp-form-card {
+          margin: 0 13px;
           background: #ffffff;
-          border-radius: 18px;
-          padding: 24px 22px 28px;
+          border-radius: 20px;
+          padding: 22px 20px 24px;
           box-shadow:
-            0 4px 30px rgba(0,0,0,0.2),
-            0 1px 0 rgba(255,255,255,0.9) inset;
+            0 8px 32px rgba(0,0,0,0.22),
+            0 1px 0 rgba(255,255,255,0.8) inset;
         }
-        .form-heading {
+
+        .lp-form-title {
           text-align: center;
-          font-size: 17px;
+          font-size: 16px;
           font-weight: 700;
-          color: #1e6b3e;
-          margin-bottom: 20px;
+          color: #1a6635;
+          margin-bottom: 18px;
+          letter-spacing: -0.2px;
         }
 
-        .login-form { display: flex; flex-direction: column; gap: 14px; }
+        .lp-form { display: flex; flex-direction: column; gap: 13px; }
 
-        /* Grupos de campo */
-        .field-group { display: flex; flex-direction: column; gap: 5px; }
-        .field-label {
-          font-size: 13px;
-          font-weight: 600;
-          color: #1e6b3e;
+        /* Grupo de campo */
+        .lp-field { display: flex; flex-direction: column; gap: 5px; }
+        .lp-label {
           display: flex;
           align-items: center;
           gap: 5px;
+          font-size: 13px;
+          font-weight: 600;
+          color: #1a6635;
         }
-        .field-icon { font-size: 14px; }
+        .lp-label-icon { font-size: 14px; line-height: 1; }
 
-        .field-input {
+        .lp-input {
           width: 100%;
           padding: 10px 14px;
-          border: 1.5px solid #d8e8dc;
+          border: 1.5px solid #ddeee3;
           border-radius: 10px;
-          font-size: 14px;
-          color: #1a1a1a;
-          background: #f8fdf9;
+          font-size: 13.5px;
+          color: #222;
+          background: #f7fdf9;
           outline: none;
-          transition: border-color 0.2s, box-shadow 0.2s;
+          transition: border-color 0.18s, box-shadow 0.18s, background 0.18s;
           font-family: inherit;
         }
-        .field-input:focus {
-          border-color: #1e6b3e;
-          box-shadow: 0 0 0 3px rgba(30,107,62,0.12);
+        .lp-input:focus {
+          border-color: #1a6635;
           background: #fff;
+          box-shadow: 0 0 0 3px rgba(26,102,53,0.13);
         }
-        .field-input::placeholder { color: #aabfb0; }
+        .lp-input::placeholder { color: #b0c8b8; font-size: 13px; }
 
-        /* Campo senha */
-        .password-wrap { position: relative; }
-        .password-input { padding-right: 44px; }
-        .eye-btn {
+        /* Campo de senha */
+        .lp-pw-wrap { position: relative; }
+        .lp-pw-input { padding-right: 48px; }
+        .lp-eye {
           position: absolute;
-          right: 12px;
+          right: 8px;
           top: 50%;
           transform: translateY(-50%);
-          background: #1e6b3e;
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
+          background: #1a6635;
           border: none;
           cursor: pointer;
-          color: #fff;
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 5px;
-          border-radius: 8px;
-          transition: background 0.2s;
+          color: #fff;
+          transition: background 0.18s;
+          flex-shrink: 0;
         }
-        .eye-btn:hover { background: #155228; }
+        .lp-eye:hover { background: #145228; }
 
         /* Erro */
-        .error-msg {
-          background: #fff0f0;
-          border: 1px solid #ffcdd2;
-          color: #c62828;
+        .lp-error {
+          background: #fff2f2;
+          border: 1px solid #fcc;
+          color: #c0392b;
           font-size: 12px;
           text-align: center;
           padding: 8px 12px;
           border-radius: 8px;
+          font-weight: 500;
         }
 
-        /* Botão de submit */
-        .submit-btn {
+        /* Botão entrar */
+        .lp-submit {
           width: 100%;
-          background: linear-gradient(135deg, #1e6b3e 0%, #155228 100%);
+          background: linear-gradient(160deg, #1a6635 0%, #114d26 100%);
           color: #fff;
           border: none;
-          border-radius: 12px;
-          padding: 14px 20px;
-          font-size: 15px;
-          font-weight: 700;
+          border-radius: 13px;
+          padding: 15px 20px;
           cursor: pointer;
           display: flex;
+          flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 8px;
-          text-align: center;
-          line-height: 1.3;
+          gap: 1px;
           transition: transform 0.15s, box-shadow 0.15s, background 0.2s;
-          box-shadow: 0 4px 16px rgba(30,107,62,0.4);
+          box-shadow: 0 4px 18px rgba(26,102,53,0.42);
           font-family: inherit;
-          margin-top: 4px;
+          margin-top: 2px;
+          position: relative;
         }
-        .submit-btn:hover:not(:disabled) {
-          background: linear-gradient(135deg, #155228 0%, #0f3d1e 100%);
-          transform: translateY(-1px);
-          box-shadow: 0 6px 20px rgba(30,107,62,0.5);
+        .lp-submit:hover:not(:disabled) {
+          background: linear-gradient(160deg, #145228 0%, #0e3d1e 100%);
+          transform: translateY(-2px);
+          box-shadow: 0 7px 22px rgba(26,102,53,0.52);
         }
-        .submit-btn:active:not(:disabled) { transform: translateY(0); }
-        .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-        .arrow-icon { flex-shrink: 0; }
-        .spin-icon { animation: spin 1s linear infinite; }
+        .lp-submit:active:not(:disabled) { transform: translateY(0); }
+        .lp-submit:disabled { opacity: 0.55; cursor: not-allowed; }
+
+        .lp-btn-main {
+          font-size: 15px;
+          font-weight: 700;
+          line-height: 1.2;
+          text-align: center;
+          letter-spacing: 0.1px;
+        }
+        .lp-btn-arrow {
+          position: absolute;
+          right: 18px;
+          top: 50%;
+          transform: translateY(-50%);
+          transition: transform 0.18s;
+        }
+        .lp-submit:hover:not(:disabled) .lp-btn-arrow {
+          transform: translateY(-50%) translateX(3px);
+        }
+
+        /* Rodapé do card principal */
+        .lp-footer {
+          text-align: center;
+          padding: 15px 0 18px;
+          font-size: 12px;
+          font-weight: 500;
+          color: rgba(255,255,255,0.68);
+          letter-spacing: 0.2px;
+        }
+
+        /* Spinner */
+        .lp-spin { animation: spin 0.85s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Rodapé */
-        .login-footer {
-          text-align: center;
-          padding: 16px 0 20px;
-          font-size: 12px;
-          color: rgba(255,255,255,0.7);
-          letter-spacing: 0.3px;
-        }
-
-        /* Responsivo */
         @media (max-width: 400px) {
-          .login-card-outer { border-radius: 20px; }
-          .login-title { font-size: 22px; }
+          .lp-card { border-radius: 22px; }
+          .lp-title { font-size: 24px; }
+          .lp-form-card { margin: 0 10px; padding: 18px 16px 20px; }
         }
       `}</style>
-    </div>
+
+      <div className="lp-root">
+        {/* Fundo foto + overlay verde */}
+        <div className="lp-bg" />
+        <div className="lp-bg-overlay" />
+
+        {/* Card principal */}
+        <div className="lp-card">
+
+          {/* Barra superior */}
+          <div className="lp-topbar">
+            <button className="lp-share" type="button">
+              Compartilhar&nbsp;☆
+            </button>
+          </div>
+
+          {/* Avatar + títulos */}
+          <div className="lp-header">
+            <div className="lp-avatar-ring">
+              <Image
+                src="/avatar.png"
+                alt="Gestão Clínica"
+                width={88}
+                height={88}
+                className="lp-avatar-img"
+                priority
+              />
+            </div>
+            <h1 className="lp-title">Gestão Clínica</h1>
+            <p className="lp-subtitle">Portal Administrativo</p>
+          </div>
+
+          {/* Card branco */}
+          <div className="lp-form-card">
+            <h2 className="lp-form-title">Acesse sua conta</h2>
+
+            <form onSubmit={handleLogin} className="lp-form">
+
+              {/* Usuário */}
+              <div className="lp-field">
+                <label className="lp-label" htmlFor="lp-user">
+                  <span className="lp-label-icon">👤</span> Usuário
+                </label>
+                <input
+                  id="lp-user"
+                  type="text"
+                  required
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Digite seu usuário"
+                  className="lp-input"
+                  autoComplete="username"
+                  disabled={attempts >= 5}
+                />
+              </div>
+
+              {/* Senha */}
+              <div className="lp-field">
+                <label className="lp-label" htmlFor="lp-pass">
+                  <span className="lp-label-icon">🔑</span> Senha
+                </label>
+                <div className="lp-pw-wrap">
+                  <input
+                    id="lp-pass"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Digite sua senha"
+                    className="lp-input lp-pw-input"
+                    autoComplete="current-password"
+                    disabled={attempts >= 5}
+                  />
+                  <button
+                    type="button"
+                    className="lp-eye"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                    tabIndex={-1}
+                  >
+                    {showPassword
+                      ? <EyeOff size={16} strokeWidth={2.2} />
+                      : <Eye size={16} strokeWidth={2.2} />
+                    }
+                  </button>
+                </div>
+              </div>
+
+              {/* Mensagem de erro */}
+              {error && <div className="lp-error">{error}</div>}
+
+              {/* Botão */}
+              <button
+                id="login-submit"
+                type="submit"
+                disabled={loading || attempts >= 5}
+                className="lp-submit"
+              >
+                {loading ? (
+                  <Loader2 className="lp-spin" size={22} />
+                ) : (
+                  <>
+                    <span className="lp-btn-main">
+                      Entrar<br />Seguramente
+                    </span>
+                    <ArrowRight size={18} className="lp-btn-arrow" strokeWidth={2.5} />
+                  </>
+                )}
+              </button>
+
+            </form>
+          </div>
+
+          {/* Rodapé */}
+          <div className="lp-footer">
+            🔒 Acesso seguro&nbsp;•&nbsp;Tentativas: {attempts}/5
+          </div>
+
+        </div>
+      </div>
+    </>
   );
 }
