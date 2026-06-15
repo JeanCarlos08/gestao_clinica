@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import Link from "next/link";
 import "./globals.css";
 import { Home, ClipboardList, BarChart2, Upload, Settings, Bot, LogOut, FileText } from "lucide-react";
 
@@ -42,25 +43,25 @@ export default function RootLayout({
 
             {/* Navigation */}
             <nav className="px-3 space-y-1">
-              <a href="#" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[var(--text-label)] hover:text-white hover:bg-[var(--card)] transition-colors">
+              <Link href="/dashboard" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[var(--text-label)] hover:text-white hover:bg-[var(--card)] transition-colors">
                 <Home size={18} /> Dashboard
-              </a>
-              <a href="/atendimentos" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[var(--primary)] bg-[var(--card)] border-l-4 border-[var(--primary)] font-medium">
+              </Link>
+              <Link href="/atendimentos" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[var(--primary)] bg-[var(--card)] border-l-4 border-[var(--primary)] font-medium">
                 <ClipboardList size={18} /> Atendimentos
                 <span className="ml-auto">›</span>
-              </a>
-              <a href="/laudos" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[var(--text-label)] hover:text-white hover:bg-[var(--card)] transition-colors">
+              </Link>
+              <Link href="/laudos" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[var(--text-label)] hover:text-white hover:bg-[var(--card)] transition-colors">
                 <FileText size={18} /> Laudos
-              </a>
-              <a href="#" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[var(--text-label)] hover:text-white hover:bg-[var(--card)] transition-colors">
+              </Link>
+              <Link href="/relatorios" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[var(--text-label)] hover:text-white hover:bg-[var(--card)] transition-colors">
                 <BarChart2 size={18} /> Relatórios
-              </a>
-              <a href="#" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[var(--text-label)] hover:text-white hover:bg-[var(--card)] transition-colors">
+              </Link>
+              <Link href="/upload" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[var(--text-label)] hover:text-white hover:bg-[var(--card)] transition-colors">
                 <Upload size={18} /> Upload
-              </a>
-              <a href="#" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[var(--text-label)] hover:text-white hover:bg-[var(--card)] transition-colors mt-2">
+              </Link>
+              <Link href="/configuracoes" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[var(--text-label)] hover:text-white hover:bg-[var(--card)] transition-colors mt-2">
                 <Settings size={18} /> Configurações
-              </a>
+              </Link>
             </nav>
 
             {/* IA Box */}
