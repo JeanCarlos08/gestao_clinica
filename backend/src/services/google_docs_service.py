@@ -27,9 +27,6 @@ Uso:
 """
 
 from typing import Optional
-
-
-
 from core.config import settings
 from utils.helpers import extract_google_doc_id, build_google_doc_embed_url, build_google_doc_view_url
 from utils.logger import get_logger
