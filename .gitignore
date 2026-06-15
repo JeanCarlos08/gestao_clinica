@@ -45,7 +45,8 @@ credentials.json
 credentials/*.json
 
 # ── Application outputs ────────────────────────────────
-laudos/
+/laudos/
+backend/laudos/
 logs/
 *.log
 backend/logs/
