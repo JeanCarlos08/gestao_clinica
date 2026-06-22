@@ -21,7 +21,7 @@ const proximasConsultas = [
 
 export default function DashboardPage() {
   return (
-    <div className="p-8 w-full h-full overflow-y-auto scrollbar-hide bg-[#050a06]">
+    <div className="p-4 sm:p-8 w-full h-full overflow-y-auto scrollbar-hide bg-[#050a06]">
       {/* Header */}
       <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-4 mb-8">
         <div>

@@ -48,32 +48,59 @@ class DadosLaudo:
     psicologista_crp: str = "XX/XXXXX"
 
 
+def resolve_template_id(template_override: Optional[str] = None) -> str:
+    """Resolve o ID do template: parâmetro > config da clínica > .env."""
+    from core.config import settings
+    from core.repositories.user_repositories import clinic_config_repo
+    from services.google_docs_service import google_docs_service
+    from utils.constants import CLINIC_PREF_GOOGLE_DOC_ID
+
+    if template_override:
+        doc_id = google_docs_service.extract_id_from_url(template_override) or template_override
+        if doc_id and google_docs_service.validate_doc_id(doc_id):
+            return doc_id
+
+    clinic_doc = clinic_config_repo.get(CLINIC_PREF_GOOGLE_DOC_ID, "")
+    if clinic_doc:
+        doc_id = google_docs_service.extract_id_from_url(clinic_doc) or clinic_doc
+        if doc_id and google_docs_service.validate_doc_id(doc_id):
+            return doc_id
+
+    env_id = settings.google_docs_template_id
+    if env_id:
+        doc_id = google_docs_service.extract_id_from_url(env_id) or env_id
+        if doc_id:
+            return doc_id
+
+    raise ValueError(
+        "Template do Google Docs não configurado. "
+        "Configure em Configurações > Integrações ou defina GOOGLE_DOCS_TEMPLATE_ID no .env."
+    )
+
+
 class LaudoService:
     """Serviço para gerar laudos psicossociais via Google Docs."""
 
     def __init__(self):
         """Inicializa o serviço."""
-        self.api = get_google_docs_api()
-        self.template_id = self._get_template_id()
+        self._api = None
 
-    def _get_template_id(self) -> str:
-        """Obtém o ID do template do Google Docs."""
-        from core.config import settings
+    @property
+    def api(self):
+        if self._api is None:
+            self._api = get_google_docs_api()
+        return self._api
 
-        template_id = getattr(settings, "GOOGLE_DOCS_TEMPLATE_ID", None)
-
-        if not template_id:
-            raise ValueError(
-                "GOOGLE_DOCS_TEMPLATE_ID não configurado em .env\n"
-                "Cole o ID do documento template aqui."
-            )
-
-        return template_id
+    @property
+    def template_id(self) -> str:
+        """ID do template ativo (clínica ou .env)."""
+        return resolve_template_id()
 
     def gerar_laudo(
         self,
         dados: DadosLaudo,
         titulo_customizado: Optional[str] = None,
+        template_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Gera um novo laudo a partir do template.
@@ -87,12 +114,18 @@ class LaudoService:
         """
         try:
             # 1. Copiar template
+            active_template = resolve_template_id(template_id)
             titulo = titulo_customizado or f"Laudo - {dados.nome_paciente}"
-            novo_doc = self.api.copy_document(self.template_id, titulo)
+            novo_doc = self.api.copy_document(active_template, titulo)
 
             # 2. Preencher campos
             replacements = self._montar_replacements(dados)
             self.api.replace_text(novo_doc["id"], replacements)
+
+            try:
+                self.api.make_viewable_by_link(novo_doc["id"])
+            except Exception:
+                logger.warning("Documento gerado, mas embed pode exigir permissões manuais.")
 
             logger.info(
                 f"✓ Laudo gerado para {dados.nome_paciente}: {novo_doc['url']}"
@@ -127,11 +160,13 @@ class LaudoService:
             "{{CHECKBOX_MUDANCA}}": "☑" if dados.mudanca_funcao else "☐",
         }
 
+        cpf_val = dados.cpf
         return {
             # Identificação
             "{{NOME}}": dados.nome_paciente,
             "{{DATA_NASCIMENTO}}": dados.data_nascimento,
-            "{{CPFFF}}": dados.cpf,
+            "{{CPF}}": cpf_val,
+            "{{CPFFF}}": cpf_val,
             "{{EMPRESA}}": dados.empresa,
             # Avaliação
             "{{DATA_EXAME}}": dados.data_exame,

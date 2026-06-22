@@ -89,8 +89,9 @@ class TestLaudoService:
         assert replacements["{{CHECKBOX_PERIODICA}}"] == "☐"
         assert replacements["{{CONCLUSAO}}"] == "Apto"
 
+    @patch("services.laudo_service.resolve_template_id", return_value="fake_template_id")
     @patch("services.laudo_service.get_google_docs_api")
-    def test_gerar_laudo(self, mock_api):
+    def test_gerar_laudo(self, mock_api, _mock_template):
         """Deve gerar laudo corretamente."""
         # Setup
         mock_api_instance = Mock()
@@ -113,8 +114,7 @@ class TestLaudoService:
         )
 
         service = LaudoService.__new__(LaudoService)
-        service.api = mock_api_instance
-        service.template_id = "fake_template_id"
+        service._api = mock_api_instance
 
         resultado = service.gerar_laudo(dados)
 
@@ -124,8 +124,9 @@ class TestLaudoService:
         mock_api_instance.copy_document.assert_called_once()
         mock_api_instance.replace_text.assert_called_once()
 
+    @patch("services.laudo_service.resolve_template_id", return_value="fake_template_id")
     @patch("services.laudo_service.get_google_docs_api")
-    def test_gerar_laudo_com_titulo_customizado(self, mock_api):
+    def test_gerar_laudo_com_titulo_customizado(self, mock_api, _mock_template):
         """Deve usar título customizado se fornecido."""
         mock_api_instance = Mock()
         mock_api_instance.copy_document.return_value = {
@@ -147,8 +148,7 @@ class TestLaudoService:
         )
 
         service = LaudoService.__new__(LaudoService)
-        service.api = mock_api_instance
-        service.template_id = "fake_template_id"
+        service._api = mock_api_instance
 
         resultado = service.gerar_laudo(dados, titulo_customizado="Laudo Customizado")
 

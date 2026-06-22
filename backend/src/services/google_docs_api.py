@@ -223,6 +223,17 @@ class GoogleDocsAPI:
             logger.error(f"✗ Erro ao inserir tabela: {error}")
             raise
 
+    def make_viewable_by_link(self, doc_id: str) -> None:
+        """Permite visualização por qualquer pessoa com o link (necessário para embed iframe)."""
+        try:
+            self.drive_service.permissions().create(
+                fileId=doc_id,
+                body={"type": "anyone", "role": "reader"},
+            ).execute()
+            logger.info(f"✓ Documento acessível via link: {doc_id}")
+        except HttpError as error:
+            logger.warning(f"⚠ Não foi possível tornar documento público via link: {error}")
+
     def share_document(
         self, doc_id: str, email: str, role: str = "viewer"
     ) -> None:
