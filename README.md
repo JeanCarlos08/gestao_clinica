@@ -29,8 +29,8 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-## Deploy on Vercel
+## Deploy (Render + Vercel)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Backend (Render): usa `backend/Dockerfile` e expõe `/api/*`. Configure as envs: `DATABASE_URL`, `ALLOWED_ORIGINS`, `GOOGLE_API_KEY`, `GOOGLE_SERVICE_ACCOUNT_JSON_B64`, `GOOGLE_DOCS_TEMPLATE_ID`, `APP_ADMIN_USER`, `APP_ADMIN_PASS`.
+- Frontend (Vercel): defina `NEXT_PUBLIC_API_URL` como `https://SEU-BACKEND/api` (sem barra final). `vercel.json` já reescreve `/api/*` para o backend.
+- Docker local: `docker-compose.yml` mapeia `8000:8000` e healthcheck em `/api/health`.

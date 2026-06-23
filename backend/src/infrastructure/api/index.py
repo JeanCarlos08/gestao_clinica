@@ -19,6 +19,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr, Field
 
 from core.config import settings
+from infrastructure.connection import ensure_schema
 from core.repositories.repositories import atendimento_repo, arquivo_repo, auditoria_repo
 from core.repositories.user_repositories import user_repo, clinic_config_repo
 from services.lgpd_service import get_lgpd_service
@@ -37,6 +38,35 @@ app = FastAPI(
     version="2.1.0",
     description="API de gestão clínica com conformidade LGPD completa.",
 )
+
+# ─────────────────────────────────────────────────────────────
+# Startup — schema & admin bootstrap
+# ─────────────────────────────────────────────────────────────
+
+@app.on_event("startup")
+async def _startup() -> None:
+    """Garante schema e admin inicial ao subir a API (Render/Docker)."""
+    try:
+        ensure_schema()
+        logger.info("Startup: Schema verificado/criado com sucesso.")
+    except Exception as e:
+        logger.error(f"Startup: falha ao garantir schema: {e}")
+
+    # Bootstrap do admin inicial (sem depender de Streamlit)
+    try:
+        from core.repositories.user_repositories import user_repo
+        from utils.helpers import hash_password
+
+        admin_user = settings.auth_username
+        admin_pass = settings.auth_password
+        if admin_pass:
+            user_repo.bootstrap_admin(
+                username=admin_user,
+                display_name="Administrador",
+                password_hash=hash_password(admin_pass),
+            )
+    except Exception as e:
+        logger.warning(f"Startup: bootstrap do admin não concluído: {e}")
 
 # CORS: lê domínios permitidos do .env — NUNCA usar "*" em produção
 _raw_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000")

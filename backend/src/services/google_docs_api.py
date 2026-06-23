@@ -18,7 +18,7 @@ import os
 from typing import Optional, Dict, List, Any
 from pathlib import Path
 
-from google.auth.service_account import Credentials
+from google.oauth2.service_account import Credentials
 from google.oauth2.credentials import Credentials as UserCredentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build

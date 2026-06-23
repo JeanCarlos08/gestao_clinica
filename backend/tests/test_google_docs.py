@@ -78,8 +78,8 @@ class TestLaudoService:
 
         # Criar serviço com mock
         service = LaudoService.__new__(LaudoService)
-        service.api = mock_api_instance
-        service.template_id = "fake_template_id"
+        service._api = mock_api_instance  # Usar atributo privado
+        service._template_id = "fake_template_id"  # Usar atributo privado
 
         replacements = service._montar_replacements(dados)
 

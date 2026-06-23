@@ -9,8 +9,8 @@
 
 .PHONY: help install streamlit flask test clean activate
 
-PROJECT_DIR := /media/jean/7AF8AFA7F8AF5FDD/gestao_clinica
-VENV := $(PROJECT_DIR)/.venv
+PROJECT_DIR := /home/jean/gestao_clinica
+VENV := $(PROJECT_DIR)/venv
 PYTHON := $(VENV)/bin/python
 PIP := $(VENV)/bin/pip
 
