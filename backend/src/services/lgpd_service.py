@@ -10,7 +10,7 @@ Serviço central para operações de conformidade LGPD:
 
 import json
 import os
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any, Dict, List, Optional
 
 from core.repositories.lgpd_repositories import consentimento_repo, login_attempt_repo
@@ -141,7 +141,7 @@ class LGPDService:
         Inclui: consentimentos, atendimentos vinculados ao nome.
         """
         resultado: Dict[str, Any] = {
-            "exportado_em": datetime.utcnow().isoformat() + "Z",
+            "exportado_em": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             "titular_email": email,
             "dpo_contato": DPO_EMAIL,
             "aviso": "Dados exportados conforme LGPD Art. 18, V - Portabilidade.",
@@ -196,7 +196,7 @@ class LGPDService:
         ATENÇÃO: Esta operação é irreversível.
         """
         resultado = {
-            "executado_em": datetime.utcnow().isoformat() + "Z",
+            "executado_em": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             "consentimentos_removidos": 0,
             "atendimentos_anonimizados": 0,
             "sucesso": False,
