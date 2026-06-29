@@ -40,6 +40,9 @@ type BadgeTone = "neutral" | "positive" | "warning";
 const weekdayOrder = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const AttendanceChart = dynamic<AttendanceChartProps>(() => Promise.resolve(AttendanceChartInner), { ssr: false });
 
+const CACHE_KEY = "dashboard_cache";
+const CACHE_TTL = 60_000; // 60s
+
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [atendimentos, setAtendimentos] = useState<AtendimentoResumo[]>([]);
@@ -55,23 +58,33 @@ export default function DashboardPage() {
       return;
     }
 
-    setLoading(true);
+    // Mostra cache imediatamente enquanto busca atualização em background
     try {
-      const headers = { Authorization: `Bearer ${token}` };
-      const [statsResponse, atendimentosResponse] = await Promise.all([
-        fetch(`${API_BASE}/stats`, { headers }),
-        fetch(`${API_BASE}/atendimentos`, { headers }),
-      ]);
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const { data, ts } = JSON.parse(cached) as { data: { stats: DashboardStats; atendimentos: AtendimentoResumo[] }; ts: number };
+        if (Date.now() - ts < CACHE_TTL) {
+          setStats(data.stats);
+          setAtendimentos(data.atendimentos);
+          setLoading(false);
+        }
+      }
+    } catch { /* ignore cache errors */ }
 
-      if (statsResponse.status === 401 || atendimentosResponse.status === 401) {
+    try {
+      const res = await fetch(`${API_BASE}/dashboard`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.status === 401) {
         localStorage.removeItem("token");
         window.location.href = "/";
         return;
       }
-
-      setStats(await statsResponse.json());
-      const atendData = await atendimentosResponse.json() as AtendimentoResumo[];
-      setAtendimentos(atendData);
+      const data = await res.json() as { stats: DashboardStats; atendimentos: AtendimentoResumo[] };
+      setStats(data.stats);
+      setAtendimentos(data.atendimentos);
+      // Salva no cache
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
     } catch (error) {
       console.error("Erro ao carregar dashboard:", error);
     } finally {
@@ -98,6 +111,9 @@ export default function DashboardPage() {
   const taxaConclusao = totalAtendimentos > 0 ? Math.round((concluidos / totalAtendimentos) * 100) : 0;
   const insightPatient = upcomingConsultas[0]?.nome || "seus pacientes";
 
+  // Skeleton enquanto não há dados ainda
+  const isFirstLoad = loading && !stats && atendimentos.length === 0;
+
   return (
     <div className="p-4 sm:p-8 w-full h-full overflow-y-auto scrollbar-hide bg-[#050a06]">
       {/* Header */}
@@ -121,10 +137,22 @@ export default function DashboardPage() {
 
       {/* Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <MetricCard title="Pacientes Ativos" value={formatMetric(totalPacientes)} change="Banco" tone="neutral" icon={Users} color="text-blue-400" bgColor="bg-blue-400/10" borderColor="border-blue-400/20" />
-        <MetricCard title="Consultas Hoje" value={formatMetric(consultasHoje)} change="Hoje" tone="neutral" icon={CalendarCheck} color="text-[var(--primary)]" bgColor="bg-[var(--primary)]/10" borderColor="border-[var(--primary)]/20" />
-        <MetricCard title="Atendimentos do Mês" value={formatMetric(stats?.atendimentos_mes ?? 0)} change="Mês" tone="neutral" icon={Activity} color="text-purple-400" bgColor="bg-purple-400/10" borderColor="border-purple-400/20" />
-        <MetricCard title="Taxa de Conclusão" value={`${taxaConclusao}%`} change="Real" tone="positive" icon={TrendingUp} color="text-amber-400" bgColor="bg-amber-400/10" borderColor="border-amber-400/20" />
+        {isFirstLoad ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-[#0a100a] border border-[#1e2e1e] rounded-2xl p-6 animate-pulse">
+              <div className="flex justify-between mb-4"><div className="w-12 h-12 rounded-xl bg-[#1e2e1e]" /><div className="w-12 h-5 rounded-full bg-[#1e2e1e]" /></div>
+              <div className="h-3 w-24 rounded bg-[#1e2e1e] mb-2" />
+              <div className="h-8 w-16 rounded bg-[#1e2e1e]" />
+            </div>
+          ))
+        ) : (
+          <>
+            <MetricCard title="Pacientes Ativos" value={formatMetric(totalPacientes)} change="Banco" tone="neutral" icon={Users} color="text-blue-400" bgColor="bg-blue-400/10" borderColor="border-blue-400/20" />
+            <MetricCard title="Consultas Hoje" value={formatMetric(consultasHoje)} change="Hoje" tone="neutral" icon={CalendarCheck} color="text-[var(--primary)]" bgColor="bg-[var(--primary)]/10" borderColor="border-[var(--primary)]/20" />
+            <MetricCard title="Atendimentos do Mês" value={formatMetric(stats?.atendimentos_mes ?? 0)} change="Mês" tone="neutral" icon={Activity} color="text-purple-400" bgColor="bg-purple-400/10" borderColor="border-purple-400/20" />
+            <MetricCard title="Taxa de Conclusão" value={`${taxaConclusao}%`} change="Real" tone="positive" icon={TrendingUp} color="text-amber-400" bgColor="bg-amber-400/10" borderColor="border-amber-400/20" />
+          </>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">

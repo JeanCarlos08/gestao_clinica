@@ -612,6 +612,19 @@ class PreferencesRepository:
         except Exception:
             return default
 
+    def get_many(self, prefix: str) -> Dict[str, str]:
+        """Recupera todas as preferências com um determinado prefixo em uma única query."""
+        try:
+            with connection_scope(commit=False) as conn:
+                cur = conn.cursor()
+                cur.execute(
+                    f"SELECT pref_key, pref_value FROM {TABLE_PREFERENCES} WHERE pref_key LIKE %s",
+                    (f"{prefix}%",),
+                )
+                return {row["pref_key"]: row["pref_value"] for row in cur.fetchall() if row["pref_value"]}
+        except Exception:
+            return {}
+
     def delete(self, key: str) -> bool:
         """Remove uma preferência."""
         try:

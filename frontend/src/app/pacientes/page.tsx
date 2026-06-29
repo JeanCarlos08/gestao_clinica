@@ -15,6 +15,9 @@ interface PacienteResumo {
   foto: string | null;
 }
 
+const PAC_CACHE_KEY = "pacientes_cache";
+const PAC_CACHE_TTL = 30_000; // 30s — atualiza em background
+
 export default function PacientesPage() {
   const router = useRouter();
   const [pacientes, setPacientes] = useState<PacienteResumo[]>([]);
@@ -27,14 +30,28 @@ export default function PacientesPage() {
     const token = localStorage.getItem("token");
     if (!token) { router.push('/'); return; }
 
-    setLoading(true);
+    // Mostra cache imediatamente quando não há query de busca
+    if (!q) {
+      try {
+        const cached = localStorage.getItem(PAC_CACHE_KEY);
+        if (cached) {
+          const { data, ts } = JSON.parse(cached) as { data: PacienteResumo[]; ts: number };
+          if (Date.now() - ts < PAC_CACHE_TTL) {
+            setPacientes(data);
+            setLoading(false);
+          }
+        }
+      } catch { /* ignore */ }
+    }
+
     try {
       const res = await fetch(`${API_BASE}/pacientes?q=${encodeURIComponent(q)}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.status === 401) { localStorage.removeItem('token'); router.push('/'); return; }
-      const data = await res.json();
-      setPacientes(data as PacienteResumo[]);
+      const data = await res.json() as PacienteResumo[];
+      setPacientes(data);
+      if (!q) localStorage.setItem(PAC_CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
     } catch (error) {
       console.error("Erro ao carregar pacientes:", error);
     } finally {

@@ -64,10 +64,24 @@ export default function AtendimentosPage() {
 
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api";
 
+const ATD_CACHE_KEY = "atendimentos_cache";
+const ATD_CACHE_TTL = 30_000;
+
   const fetchAtendimentos = useCallback(async () => {
     const token = localStorage.getItem("token");
     if (!token) { router.push("/"); return; }
-    setLoading(true);
+    // Mostra cache imediatamente
+    try {
+      const cached = localStorage.getItem(ATD_CACHE_KEY);
+      if (cached) {
+        const { data, ts } = JSON.parse(cached) as { data: Atendimento[]; ts: number };
+        if (Date.now() - ts < ATD_CACHE_TTL) {
+          setAtendimentos(data);
+          setLoading(false);
+        }
+      }
+    } catch { /* ignore */ }
+
     try {
       const response = await fetch(`${API_BASE}/atendimentos`, {
         headers: { "Authorization": `Bearer ${token}` }
@@ -76,8 +90,9 @@ export default function AtendimentosPage() {
         localStorage.removeItem("token");
         router.push("/"); return;
       }
-      const data = await response.json();
+      const data = await response.json() as Atendimento[];
       setAtendimentos(data);
+      localStorage.setItem(ATD_CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
     } catch (err) {
       console.error("Erro ao buscar atendimentos:", err);
     } finally {

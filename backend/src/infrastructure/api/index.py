@@ -23,6 +23,7 @@ from core.config import settings
 from infrastructure.connection import ensure_schema
 from core.repositories.repositories import atendimento_repo, arquivo_repo, auditoria_repo, documento_repo
 from core.entities.models import DocumentoCreate
+from services.n8n_service import n8n_service
 from core.repositories.user_repositories import user_repo, clinic_config_repo
 from core.repositories.repositories import preferences_repo
 from services.lgpd_service import get_lgpd_service
@@ -290,6 +291,56 @@ async def login_for_access_token(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
+import re as _re
+
+def _slug_name(name: str) -> str:
+    s = (name or "").strip().lower()
+    s = _re.sub(r"[^a-z0-9]+", "_", s)
+    return s.strip("_")
+
+
+# ─────────────────────────────────────────────────────────────
+# Dashboard unificado (stats + atendimentos em 1 chamada)
+# ─────────────────────────────────────────────────────────────
+
+
+@api_router.get("/dashboard", tags=["Dashboard"])
+async def get_dashboard(current_user: dict = Depends(get_current_user)):
+    """Retorna stats + atendimentos em uma única chamada (menos round-trips)."""
+    from core.entities.models import AtendimentoFilter
+    stats = atendimento_repo.get_stats()
+    atendimentos = atendimento_repo.list_all(filters=AtendimentoFilter(limit=1000))
+    fotos: dict = preferences_repo.get_many("patient_photo:")
+    return {
+        "stats": {
+            "total_atendimentos": stats.total_atendimentos,
+            "total_pacientes": stats.total_pacientes,
+            "agendados": stats.agendados,
+            "atendidos": stats.atendidos,
+            "concluidos": stats.concluidos,
+            "cancelados": stats.cancelados,
+            "total_empresas": stats.total_empresas,
+            "atendimentos_hoje": stats.atendimentos_hoje,
+            "atendimentos_mes": stats.atendimentos_mes,
+            "por_modalidade": stats.por_modalidade,
+            "por_empresa": stats.por_empresa,
+        },
+        "atendimentos": [
+            {
+                "id": a.id,
+                "empresa": a.empresa,
+                "nome": a.nome,
+                "modalidade": a.modalidade,
+                "data": a.data.strftime("%Y-%m-%d") if a.data else "",
+                "hora": a.hora.strftime("%H:%M") if a.hora else "",
+                "status": a.status,
+                "foto": fotos.get(f"patient_photo:{_slug_name(a.nome)}"),
+            }
+            for a in atendimentos
+        ],
+    }
+
+
 # ─────────────────────────────────────────────────────────────
 # Atendimentos Endpoints
 # ─────────────────────────────────────────────────────────────
@@ -304,12 +355,7 @@ async def list_atendimentos(current_user: dict = Depends(get_current_user)):
     """Lista atendimentos (requer autenticação)."""
     from core.entities.models import AtendimentoFilter
     atendimentos = atendimento_repo.list_all(filters=AtendimentoFilter(limit=1000))
-    def _slug_name(name: str) -> str:
-        import re
-        s = (name or "").strip().lower()
-        s = re.sub(r"[^a-z0-9]+", "_", s)
-        return s.strip("_")
-
+    fotos: dict = preferences_repo.get_many("patient_photo:")
     return [
         {
             "id": a.id,
@@ -319,7 +365,7 @@ async def list_atendimentos(current_user: dict = Depends(get_current_user)):
             "data": a.data.strftime("%Y-%m-%d") if a.data else "",
             "hora": a.hora.strftime("%H:%M") if a.hora else "",
             "status": a.status,
-            "foto": preferences_repo.get(f"patient_photo:{_slug_name(a.nome)}", None),
+            "foto": fotos.get(f"patient_photo:{_slug_name(a.nome)}"),
         }
         for a in atendimentos
     ]
@@ -332,14 +378,8 @@ async def list_pacientes(
     offset: int = 0,
     current_user: dict = Depends(get_current_user),
 ):
-    import re
-
-    def _slug_name(name: str) -> str:
-        s = (name or "").strip().lower()
-        s = re.sub(r"[^a-z0-9]+", "_", s)
-        return s.strip("_")
-
     pacientes = atendimento_repo.list_pacientes_resumo(q=q, limit=limit, offset=offset)
+    fotos: dict = preferences_repo.get_many("patient_photo:")
     return [
         {
             "id": p["id"],
@@ -349,7 +389,7 @@ async def list_pacientes(
             "ultimo_atendimento": p["ultimo_atendimento"].strftime("%Y-%m-%d") if p.get("ultimo_atendimento") else None,
             "status": p.get("status"),
             "modalidades_distintas": p.get("modalidades_distintas", 0),
-            "foto": preferences_repo.get(f"patient_photo:{_slug_name(p['nome'])}", None),
+            "foto": fotos.get(f"patient_photo:{_slug_name(p['nome'])}"),
         }
         for p in pacientes
     ]
@@ -381,6 +421,18 @@ async def create_atendimento(
         ))
         if not new_id:
             raise HTTPException(status_code=500, detail="Erro ao criar atendimento.")
+        # Dispara webhook n8n (fail-safe: não bloqueia a resposta)
+        try:
+            n8n_service.trigger_atendimento_criado(
+                atendimento_id=new_id,
+                nome=payload.nome,
+                empresa=payload.empresa,
+                modalidade=payload.modalidade,
+                data_str=payload.data,
+                hora_str=payload.hora,
+            )
+        except Exception as _n8n_err:
+            logger.warning(f"N8N webhook não disparado ao criar atendimento: {_n8n_err}")
         return {"id": new_id, "mensagem": "Atendimento criado com sucesso."}
     except ValueError:
         raise HTTPException(status_code=400, detail="Formato de data ou hora inválido.")
@@ -394,6 +446,10 @@ async def update_atendimento(
     from datetime import date, time
     from core.entities.models import AtendimentoUpdate
     
+    # Captura status anterior para detectar mudança
+    existing = atendimento_repo.get_by_id(atendimento_id) if hasattr(atendimento_repo, "get_by_id") else None
+    status_anterior = existing.status if existing else None
+
     try:
         success = atendimento_repo.update(atendimento_id, AtendimentoUpdate(
             empresa=payload.empresa,
@@ -405,6 +461,17 @@ async def update_atendimento(
         ))
         if not success:
             raise HTTPException(status_code=404, detail="Atendimento não encontrado ou erro ao atualizar.")
+        # Dispara webhook n8n se o status mudou
+        novo_status = payload.status or "Agendado"
+        if status_anterior and status_anterior != novo_status:
+            try:
+                n8n_service.trigger_status_changed(
+                    atendimento_id=atendimento_id,
+                    status_anterior=status_anterior,
+                    novo_status=novo_status,
+                )
+            except Exception as _n8n_err:
+                logger.warning(f"N8N webhook não disparado ao atualizar status: {_n8n_err}")
         return {"mensagem": "Atendimento atualizado com sucesso."}
     except ValueError:
         raise HTTPException(status_code=400, detail="Formato de data ou hora inválido.")
