@@ -154,7 +154,7 @@ export default function DashboardPage() {
           <div className="space-y-4 flex-1">
             {upcomingConsultas.length > 0 ? upcomingConsultas.map((consulta) => (
               <div key={consulta.id} className="group p-3 rounded-xl border border-transparent hover:border-[#1e2e1e] hover:bg-[#111811] transition-all duration-300 cursor-pointer flex items-center gap-4">
-                <PatientAvatar name={consulta.nome} />
+                <PatientAvatar name={consulta.nome} photo={(consulta as any).photo || null} />
                 <div className="flex-1">
                   <h4 className="text-sm font-bold text-white mb-0.5">{consulta.nome}</h4>
                   <p className="text-xs text-[var(--text-muted)] line-clamp-1">{consulta.modalidade}</p>
@@ -325,13 +325,22 @@ function formatMetric(value: number): string {
   return new Intl.NumberFormat("pt-BR").format(value);
 }
 
-function PatientAvatar({ name }: { name: string }) {
+function PatientAvatar({ name, photo }: { name: string; photo?: string | null }) {
   const initials = name
     .split(" ")
     .filter(Boolean)
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() || "")
     .join("");
+
+  if (photo) {
+    return (
+      // @ts-ignore
+      <div className="w-12 h-12 rounded-full border-2 border-[#1e2e1e] group-hover:border-[var(--primary)] transition-colors bg-[transparent] flex items-center justify-center text-white font-bold text-sm flex-shrink-0 overflow-hidden">
+        <img src={photo} alt={name} className="w-full h-full object-cover" />
+      </div>
+    );
+  }
 
   return (
     <div className="w-12 h-12 rounded-full border-2 border-[#1e2e1e] group-hover:border-[var(--primary)] transition-colors bg-gradient-to-br from-[var(--primary)]/30 to-[#111811] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">

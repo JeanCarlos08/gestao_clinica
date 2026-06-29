@@ -23,6 +23,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [profile, setProfile] = useState({ displayName: "Usuário", role: "" });
+  const [photoSrc, setPhotoSrc] = useState<string | null>(null);
 
   useEffect(() => {
     setOpen(false);
@@ -43,6 +44,17 @@ export default function Sidebar() {
       displayName: user.displayName,
       role: user.role,
     });
+    // fetch clinic/user photo if available
+    (async () => {
+      try {
+        if (!token) return;
+        const res = await fetch((process.env.NEXT_PUBLIC_API_URL || "/api") + "/configuracoes", { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) return;
+        const data = await res.json();
+        const photo = data.clinica.user_photo_base64 || data.clinica.clinic_logo_base64 || null;
+        if (photo) setPhotoSrc(photo);
+      } catch (e) { /* ignore */ }
+    })();
   }, []);
 
   const isActive = (href: string) =>
@@ -60,9 +72,14 @@ export default function Sidebar() {
 
         <div className="flex items-center gap-3 px-5 mb-6">
           <div className="w-10 h-10 rounded-full bg-[var(--primary)] flex items-center justify-center text-black font-bold overflow-hidden flex-shrink-0">
-            <div className="w-full h-full flex items-center justify-center text-sm">
-              {getUserInitials(profile.displayName)}
-            </div>
+            {photoSrc ? (
+              // @ts-ignore
+              <img src={photoSrc} alt="avatar" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-sm">
+                {getUserInitials(profile.displayName)}
+              </div>
+            )}
           </div>
           <div className="min-w-0">
             <div className="text-sm font-semibold truncate">{profile.displayName}</div>
