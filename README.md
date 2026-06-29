@@ -37,3 +37,20 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 - Frontend (Vercel): configure `BACKEND_API_URL=https://SEU-BACKEND-RENDER` (sem `/api` no final). O rewrite de `/api/*` é feito por `frontend/next.config.mjs`.
 - Frontend (Vercel): `NEXT_PUBLIC_API_URL` é opcional. Deixe sem valor para usar `/api` local ao domínio da Vercel.
 - Docker local: `docker-compose.yml` mapeia `8000:8000` e healthcheck em `/api/health`.
+
+## Usage
+
+ - Subir a API e frontend localmente.
+ - Upload de fotos
+
+	- Foto da clínica / usuário (configurações): acesse **Configurações** → aba **Perfil** ou **Clínica**, escolha a imagem e clique em **Salvar**. O frontend envia para `POST /api/configuracoes/photo` (form-data `field=user_photo|clinic_logo`, `file=@...`).
+
+	- Foto por paciente: na lista de pacientes ou ao visualizar um atendimento, é possível associar uma foto ao paciente. O endpoint disponível é `POST /api/pacientes/{slug}/photo` (form-data `file=@...`). O backend armazena a imagem como data-URI nas preferências (`patient_photo:{slug}`) e o frontend exibe automaticamente quando disponível.
+
+	- Exemplo via `curl`:
+
+		```bash
+		# Upload foto de paciente (slug gerado a partir do nome, ex: joao_silva)
+		curl -H "Authorization: Bearer $TOKEN" -F "file=@./foto.jpg" \
+			https://seu-backend/api/pacientes/joao_silva/photo
+		```
