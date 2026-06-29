@@ -9,7 +9,7 @@ if echo "$STAGED" | grep -Eq '(^|/)credentials\.json$'; then
   exit 1
 fi
 
-if echo "$STAGED" | grep -Eq '(^|/)\.env($|\.)|(^|/)backend/\.env($|\.)|(^|/)frontend/\.env($|\.)'; then
+if echo "$STAGED" | grep -Ev '(^|/)\.env\.example$|(^|/)backend/\.env\.example$|(^|/)frontend/\.env\.local\.example$' | grep -Eq '(^|/)\.env($|\.[^/]+$)|(^|/)backend/\.env($|\.[^/]+$)|(^|/)frontend/\.env($|\.[^/]+$)'; then
   echo "ERROR: Attempt to commit .env file detected. Use .env.example only." >&2
   exit 1
 fi
