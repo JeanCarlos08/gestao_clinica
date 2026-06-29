@@ -102,6 +102,22 @@ class AtendimentoResponse(BaseModel):
     status: str
 
 
+class PacienteResponse(BaseModel):
+    id: int
+    nome: str
+    empresa: Optional[str] = None
+    total_atendimentos: int = 0
+    ultimo_atendimento: Optional[str] = None
+    status: Optional[str] = None
+    modalidades_distintas: int = 0
+
+
+class PacienteSearchPayload(BaseModel):
+    q: Optional[str] = None
+    limit: int = 1000
+    offset: int = 0
+
+
 class ConsentimentoCreate(BaseModel):
     titular_nome: str = Field(..., min_length=3, max_length=255)
     titular_email: Optional[str] = Field(None, max_length=255)
@@ -279,6 +295,28 @@ async def list_atendimentos(current_user: dict = Depends(get_current_user)):
             "status": a.status,
         }
         for a in atendimentos
+    ]
+
+
+@api_router.get("/pacientes", response_model=list[PacienteResponse], tags=["Pacientes"])
+async def list_pacientes(
+    q: Optional[str] = None,
+    limit: int = 1000,
+    offset: int = 0,
+    current_user: dict = Depends(get_current_user),
+):
+    pacientes = atendimento_repo.list_pacientes_resumo(q=q, limit=limit, offset=offset)
+    return [
+        {
+            "id": p["id"],
+            "nome": p["nome"],
+            "empresa": p.get("empresa"),
+            "total_atendimentos": p.get("total_atendimentos", 0),
+            "ultimo_atendimento": p["ultimo_atendimento"].strftime("%Y-%m-%d") if p.get("ultimo_atendimento") else None,
+            "status": p.get("status"),
+            "modalidades_distintas": p.get("modalidades_distintas", 0),
+        }
+        for p in pacientes
     ]
 
 class AtendimentoPayload(BaseModel):

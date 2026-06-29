@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import AppointmentCalendar from "@/components/AppointmentCalendar";
 import {
   Bell, Search, Pencil, Trash2, Calendar as CalendarIcon,
   Moon, ChevronRight, CheckCircle2, Clock, AlertCircle,
-  FileText, ClipboardList, Loader2, X, Plus, Wand2, Copy, List
+  ClipboardList, Loader2, X, Plus, Wand2, Copy, List
 } from "lucide-react";
 
 interface Atendimento {
@@ -132,7 +133,7 @@ export default function AtendimentosPage() {
       showToast("success", `Atendimento ${modalMode === "create" ? "criado" : "atualizado"} com sucesso!`);
       closeModal();
       fetchAtendimentos();
-    } catch (error) {
+    } catch {
       showToast("error", "Erro ao salvar atendimento.");
     } finally {
       setSaving(false);
@@ -171,8 +172,9 @@ export default function AtendimentosPage() {
       if (!res.ok) throw new Error(data.detail || "Erro na IA");
       setAiResult(data.texto);
       showToast("success", "Parecer gerado com sucesso!");
-    } catch (err: any) {
-      showToast("error", err.message || "Falha ao gerar parecer.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Falha ao gerar parecer.";
+      showToast("error", message);
     } finally {
       setIsGeneratingAi(false);
     }
@@ -209,7 +211,7 @@ export default function AtendimentosPage() {
         <div className="flex items-center justify-end gap-3">
           <button className="text-[var(--text-muted)] hover:text-white transition-colors relative"><Bell size={20} /><span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span></button>
           <button className="text-[var(--text-muted)] hover:text-white transition-colors hidden sm:block"><Moon size={20} /></button>
-          <img src="https://i.pravatar.cc/150?img=5" alt="Avatar" className="w-8 h-8 rounded-full border border-[var(--border)]" />
+          <Image src="https://i.pravatar.cc/150?img=5" alt="Avatar" width={32} height={32} className="w-8 h-8 rounded-full border border-[var(--border)] object-cover" />
         </div>
       </div>
 
@@ -328,7 +330,7 @@ export default function AtendimentosPage() {
             ) : atendimentos.length === 0 ? (
               <tr><td colSpan={7} className="p-10 text-center text-[var(--text-muted)]">Nenhum atendimento cadastrado.</td></tr>
             ) : (
-              atendimentos.map((a, i) => (
+              atendimentos.map((a) => (
                 <tr key={a.id} className="border-b border-[var(--border)] hover:bg-[var(--card-hover)] transition-colors group">
                   <td className="p-4 text-xs text-[var(--text-muted)]">{a.id}</td>
                   <td className="p-4 text-[13px] font-semibold text-white max-w-[150px] truncate">{a.empresa}</td>

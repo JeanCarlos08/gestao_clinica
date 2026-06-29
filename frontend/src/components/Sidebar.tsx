@@ -4,12 +4,14 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Home, ClipboardList, BarChart2, Upload, Settings, Bot, LogOut, FileText,
+  Home, ClipboardList, BarChart2, Upload, Settings, Bot, LogOut, FileText, Users,
   Menu, X, Sparkles
 } from "lucide-react";
+import { buildDisplayName, getLoggedUserProfile, getUserInitials } from "@/lib/auth";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
+  { href: "/pacientes", label: "Pacientes", icon: Users },
   { href: "/atendimentos", label: "Atendimentos", icon: ClipboardList },
   { href: "/laudos", label: "Laudos", icon: FileText },
   { href: "/relatorios", label: "Relatórios", icon: BarChart2 },
@@ -20,6 +22,7 @@ const NAV_ITEMS = [
 export default function Sidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [profile, setProfile] = useState({ displayName: "Usuário", role: "" });
 
   useEffect(() => {
     setOpen(false);
@@ -31,6 +34,15 @@ export default function Sidebar() {
     };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const user = getLoggedUserProfile(token);
+    setProfile({
+      displayName: user.displayName,
+      role: user.role,
+    });
   }, []);
 
   const isActive = (href: string) =>
@@ -48,11 +60,13 @@ export default function Sidebar() {
 
         <div className="flex items-center gap-3 px-5 mb-6">
           <div className="w-10 h-10 rounded-full bg-[var(--primary)] flex items-center justify-center text-black font-bold overflow-hidden flex-shrink-0">
-            <img src="https://i.pravatar.cc/150?img=5" alt="Avatar" className="rounded-full w-full h-full object-cover" />
+            <div className="w-full h-full flex items-center justify-center text-sm">
+              {getUserInitials(profile.displayName)}
+            </div>
           </div>
           <div className="min-w-0">
-            <div className="text-sm font-semibold truncate">Juliana Fetosa</div>
-            <div className="text-xs text-[var(--primary)]">Administradora</div>
+            <div className="text-sm font-semibold truncate">{profile.displayName}</div>
+            <div className="text-xs text-[var(--primary)]">{buildDisplayName(profile.role) || "Administradora"}</div>
           </div>
         </div>
 

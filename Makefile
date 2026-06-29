@@ -77,7 +77,7 @@ tests:
 	@echo ""
 	@echo "🧪 Rodando testes unitários..."
 	@echo ""
-	@. $(VENV)/bin/activate && cd $(PROJECT_DIR) && pytest tests/test_google_docs.py -v
+	@. $(VENV)/bin/activate && cd $(PROJECT_DIR)/backend && pytest tests/test_google_docs.py -v
 
 lint:
 	@echo ""
