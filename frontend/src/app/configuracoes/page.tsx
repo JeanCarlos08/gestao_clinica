@@ -142,7 +142,7 @@ export default function ConfiguracoesPage() {
         const cfgRes = await fetch(`${API()}/configuracoes`, { headers: { Authorization: `Bearer ${token}` } });
         if (cfgRes.ok) setConfig(await cfgRes.json());
       }
-    } catch (err) { showMsg("error", "Erro ao enviar imagem."); }
+    } catch { showMsg("error", "Erro ao enviar imagem."); }
     finally { setSaving(false); }
   };
 
@@ -240,7 +240,7 @@ export default function ConfiguracoesPage() {
                     <div className="flex items-center gap-3">
                       <div className="w-20 h-12 rounded overflow-hidden bg-[var(--card)] border border-[var(--border)] flex items-center justify-center">
                         {config.clinica.clinic_logo_base64 ? (
-                          // @ts-ignore
+                          // @ts-expect-error - base64 string from API
                           <img src={config.clinica.clinic_logo_base64} alt="Logo" className="w-full h-full object-contain" />
                         ) : (
                           <div className="text-xs text-[var(--text-muted)]">Sem logo</div>
@@ -299,7 +299,7 @@ export default function ConfiguracoesPage() {
                     <div className="flex items-center gap-3">
                       <div className="w-14 h-14 rounded-full overflow-hidden bg-[var(--card)]">
                         {config.clinica.user_photo_base64 ? (
-                          // @ts-ignore
+                          // @ts-expect-error - base64 string from API
                           <img src={config.clinica.user_photo_base64} alt="Foto" className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-sm text-[var(--text-muted)]">{(config.usuario.display_name||config.usuario.username||"?")[0]}</div>
