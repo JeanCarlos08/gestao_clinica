@@ -53,7 +53,7 @@ export default function Sidebar() {
         const data = await res.json();
         const photo = data.clinica.user_photo_base64 || data.clinica.clinic_logo_base64 || null;
         if (photo) setPhotoSrc(photo);
-      } catch (e) { /* ignore */ }
+      } catch { /* ignore */ }
     })();
   }, []);
 
@@ -73,7 +73,7 @@ export default function Sidebar() {
         <div className="flex items-center gap-3 px-5 mb-6">
           <div className="w-10 h-10 rounded-full bg-[var(--primary)] flex items-center justify-center text-black font-bold overflow-hidden flex-shrink-0">
             {photoSrc ? (
-              // @ts-ignore
+              // @ts-expect-error - photo may be base64 from API
               <img src={photoSrc} alt="avatar" className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-sm">

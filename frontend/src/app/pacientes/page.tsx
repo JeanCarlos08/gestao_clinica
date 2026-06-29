@@ -24,34 +24,46 @@ export default function PacientesPage() {
 
   const fetchPacientes = useCallback(async () => {
     const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/");
-      return;
-    }
+    if (!token) { router.push('/'); return; }
 
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (q.trim()) params.set("q", q.trim());
-      params.set("limit", "200");
-
-      const response = await fetch(`${API_BASE}/pacientes?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await fetch(`${API_BASE}/pacientes?q=${encodeURIComponent(q)}`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-
-      if (response.status === 401) {
-        localStorage.removeItem("token");
-        router.push("/");
-        return;
-      }
-
-      setPacientes(await response.json());
+      if (res.status === 401) { localStorage.removeItem('token'); router.push('/'); return; }
+      const data = await res.json();
+      setPacientes(data as PacienteResumo[]);
     } catch (error) {
       console.error("Erro ao carregar pacientes:", error);
     } finally {
       setLoading(false);
     }
   }, [API_BASE, q, router]);
+
+  const uploadPacientePhoto = async (paciente: PacienteResumo & { foto?: string }, file?: File | null) => {
+    if (!file) return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const slug = (paciente.nome || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch(`${API_BASE}/pacientes/${slug}/photo`, {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd
+      });
+      if (res.ok) {
+        const get = await fetch(`${API_BASE}/pacientes/${slug}/photo`, { headers: { Authorization: `Bearer ${token}` } });
+        if (get.ok) {
+          const j = await get.json();
+          if (j.photo) {
+            // update local state
+            setPacientes(curr => curr.map(c => c.id === paciente.id ? { ...c, foto: j.photo } : c));
+          }
+        }
+      }
+    } catch { /* ignore */ }
+  };
 
   useEffect(() => {
     fetchPacientes();
@@ -75,16 +87,8 @@ export default function PacientesPage() {
           className="flex items-center gap-2 bg-[var(--card)] border border-[var(--border)] hover:border-[var(--primary)] text-white px-4 py-2 rounded-xl text-sm transition-colors disabled:opacity-50"
           disabled={loading}
         >
-            <div className="flex items-center">
-              <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-[var(--primary)]/30 to-[#111811] flex items-center justify-center">
-                {paciente.foto ? (
-                  // @ts-ignore
-                  <img src={paciente.foto} alt={paciente.nome} className="w-full h-full object-cover" />
-                ) : (
-                  paciente.nome.split(" ").slice(0,2).map((p:string)=>p[0]?.toUpperCase()).join("")
-                )}
-              </div>
-              <div className="ml-2 font-semibold text-white">{paciente.nome}</div>
+            {loading ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+            <span>Atualizar</span>
         </button>
       </div>
 
@@ -140,8 +144,24 @@ export default function PacientesPage() {
               ) : pacientes.map((paciente) => (
                 <tr key={paciente.id} className="border-b border-[var(--border)] hover:bg-[var(--card-hover)] transition-colors">
                   <td className="p-4">
-                    <div className="font-semibold text-white">{paciente.nome}</div>
-                    <div className="text-xs text-[var(--text-muted)]">ID #{paciente.id}</div>
+                    <div className="flex items-center">
+                      <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-[var(--primary)]/30 to-[#111811] flex items-center justify-center">
+                        {paciente.foto ? (
+                          // @ts-expect-error - foto may be base64 from API
+                          <img src={paciente.foto} alt={paciente.nome} className="w-full h-full object-cover" />
+                        ) : (
+                          paciente.nome.split(" ").slice(0,2).map((p:string)=>p[0]?.toUpperCase()).join("")
+                        )}
+                      </div>
+                      <div className="ml-3">
+                        <div className="font-semibold text-white">{paciente.nome}</div>
+                        <div className="text-xs text-[var(--text-muted)]">ID #{paciente.id}</div>
+                        <label className="text-xs text-[var(--text-muted)] mt-1 inline-block cursor-pointer">
+                          <input type="file" accept="image/*" className="hidden" onChange={e=>uploadPacientePhoto(paciente, e.target.files?.[0]||null)} />
+                          <span className="underline">Enviar foto</span>
+                        </label>
+                      </div>
+                    </div>
                   </td>
                   <td className="p-4 text-sm text-[var(--text-muted)]">{paciente.empresa || "—"}</td>
                   <td className="p-4 text-sm text-white">{paciente.total_atendimentos}</td>

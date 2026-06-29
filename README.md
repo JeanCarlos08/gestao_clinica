@@ -54,3 +54,36 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 		curl -H "Authorization: Bearer $TOKEN" -F "file=@./foto.jpg" \
 			https://seu-backend/api/pacientes/joao_silva/photo
 		```
+
+## Image upload API
+
+- Upload da foto do usuário ou logotipo da clínica (Configurações):
+
+	- Endpoint: `POST /api/configuracoes/photo`
+	- Form data fields:
+		- `field`: `user_photo` ou `clinic_logo`
+		- `file`: arquivo da imagem
+
+	- Exemplo:
+
+		```bash
+		curl -H "Authorization: Bearer $TOKEN" -F "field=user_photo" -F "file=@./minha_foto.jpg" \
+			https://seu-backend/api/configuracoes/photo
+		```
+
+- Recuperar configurações (contém `clinica.clinic_logo_base64` e `clinica.user_photo_base64` quando presentes):
+
+	```bash
+	curl -H "Authorization: Bearer $TOKEN" https://seu-backend/api/configuracoes
+	```
+
+- Upload da foto por paciente (já documentado acima):
+
+	- Endpoint: `POST /api/pacientes/{slug}/photo` (form-data `file=@...`)
+	- Recuperar foto do paciente:
+
+		```bash
+		curl -H "Authorization: Bearer $TOKEN" https://seu-backend/api/pacientes/joao_silva/photo
+		```
+
+Observação: atualmente imagens pequenas são armazenadas como data-URI (base64) em `user_preferences`. Para produção com muitas imagens, considere migrar para armazenamento de objetos (S3, espaço em disco, etc.) e salvar apenas URLs no banco.
