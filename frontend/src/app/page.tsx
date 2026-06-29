@@ -65,21 +65,30 @@ export default function LoginPage() {
           background: #071a0d;
         }
 
-        /* Fundo: bokeh verde */
+        /* Fundo premium: imagem + gradientes e leve desfoque */
         .lp-bg {
           position: fixed;
           inset: 0;
-          background-image: url('/bg-bokeh.png');
-          background-size: cover;
-          background-position: center;
           z-index: 0;
+          background-image:
+            radial-gradient(ellipse at 20% 10%, rgba(34,197,94,0.06) 0%, transparent 30%),
+            linear-gradient(180deg, rgba(5,12,6,0.35) 0%, rgba(2,6,4,0.55) 100%),
+            url('https://images.unsplash.com/photo-1503264116251-35a269479413?auto=format&fit=crop&w=1600&q=80');
+          background-size: cover, cover, cover;
+          background-position: center center, center center, center center;
+          background-attachment: fixed;
+          filter: saturate(1.05) contrast(1.03) blur(2px);
+          transform: scale(1.02);
+          will-change: transform, filter;
         }
-        /* Overlay sutil para melhorar legibilidade do card */
+        /* Overlay sutil para melhorar legibilidade do card (vinheta) */
         .lp-bg-overlay {
           position: fixed;
           inset: 0;
-          background: rgba(0, 10, 4, 0.28);
+          background: linear-gradient(180deg, rgba(3,9,5,0.28) 0%, rgba(3,9,5,0.6) 100%);
+          mix-blend-mode: multiply;
           z-index: 1;
+          pointer-events: none;
         }
 
         /* Card externo (moldura verde arredondada) */
