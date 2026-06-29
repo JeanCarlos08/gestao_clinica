@@ -21,7 +21,8 @@ from pydantic import BaseModel, EmailStr, Field
 
 from core.config import settings
 from infrastructure.connection import ensure_schema
-from core.repositories.repositories import atendimento_repo, arquivo_repo, auditoria_repo
+from core.repositories.repositories import atendimento_repo, arquivo_repo, auditoria_repo, documento_repo
+from core.entities.models import DocumentoCreate
 from core.repositories.user_repositories import user_repo, clinic_config_repo
 from core.repositories.repositories import preferences_repo
 from services.lgpd_service import get_lgpd_service
@@ -484,12 +485,35 @@ def _format_date_br(value: str) -> str:
     return value
 
 
+@api_router.get("/laudos", tags=["Laudos"])
+async def list_laudos(current_user: dict = Depends(get_current_user)):
+    """Lista todos os laudos gerados e persistidos no banco."""
+    from services.google_docs_service import google_docs_service
+
+    documentos = documento_repo.list_all()
+    return [
+        {
+            "id": d.google_doc_id,
+            "db_id": d.id,
+            "titulo": d.titulo,
+            "paciente": d.titulo.replace("Laudo - ", "", 1),
+            "tipo": "Laudo",
+            "data": d.criado_em.strftime("%d/%m/%Y") if d.criado_em else "",
+            "status": "Gerado",
+            "url": d.view_url,
+            "embed_url": google_docs_service.get_embed_url(d.google_doc_id),
+        }
+        for d in documentos
+        if d.tipo == "laudo"
+    ]
+
+
 @api_router.post("/laudos/gerar", response_model=LaudoResponse, tags=["Laudos"])
 async def gerar_laudo(
     payload: LaudoPayload,
     current_user: dict = Depends(get_current_user),
 ):
-    """Copia o template Google Docs e preenche os campos do laudo."""
+    """Copia o template Google Docs, preenche os campos e persiste no banco."""
     from services.laudo_service import DadosLaudo, get_laudo_service
     from services.google_docs_service import google_docs_service
 
@@ -514,9 +538,18 @@ async def gerar_laudo(
         laudo_service = get_laudo_service()
         novo_doc = laudo_service.gerar_laudo(dados)
         doc_id = novo_doc["id"]
+        titulo = novo_doc.get("title", f"Laudo - {payload.nome_paciente}")
+
+        # Persiste no banco para listar em sessões futuras
+        documento_repo.create(DocumentoCreate(
+            titulo=titulo,
+            google_doc_id=doc_id,
+            tipo="laudo",
+        ))
+
         return {
             "id": doc_id,
-            "titulo": novo_doc.get("title", f"Laudo - {payload.nome_paciente}"),
+            "titulo": titulo,
             "url": novo_doc["url"],
             "embed_url": google_docs_service.get_embed_url(doc_id),
         }

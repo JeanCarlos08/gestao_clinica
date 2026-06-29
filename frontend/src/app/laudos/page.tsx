@@ -49,8 +49,10 @@ export default function LaudosPage() {
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [loadingLaudos, setLoadingLaudos] = useState(true);
   const [form, setForm] = useState<FormState>(defaultForm);
   const [laudos, setLaudos] = useState<LaudoGerado[]>([]);
+  const [searchQ, setSearchQ] = useState("");
   const [templateOk, setTemplateOk] = useState<boolean | null>(null);
   const [editorDoc, setEditorDoc] = useState<LaudoGerado | null>(null);
   const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
@@ -64,13 +66,31 @@ export default function LaudosPage() {
     setTimeout(() => setToast(null), 4000);
   };
 
+  const fetchLaudos = async () => {
+    const token = getToken();
+    if (!token) { router.push("/"); return; }
+    setLoadingLaudos(true);
+    try {
+      const res = await fetch(`${API()}/laudos`, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.status === 401) { localStorage.removeItem("token"); router.push("/"); return; }
+      const data = await res.json();
+      setLaudos(data as LaudoGerado[]);
+    } catch {
+      // lista fica vazia; não bloqueia a UI
+    } finally {
+      setLoadingLaudos(false);
+    }
+  };
+
   useEffect(() => {
     const token = getToken();
     if (!token) { router.push("/"); return; }
+    fetchLaudos();
     fetch(`${API()}/laudos/template-status`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then((d) => setTemplateOk(d.configurado === true))
       .catch(() => setTemplateOk(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
   const handleGenerate = async (e: React.FormEvent) => {
@@ -104,22 +124,21 @@ export default function LaudosPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Erro ao gerar laudo");
 
-      const tipoLabel = TIPOS_AVALIACAO.filter((t) => form.tipos[t.key]).map((t) => t.label).join(", ") || form.motivo || "Laudo";
-      const novo: LaudoGerado = {
+      const novoDoc: LaudoGerado = {
         id: data.id,
         titulo: data.titulo,
         paciente: form.nome,
-        tipo: tipoLabel,
+        tipo: TIPOS_AVALIACAO.filter((t) => form.tipos[t.key]).map((t) => t.label).join(", ") || form.motivo || "Laudo",
         data: new Date().toLocaleDateString("pt-BR"),
         status: "Gerado",
         url: data.url,
         embed_url: data.embed_url,
       };
 
-      setLaudos((prev) => [novo, ...prev]);
       setIsModalOpen(false);
       setForm(defaultForm);
-      setEditorDoc(novo);
+      setEditorDoc(novoDoc);
+      await fetchLaudos(); // recarrega lista do banco
       showToast("success", "Laudo gerado com sucesso!");
     } catch (err: unknown) {
       showToast("error", err instanceof Error ? err.message : "Falha ao gerar laudo.");
@@ -215,9 +234,17 @@ export default function LaudosPage() {
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <div className="relative flex-1 sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6b7c6b]" size={16} />
-              <input type="text" placeholder="Buscar paciente..." className="w-full bg-[#111811] border border-[#1e2e1e] rounded-lg py-2 pl-9 pr-4 text-sm text-white focus:outline-none focus:border-[var(--primary)]" />
+              <input
+                type="text"
+                placeholder="Buscar paciente..."
+                value={searchQ}
+                onChange={(e) => setSearchQ(e.target.value)}
+                className="w-full bg-[#111811] border border-[#1e2e1e] rounded-lg py-2 pl-9 pr-4 text-sm text-white focus:outline-none focus:border-[var(--primary)]"
+              />
             </div>
-            <button className="bg-[#111811] border border-[#1e2e1e] p-2 rounded-lg text-[#9ca89c] hover:text-white" title="Filtros"><Filter size={18} /></button>
+            <button onClick={fetchLaudos} disabled={loadingLaudos} className="bg-[#111811] border border-[#1e2e1e] p-2 rounded-lg text-[#9ca89c] hover:text-white disabled:opacity-50" title="Atualizar lista">
+              {loadingLaudos ? <Loader2 size={18} className="animate-spin" /> : <Filter size={18} />}
+            </button>
           </div>
         </div>
 
@@ -235,9 +262,11 @@ export default function LaudosPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1e2e1e]">
-              {laudos.length === 0 ? (
-                <tr><td colSpan={6} className="px-6 py-12 text-center text-[var(--text-muted)]">Nenhum laudo gerado nesta sessão.</td></tr>
-              ) : laudos.map((laudo) => (
+              {loadingLaudos ? (
+                <tr><td colSpan={6} className="px-6 py-12 text-center text-[var(--text-muted)]"><Loader2 size={20} className="animate-spin inline mr-2" />Carregando laudos...</td></tr>
+              ) : laudos.filter((l) => !searchQ || l.paciente.toLowerCase().includes(searchQ.toLowerCase())).length === 0 ? (
+                <tr><td colSpan={6} className="px-6 py-12 text-center text-[var(--text-muted)]">{searchQ ? "Nenhum laudo encontrado para a busca." : "Nenhum laudo gerado ainda."}</td></tr>
+              ) : laudos.filter((l) => !searchQ || l.paciente.toLowerCase().includes(searchQ.toLowerCase())).map((laudo) => (
                 <tr key={laudo.id} className="hover:bg-[#111811]/50 transition-colors group">
                   <td className="px-6 py-4 font-mono text-xs truncate max-w-[120px]">{laudo.id.slice(0, 12)}…</td>
                   <td className="px-6 py-4 font-bold text-white">{laudo.paciente}</td>
@@ -265,9 +294,11 @@ export default function LaudosPage() {
 
         {/* Mobile cards */}
         <div className="md:hidden divide-y divide-[#1e2e1e]">
-          {laudos.length === 0 ? (
-            <p className="p-8 text-center text-[var(--text-muted)] text-sm">Nenhum laudo gerado nesta sessão.</p>
-          ) : laudos.map((laudo) => (
+          {loadingLaudos ? (
+            <p className="p-8 text-center text-[var(--text-muted)] text-sm flex items-center justify-center gap-2"><Loader2 size={16} className="animate-spin" /> Carregando...</p>
+          ) : laudos.filter((l) => !searchQ || l.paciente.toLowerCase().includes(searchQ.toLowerCase())).length === 0 ? (
+            <p className="p-8 text-center text-[var(--text-muted)] text-sm">{searchQ ? "Nenhum laudo encontrado." : "Nenhum laudo gerado ainda."}</p>
+          ) : laudos.filter((l) => !searchQ || l.paciente.toLowerCase().includes(searchQ.toLowerCase())).map((laudo) => (
             <div key={laudo.id} className="p-4 space-y-3">
               <div className="flex justify-between items-start gap-2">
                 <div>
