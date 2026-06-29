@@ -21,6 +21,12 @@ APP_ICON: str = "🧠"
 # ─────────────────────────────────────────────────────────────
 
 MODALIDADES: list[str] = [
+    "Psicologia Clínica",
+    "Avaliação Psicológica",
+    "Avaliação Neuropsicológica",
+    "Terapia de Casal",
+    "Terapia Familiar",
+    "Psiquiatria",
     "Admissional",
     "Periódico",
     "Demissional",
@@ -30,23 +36,29 @@ MODALIDADES: list[str] = [
 
 STATUS_ATENDIMENTO: list[str] = [
     "Agendado",
+    "Em andamento",
     "Atendido",
     "Concluído",
+    "Pendente",
     "Cancelado",
 ]
 
 STATUS_CORES: dict[str, str] = {
-    "Agendado":   "#3B82F6",  # azul
-    "Atendido":   "#F59E0B",  # amarelo
-    "Concluído":  "#10B981",  # verde
-    "Cancelado":  "#EF4444",  # vermelho
+    "Agendado":       "#3B82F6",  # azul
+    "Em andamento":   "#F59E0B",  # amarelo
+    "Atendido":       "#A855F7",  # roxo
+    "Concluído":      "#10B981",  # verde
+    "Pendente":       "#F97316",  # laranja
+    "Cancelado":      "#EF4444",  # vermelho
 }
 
 STATUS_EMOJIS: dict[str, str] = {
-    "Agendado":   "📅",
-    "Atendido":   "✅",
-    "Concluído":  "🏁",
-    "Cancelado":  "❌",
+    "Agendado":       "📅",
+    "Em andamento":   "🔄",
+    "Atendido":       "✅",
+    "Concluído":      "🏁",
+    "Pendente":       "⏳",
+    "Cancelado":      "❌",
 }
 
 # ─────────────────────────────────────────────────────────────

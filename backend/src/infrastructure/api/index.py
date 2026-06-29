@@ -30,7 +30,7 @@ from services.security import create_access_token, verify_access_token
 from utils.helpers import verify_password
 from utils.logger import get_logger
 import base64
-from utils.constants import CLINIC_PREF_USER_PHOTO, CLINIC_PREF_LOGO
+from utils.constants import CLINIC_PREF_USER_PHOTO, CLINIC_PREF_LOGO, MODALIDADES, STATUS_ATENDIMENTO
 
 logger = get_logger(__name__)
 
@@ -208,6 +208,20 @@ def _get_client_ip(request: Request) -> str:
     if forwarded:
         return forwarded.split(",")[0].strip()
     return request.client.host if request.client else "unknown"
+
+
+# ─────────────────────────────────────────────────────────────
+# Config / Options Endpoints (públicas — não requerem auth)
+# ─────────────────────────────────────────────────────────────
+
+
+@api_router.get("/config/options", tags=["Config"])
+async def get_config_options():
+    """Retorna as opções de modalidade e status disponíveis no sistema."""
+    return {
+        "modalidades": MODALIDADES,
+        "status": STATUS_ATENDIMENTO,
+    }
 
 
 # ─────────────────────────────────────────────────────────────

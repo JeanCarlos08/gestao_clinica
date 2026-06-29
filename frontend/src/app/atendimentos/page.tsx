@@ -42,6 +42,8 @@ export default function AtendimentosPage() {
   const router = useRouter();
   const [atendimentos, setAtendimentos] = useState<Atendimento[]>([]);
   const [loading, setLoading] = useState(true);
+  const [modalidades, setModalidades] = useState<string[]>([]);
+  const [statusOptions, setStatusOptions] = useState<string[]>([]);
 
   // Modal states (CRUD)
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -83,7 +85,20 @@ export default function AtendimentosPage() {
     }
   }, [API_BASE, router]);
 
-  useEffect(() => { fetchAtendimentos(); }, [fetchAtendimentos]);
+  useEffect(() => {
+    fetchAtendimentos();
+    fetch(`${API_BASE}/config/options`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.modalidades) setModalidades(d.modalidades);
+        if (d.status) setStatusOptions(d.status);
+      })
+      .catch(() => {
+        setModalidades(["Psicologia Clínica","Avaliação Psicológica","Avaliação Neuropsicológica","Terapia de Casal","Terapia Familiar","Psiquiatria","Admissional","Periódico","Demissional","Troca de Função","Retorno ao Trabalho"]);
+        setStatusOptions(["Agendado","Em andamento","Atendido","Concluído","Pendente","Cancelado"]);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const showToast = (type: "success"|"error", msg: string) => {
     setToast({ type, msg });
@@ -422,20 +437,13 @@ export default function AtendimentosPage() {
                   <label className="block text-xs font-semibold text-[var(--text-label)] uppercase tracking-wider mb-2">Modalidade</label>
                   <select required value={formData.modalidade} onChange={e=>setFormData({...formData, modalidade: e.target.value})} className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg py-2.5 px-4 text-sm text-white focus:outline-none focus:border-[var(--primary)]">
                     <option value="">Selecione...</option>
-                    <option value="Psicologia Clínica">Psicologia Clínica</option>
-                    <option value="Avaliação Neuropsicológica">Avaliação Neuropsicológica</option>
-                    <option value="Terapia de Casal">Terapia de Casal</option>
-                    <option value="Psiquiatria">Psiquiatria</option>
+                    {modalidades.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-[var(--text-label)] uppercase tracking-wider mb-2">Status</label>
                   <select required value={formData.status} onChange={e=>setFormData({...formData, status: e.target.value})} className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg py-2.5 px-4 text-sm text-white focus:outline-none focus:border-[var(--primary)]">
-                    <option value="Agendado">Agendado</option>
-                    <option value="Em andamento">Em andamento</option>
-                    <option value="Concluído">Concluído</option>
-                    <option value="Pendente">Pendente</option>
-                    <option value="Cancelado">Cancelado</option>
+                    {statusOptions.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
                 <div>
