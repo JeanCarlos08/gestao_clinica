@@ -100,11 +100,12 @@ def _render_triggers() -> None:
         st.markdown("**🔔 Lembrete Manual**")
         st.caption("Dispara lembrete customizado.")
         atendimento_id_test = st.number_input("ID do Atendimento", min_value=1, value=1, key="lembrete_id")
+        nome_paciente_test = st.text_input("Nome do Paciente", placeholder="Nome completo", key="lembrete_nome")
         if st.button("▶ Enviar Lembrete", use_container_width=True, key="trig_lembrete"):
             with st.spinner("Disparando..."):
                 ok, msg = n8n_service.trigger_lembrete(
                     atendimento_id=atendimento_id_test,
-                    nome="Paciente Teste",
+                    nome=nome_paciente_test.strip() or "Paciente",
                     data_str="Amanhã",
                     hora_str="08:00",
                 )

@@ -10,12 +10,22 @@ services:
         value: /app/src
       - key: DATABASE_URL
         sync: false
+      - key: APP_SECRET_KEY
+        sync: false
       - key: JWT_SECRET_KEY
         generateValue: true
       - key: JWT_ALGORITHM
         value: HS256
       - key: JWT_EXPIRATION_MINUTES
         value: "1440"
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: GOOGLE_DOCS_TEMPLATE_ID
+        sync: false
+      - key: GOOGLE_SERVICE_ACCOUNT_JSON_B64
+        sync: false
+      - key: CREDENTIALS_SOURCE
+        value: env
       - key: APP_ADMIN_USER
         sync: false
       - key: APP_ADMIN_PASS

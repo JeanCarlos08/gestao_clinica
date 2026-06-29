@@ -374,6 +374,7 @@ class AtendimentoRepository:
                 cur.execute(f"""
                     SELECT
                         COUNT(*) AS total,
+                        COUNT(DISTINCT nome) AS pacientes,
                         COUNT(*) FILTER (WHERE status = 'Agendado')  AS agendados,
                         COUNT(*) FILTER (WHERE status = 'Atendido')  AS atendidos,
                         COUNT(*) FILTER (WHERE status = 'Concluído') AS concluidos,
@@ -403,6 +404,7 @@ class AtendimentoRepository:
 
             return DashboardStats(
                 total_atendimentos=row.get("total", 0),
+                total_pacientes=row.get("pacientes", 0),
                 agendados=row.get("agendados", 0),
                 atendidos=row.get("atendidos", 0),
                 concluidos=row.get("concluidos", 0),
@@ -427,6 +429,44 @@ class AtendimentoRepository:
                 )
                 return [row["empresa"] for row in cur.fetchall()]
         except Exception:
+            return []
+
+    def list_pacientes_resumo(self, q: Optional[str] = None, limit: int = 1000, offset: int = 0) -> List[Dict[str, Any]]:
+        """Retorna pacientes únicos derivados dos atendimentos salvos no banco."""
+        conditions: List[str] = []
+        params: List[Any] = []
+
+        if q:
+            conditions.append("(LOWER(nome) LIKE LOWER(%s) OR LOWER(COALESCE(empresa, '')) LIKE LOWER(%s))")
+            search = f"%{q}%"
+            params.extend([search, search])
+
+        where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+        params.extend([max(1, min(int(limit or 1000), 5000)), max(0, int(offset or 0))])
+
+        query = f"""
+            SELECT
+                MIN(id) AS id,
+                nome,
+                MAX(empresa) AS empresa,
+                COUNT(*) AS total_atendimentos,
+                MAX(data) AS ultimo_atendimento,
+                MAX(status) AS status,
+                COUNT(DISTINCT modalidade) AS modalidades_distintas
+            FROM {TABLE_ATENDIMENTOS}
+            {where_clause}
+            GROUP BY LOWER(nome), nome
+            ORDER BY MAX(data) DESC NULLS LAST, nome ASC
+            LIMIT %s OFFSET %s
+        """
+
+        try:
+            with connection_scope(commit=False) as conn:
+                cur = conn.cursor()
+                cur.execute(query, params)
+                return [dict(row) for row in cur.fetchall()]
+        except Exception as e:
+            logger.error(f"Erro ao listar pacientes resumidos: {e}")
             return []
 
 

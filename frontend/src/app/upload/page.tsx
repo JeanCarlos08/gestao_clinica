@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Upload, FileText, Trash2, AlertCircle, CheckCircle2,
@@ -39,7 +39,7 @@ export default function UploadPage() {
   const getToken = () => localStorage.getItem("token");
   const API = () => process.env.NEXT_PUBLIC_API_URL || "/api";
 
-  const fetchArquivos = async () => {
+  const fetchArquivos = useCallback(async () => {
     const token = getToken();
     if (!token) { router.push("/"); return; }
     setLoading(true);
@@ -49,9 +49,9 @@ export default function UploadPage() {
       setArquivos(await res.json());
     } catch { setMsg({ type:"error", text:"Erro ao carregar arquivos." }); }
     finally { setLoading(false); }
-  };
+  }, [router]);
 
-  useEffect(() => { fetchArquivos(); }, []);
+  useEffect(() => { fetchArquivos(); }, [fetchArquivos]);
 
   const showMsg = (type: "success"|"error", text: string) => {
     setMsg({ type, text });

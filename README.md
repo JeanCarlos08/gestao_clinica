@@ -31,6 +31,9 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 
 ## Deploy (Render + Vercel)
 
-- Backend (Render): usa `backend/Dockerfile` e expõe `/api/*`. Configure as envs: `DATABASE_URL`, `ALLOWED_ORIGINS`, `GOOGLE_API_KEY`, `GOOGLE_SERVICE_ACCOUNT_JSON_B64`, `GOOGLE_DOCS_TEMPLATE_ID`, `APP_ADMIN_USER`, `APP_ADMIN_PASS`.
-- Frontend (Vercel): defina `NEXT_PUBLIC_API_URL` como `https://SEU-BACKEND/api` (sem barra final). `vercel.json` já reescreve `/api/*` para o backend.
+- Backend (Render): usa `backend/Dockerfile` e expõe `/api/*`. Configure no serviço as envs obrigatórias: `DATABASE_URL`, `APP_SECRET_KEY`, `JWT_SECRET_KEY`, `APP_ADMIN_USER`, `APP_ADMIN_PASS`, `ALLOWED_ORIGINS`.
+- Backend (Render) para IA/laudos: configure também `GOOGLE_API_KEY`, `GOOGLE_DOCS_TEMPLATE_ID`, `GOOGLE_SERVICE_ACCOUNT_JSON_B64` e `CREDENTIALS_SOURCE=env`.
+- Frontend (Vercel): configure o projeto com Root Directory = `frontend`.
+- Frontend (Vercel): configure `BACKEND_API_URL=https://SEU-BACKEND-RENDER` (sem `/api` no final). O rewrite de `/api/*` é feito por `frontend/next.config.mjs`.
+- Frontend (Vercel): `NEXT_PUBLIC_API_URL` é opcional. Deixe sem valor para usar `/api` local ao domínio da Vercel.
 - Docker local: `docker-compose.yml` mapeia `8000:8000` e healthcheck em `/api/health`.

@@ -8,7 +8,7 @@ Limpa dados antigos automaticamente.
 import os
 import json
 import shutil
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from pathlib import Path
 from typing import Dict, List
 
@@ -48,7 +48,7 @@ class RetentionPolicy:
         """Verifica se dado expirou."""
         retention_days = self.get_retention_days(data_type)
         expiration_date = creation_date + timedelta(days=retention_days)
-        return datetime.utcnow() > expiration_date
+        return datetime.now(UTC) > expiration_date
     
     def get_expiration_date(self, creation_date: datetime, data_type: str) -> datetime:
         """Retorna data de expiração."""
@@ -102,7 +102,7 @@ class DataCleaner:
         if not path.exists():
             return 0
         
-        cutoff_time = (datetime.utcnow() - timedelta(days=days)).timestamp()
+        cutoff_time = (datetime.now(UTC) - timedelta(days=days)).timestamp()
         removed_count = 0
         
         if path.is_file():
@@ -133,7 +133,7 @@ class DataCleaner:
     def _log_cleanup(self, data_type: str, removed_count: int, days: int):
         """Registra evento de limpeza."""
         entry = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             "data_type": data_type,
             "removed_count": removed_count,
             "retention_days": days,
@@ -166,7 +166,7 @@ class DataCleaner:
             # Registrar exclusão
             with open(self.cleanup_log, "a", encoding="utf-8") as f:
                 entry = {
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
                     "cpf_hash": patient_cpf[-6:],
                     "event": "patient_data_deleted"
                 }

@@ -4,7 +4,7 @@ Simple Rate Limiter para proteção contra abuso
 Sem dependências externas - usa cache em memória.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from collections import defaultdict
 from typing import Dict, Tuple
 
@@ -36,7 +36,7 @@ class SimpleRateLimiter:
             (allowed: bool, info: dict)
         """
         key = f"{client_ip}:{endpoint}" if endpoint else client_ip
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         cutoff = now - timedelta(seconds=self.window_seconds)
         
         # Limpar timestamps antigos
@@ -59,7 +59,7 @@ class SimpleRateLimiter:
     
     def cleanup(self):
         """Remove entradas antigas (executar periodicamente)."""
-        cutoff = datetime.utcnow() - timedelta(seconds=self.window_seconds * 10)
+        cutoff = datetime.now(UTC) - timedelta(seconds=self.window_seconds * 10)
         
         for key in list(self.requests.keys()):
             self.requests[key] = [ts for ts in self.requests[key] if ts > cutoff]

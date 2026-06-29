@@ -1,6 +1,6 @@
 import json
 import os
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 
 LOG_DIR = Path("logs")
@@ -11,7 +11,8 @@ AUDIT_LOG = LOG_DIR / "audit.log"
 def log_event(event_type: str, details: dict) -> None:
     """Registra um evento de auditoria em formato JSON lines."""
     entry = {
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        # Use timestamp com timezone UTC e sufixo 'Z' (RFC 3339)
+        "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         "event_type": event_type,
         "details": details,
     }

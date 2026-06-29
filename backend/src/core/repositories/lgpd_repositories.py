@@ -6,7 +6,7 @@ Gerencia:
 - LoginAttemptRepository: rastreamento de tentativas de login (brute force protection)
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import List, Optional
 
 from infrastructure.connection import connection_scope
@@ -88,7 +88,7 @@ class ConsentimentoRepository:
                         finalidade[:500],
                         base_legal[:100],
                         aceito,
-                        datetime.utcnow() if aceito else None,
+                        (datetime.now(UTC) if aceito else None),
                         (ip_origem or None),
                         (user_agent or None),
                     ),
@@ -149,7 +149,7 @@ class ConsentimentoRepository:
                     SET revogado = TRUE, revogado_em = %s
                     WHERE LOWER(titular_email) = LOWER(%s) AND revogado = FALSE
                     """,
-                    (datetime.utcnow(), email[:255]),
+                    (datetime.now(UTC), email[:255]),
                 )
                 count = cur.rowcount
             logger.info(f"Consentimentos revogados para '{email}': {count}")
@@ -218,7 +218,7 @@ class LoginAttemptRepository:
     def contar_falhas_recentes(self, username: str, janela_minutos: int = 15) -> int:
         """Conta falhas de login do usuário na janela de tempo."""
         try:
-            since = datetime.utcnow() - timedelta(minutes=janela_minutos)
+            since = datetime.now(UTC) - timedelta(minutes=janela_minutos)
             with connection_scope(commit=False) as conn:
                 cur = conn.cursor()
                 cur.execute(
@@ -237,7 +237,7 @@ class LoginAttemptRepository:
     def contar_falhas_por_ip(self, ip_address: str, janela_minutos: int = 15) -> int:
         """Conta falhas de login por IP na janela de tempo."""
         try:
-            since = datetime.utcnow() - timedelta(minutes=janela_minutos)
+            since = datetime.now(UTC) - timedelta(minutes=janela_minutos)
             with connection_scope(commit=False) as conn:
                 cur = conn.cursor()
                 cur.execute(
@@ -284,7 +284,7 @@ class LoginAttemptRepository:
     def limpar_antigos(self, dias: int = 90) -> int:
         """Remove tentativas mais antigas que X dias (retenção LGPD)."""
         try:
-            cutoff = datetime.utcnow() - timedelta(days=dias)
+            cutoff = datetime.now(UTC) - timedelta(days=dias)
             with connection_scope() as conn:
                 cur = conn.cursor()
                 cur.execute(f"DELETE FROM {TABLE_LOGIN_ATTEMPTS} WHERE tentado_em < %s", (cutoff,))

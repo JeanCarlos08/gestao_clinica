@@ -122,6 +122,30 @@ export default function ConfiguracoesPage() {
     finally { setSaving(false); }
   };
 
+  const uploadImage = async (field: "user_photo"|"clinic_logo", file?: File|null) => {
+    const token = getToken();
+    if (!token || !file) return;
+    setSaving(true);
+    try {
+      const fd = new FormData();
+      fd.append("field", field);
+      fd.append("file", file);
+      const res = await fetch(`${API()}/configuracoes/photo`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      if (!res.ok) { const e = await res.json(); showMsg("error", e.detail || "Falha ao enviar imagem."); }
+      else {
+        showMsg("success", "Imagem enviada com sucesso.");
+        // refresh config
+        const cfgRes = await fetch(`${API()}/configuracoes`, { headers: { Authorization: `Bearer ${token}` } });
+        if (cfgRes.ok) setConfig(await cfgRes.json());
+      }
+    } catch (err) { showMsg("error", "Erro ao enviar imagem."); }
+    finally { setSaving(false); }
+  };
+
   const ACAO_COLOR: Record<string, string> = {
     criar: "#22c55e", criar_atendimento: "#22c55e",
     atualizar: "#3b82f6", atualizar_status: "#3b82f6",
@@ -212,6 +236,22 @@ export default function ConfiguracoesPage() {
                 <div className="flex items-center gap-2 font-semibold mb-6"><Building2 size={18} className="text-[var(--primary)]"/> Dados da Clínica</div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div>
+                    <label className={labelClass}>Logotipo da clínica</label>
+                    <div className="flex items-center gap-3">
+                      <div className="w-20 h-12 rounded overflow-hidden bg-[var(--card)] border border-[var(--border)] flex items-center justify-center">
+                        {config.clinica.clinic_logo_base64 ? (
+                          // @ts-ignore
+                          <img src={config.clinica.clinic_logo_base64} alt="Logo" className="w-full h-full object-contain" />
+                        ) : (
+                          <div className="text-xs text-[var(--text-muted)]">Sem logo</div>
+                        )}
+                      </div>
+                      <div>
+                        <input type="file" accept="image/*" id="clinic_logo_input" onChange={e=>uploadImage("clinic_logo", e.target.files?.[0]||null)} />
+                      </div>
+                    </div>
+                  </div>
+                  <div>
                     <label className={labelClass}><Building2 size={11} className="inline mr-1"/>Nome da Clínica</label>
                     <input className={inputClass} value={clinicName} onChange={e=>setClinicName(e.target.value)} placeholder="Ex: Clínica Saúde Mental"/>
                   </div>
@@ -254,6 +294,22 @@ export default function ConfiguracoesPage() {
               <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-6">
                 <div className="flex items-center gap-2 font-semibold mb-6"><User size={18} className="text-[var(--primary)]"/> Informações do Perfil</div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div>
+                    <label className={labelClass}>Foto do Usuário</label>
+                    <div className="flex items-center gap-3">
+                      <div className="w-14 h-14 rounded-full overflow-hidden bg-[var(--card)]">
+                        {config.clinica.user_photo_base64 ? (
+                          // @ts-ignore
+                          <img src={config.clinica.user_photo_base64} alt="Foto" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-sm text-[var(--text-muted)]">{(config.usuario.display_name||config.usuario.username||"?")[0]}</div>
+                        )}
+                      </div>
+                      <div>
+                        <input type="file" accept="image/*" id="user_photo_input" onChange={e=>uploadImage("user_photo", e.target.files?.[0]||null)} />
+                      </div>
+                    </div>
+                  </div>
                   <div>
                     <label className={labelClass}>Username</label>
                     <input className={`${inputClass} opacity-50 cursor-not-allowed`} value={config.usuario.username} disabled/>

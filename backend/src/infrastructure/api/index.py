@@ -14,6 +14,7 @@ from typing import Optional
 
 import uvicorn
 from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr, Field
@@ -26,6 +27,8 @@ from services.lgpd_service import get_lgpd_service
 from services.security import create_access_token, verify_access_token
 from utils.helpers import verify_password
 from utils.logger import get_logger
+import base64
+from utils.constants import CLINIC_PREF_USER_PHOTO, CLINIC_PREF_LOGO
 
 logger = get_logger(__name__)
 
@@ -102,6 +105,22 @@ class AtendimentoResponse(BaseModel):
     status: str
 
 
+class PacienteResponse(BaseModel):
+    id: int
+    nome: str
+    empresa: Optional[str] = None
+    total_atendimentos: int = 0
+    ultimo_atendimento: Optional[str] = None
+    status: Optional[str] = None
+    modalidades_distintas: int = 0
+
+
+class PacienteSearchPayload(BaseModel):
+    q: Optional[str] = None
+    limit: int = 1000
+    offset: int = 0
+
+
 class ConsentimentoCreate(BaseModel):
     titular_nome: str = Field(..., min_length=3, max_length=255)
     titular_email: Optional[str] = Field(None, max_length=255)
@@ -143,7 +162,7 @@ class EsquecimentoResponse(BaseModel):
 # Router
 # ─────────────────────────────────────────────────────────────
 
-from fastapi import APIRouter, UploadFile, File
+from fastapi import APIRouter, UploadFile, File, Form
 
 api_router = APIRouter(prefix="/api")
 
@@ -279,6 +298,28 @@ async def list_atendimentos(current_user: dict = Depends(get_current_user)):
             "status": a.status,
         }
         for a in atendimentos
+    ]
+
+
+@api_router.get("/pacientes", response_model=list[PacienteResponse], tags=["Pacientes"])
+async def list_pacientes(
+    q: Optional[str] = None,
+    limit: int = 1000,
+    offset: int = 0,
+    current_user: dict = Depends(get_current_user),
+):
+    pacientes = atendimento_repo.list_pacientes_resumo(q=q, limit=limit, offset=offset)
+    return [
+        {
+            "id": p["id"],
+            "nome": p["nome"],
+            "empresa": p.get("empresa"),
+            "total_atendimentos": p.get("total_atendimentos", 0),
+            "ultimo_atendimento": p["ultimo_atendimento"].strftime("%Y-%m-%d") if p.get("ultimo_atendimento") else None,
+            "status": p.get("status"),
+            "modalidades_distintas": p.get("modalidades_distintas", 0),
+        }
+        for p in pacientes
     ]
 
 class AtendimentoPayload(BaseModel):
@@ -736,6 +777,34 @@ async def update_configuracoes(
     if not success:
         raise HTTPException(status_code=500, detail="Erro ao salvar configurações.")
     return {"mensagem": "Configurações salvas com sucesso.", "campos_salvos": list(data.keys())}
+
+
+
+@api_router.post("/configuracoes/photo", tags=["Configurações"])
+async def upload_config_photo(
+    field: str = Form(...),
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+):
+    """Faz upload de imagem (logo ou foto do usuário) e salva como data-uri na configuração."""
+    if field not in ("user_photo", "clinic_logo"):
+        raise HTTPException(status_code=400, detail="Campo inválido. Use 'user_photo' ou 'clinic_logo'.")
+
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="Arquivo vazio.")
+
+    try:
+        b64 = base64.b64encode(content).decode("utf-8")
+        data_uri = f"data:{file.content_type};base64,{b64}"
+        key = CLINIC_PREF_USER_PHOTO if field == "user_photo" else CLINIC_PREF_LOGO
+        ok = clinic_config_repo.save_clinic_data({key: data_uri})
+        if not ok:
+            raise HTTPException(status_code=500, detail="Falha ao salvar imagem.")
+        return {"mensagem": "Imagem salva com sucesso.", "field": field}
+    except Exception as e:
+        logger.error(f"Erro ao salvar imagem de configuração: {e}")
+        raise HTTPException(status_code=500, detail="Erro interno ao processar a imagem.")
 
 
 @api_router.get("/auditoria", tags=["Configurações"])

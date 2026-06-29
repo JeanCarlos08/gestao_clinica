@@ -217,6 +217,7 @@ class DocumentoCreate:
 class DashboardStats:
     """Estatísticas consolidadas para o dashboard."""
     total_atendimentos: int = 0
+    total_pacientes: int = 0
     agendados: int = 0
     atendidos: int = 0
     concluidos: int = 0

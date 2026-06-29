@@ -106,7 +106,7 @@ def render_novo_laudo():
 
         col1, col2 = st.columns(2)
         with col1:
-            psicologista_nome = st.text_input("Nome do Psicólogo", value="Dra. Juliana Feitosa")
+            psicologista_nome = st.text_input("Nome do Psicólogo", placeholder="Nome do profissional")
         with col2:
             psicologista_crp = st.text_input("CRP", value="07/12345")
 
