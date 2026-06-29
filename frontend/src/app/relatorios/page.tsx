@@ -30,10 +30,12 @@ interface AtendimentoRelatorio {
 const STATUS_COLORS: Record<string, string> = {
   "Concluído": "#22c55e", "Atendido": "#3b82f6",
   "Agendado": "#f59e0b", "Cancelado": "#ef4444", "Pendente": "#f97316",
+  "Em andamento": "#a855f7",
 };
 const STATUS_BG: Record<string, string> = {
   "Concluído": "rgba(34,197,94,0.12)", "Atendido": "rgba(59,130,246,0.12)",
   "Agendado": "rgba(245,158,11,0.12)", "Cancelado": "rgba(239,68,68,0.12)", "Pendente": "rgba(249,115,22,0.12)",
+  "Em andamento": "rgba(168,85,247,0.12)",
 };
 const COLORS = ["#22c55e","#3b82f6","#a855f7","#f59e0b","#ef4444","#06b6d4","#ec4899"];
 

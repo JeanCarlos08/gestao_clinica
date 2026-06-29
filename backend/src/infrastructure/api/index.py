@@ -332,6 +332,13 @@ async def list_pacientes(
     offset: int = 0,
     current_user: dict = Depends(get_current_user),
 ):
+    import re
+
+    def _slug_name(name: str) -> str:
+        s = (name or "").strip().lower()
+        s = re.sub(r"[^a-z0-9]+", "_", s)
+        return s.strip("_")
+
     pacientes = atendimento_repo.list_pacientes_resumo(q=q, limit=limit, offset=offset)
     return [
         {
@@ -342,6 +349,7 @@ async def list_pacientes(
             "ultimo_atendimento": p["ultimo_atendimento"].strftime("%Y-%m-%d") if p.get("ultimo_atendimento") else None,
             "status": p.get("status"),
             "modalidades_distintas": p.get("modalidades_distintas", 0),
+            "foto": preferences_repo.get(f"patient_photo:{_slug_name(p['nome'])}", None),
         }
         for p in pacientes
     ]

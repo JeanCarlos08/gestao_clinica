@@ -12,6 +12,7 @@ interface PacienteResumo {
   ultimo_atendimento: string | null;
   status: string | null;
   modalidades_distintas: number;
+  foto: string | null;
 }
 
 export default function PacientesPage() {
