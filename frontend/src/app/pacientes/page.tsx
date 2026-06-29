@@ -75,7 +75,16 @@ export default function PacientesPage() {
           className="flex items-center gap-2 bg-[var(--card)] border border-[var(--border)] hover:border-[var(--primary)] text-white px-4 py-2 rounded-xl text-sm transition-colors disabled:opacity-50"
           disabled={loading}
         >
-          <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> Atualizar
+            <div className="flex items-center">
+              <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-[var(--primary)]/30 to-[#111811] flex items-center justify-center">
+                {paciente.foto ? (
+                  // @ts-ignore
+                  <img src={paciente.foto} alt={paciente.nome} className="w-full h-full object-cover" />
+                ) : (
+                  paciente.nome.split(" ").slice(0,2).map((p:string)=>p[0]?.toUpperCase()).join("")
+                )}
+              </div>
+              <div className="ml-2 font-semibold text-white">{paciente.nome}</div>
         </button>
       </div>
 

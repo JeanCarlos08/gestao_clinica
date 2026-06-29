@@ -23,6 +23,7 @@ from core.config import settings
 from infrastructure.connection import ensure_schema
 from core.repositories.repositories import atendimento_repo, arquivo_repo, auditoria_repo
 from core.repositories.user_repositories import user_repo, clinic_config_repo
+from core.repositories.repositories import preferences_repo
 from services.lgpd_service import get_lgpd_service
 from services.security import create_access_token, verify_access_token
 from utils.helpers import verify_password
@@ -113,6 +114,7 @@ class PacienteResponse(BaseModel):
     ultimo_atendimento: Optional[str] = None
     status: Optional[str] = None
     modalidades_distintas: int = 0
+    foto: Optional[str] = None
 
 
 class PacienteSearchPayload(BaseModel):
@@ -287,6 +289,12 @@ async def list_atendimentos(current_user: dict = Depends(get_current_user)):
     """Lista atendimentos (requer autenticação)."""
     from core.entities.models import AtendimentoFilter
     atendimentos = atendimento_repo.list_all(filters=AtendimentoFilter(limit=1000))
+    def _slug_name(name: str) -> str:
+        import re
+        s = (name or "").strip().lower()
+        s = re.sub(r"[^a-z0-9]+", "_", s)
+        return s.strip("_")
+
     return [
         {
             "id": a.id,
@@ -296,6 +304,7 @@ async def list_atendimentos(current_user: dict = Depends(get_current_user)):
             "data": a.data.strftime("%Y-%m-%d") if a.data else "",
             "hora": a.hora.strftime("%H:%M") if a.hora else "",
             "status": a.status,
+            "foto": preferences_repo.get(f"patient_photo:{_slug_name(a.nome)}", None),
         }
         for a in atendimentos
     ]
@@ -805,6 +814,37 @@ async def upload_config_photo(
     except Exception as e:
         logger.error(f"Erro ao salvar imagem de configuração: {e}")
         raise HTTPException(status_code=500, detail="Erro interno ao processar a imagem.")
+
+
+
+@api_router.post("/pacientes/{slug}/photo", tags=["Pacientes"])
+async def upload_paciente_photo(
+    slug: str,
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+):
+    """Faz upload de foto de paciente e salva em preferences como data-uri."""
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="Arquivo vazio.")
+    try:
+        b64 = base64.b64encode(content).decode("utf-8")
+        data_uri = f"data:{file.content_type};base64,{b64}"
+        key = f"patient_photo:{slug}"
+        ok = preferences_repo.save(key, data_uri)
+        if not ok:
+            raise HTTPException(status_code=500, detail="Falha ao salvar imagem.")
+        return {"mensagem": "Foto do paciente salva com sucesso.", "slug": slug}
+    except Exception as e:
+        logger.error(f"Erro ao salvar foto de paciente {slug}: {e}")
+        raise HTTPException(status_code=500, detail="Erro interno ao processar a imagem.")
+
+
+@api_router.get("/pacientes/{slug}/photo", tags=["Pacientes"])
+async def get_paciente_photo(slug: str, current_user: dict = Depends(get_current_user)):
+    key = f"patient_photo:{slug}"
+    photo = preferences_repo.get(key, None)
+    return {"photo": photo}
 
 
 @api_router.get("/auditoria", tags=["Configurações"])
