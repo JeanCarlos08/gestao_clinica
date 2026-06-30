@@ -9,7 +9,6 @@ from .custom_exceptions import (
     AuthenticationError,
     FileSizeLimitError,
     InvalidFileTypeError,
-    N8NWebhookError,
 )
 
 __all__ = [
@@ -22,5 +21,4 @@ __all__ = [
     "AuthenticationError",
     "FileSizeLimitError",
     "InvalidFileTypeError",
-    "N8NWebhookError",
 ]

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import AppointmentCalendar from "@/components/AppointmentCalendar";
+import { getLoggedUserProfile, getUserInitials } from "@/lib/auth";
 import {
   Bell, Search, Pencil, Trash2, Calendar as CalendarIcon,
   Moon, ChevronRight, CheckCircle2, Clock, AlertCircle,
@@ -42,6 +43,8 @@ export default function AtendimentosPage() {
   const router = useRouter();
   const [atendimentos, setAtendimentos] = useState<Atendimento[]>([]);
   const [loading, setLoading] = useState(true);
+  const [profileName, setProfileName] = useState("Usuário");
+  const [photoSrc, setPhotoSrc] = useState<string | null>(null);
   const [modalidades, setModalidades] = useState<string[]>([]);
   const [statusOptions, setStatusOptions] = useState<string[]>([]);
 
@@ -101,6 +104,25 @@ const ATD_CACHE_TTL = 30_000;
   }, [API_BASE, router]);
 
   useEffect(() => {
+    const token = localStorage.getItem("token");
+    const user = getLoggedUserProfile(token);
+    setProfileName(user.displayName);
+
+    (async () => {
+      try {
+        if (!token) return;
+        const res = await fetch(`${API_BASE}/configuracoes`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const photo = data?.clinica?.user_photo_base64 || data?.clinica?.clinic_logo_base64 || null;
+        if (photo) setPhotoSrc(photo);
+      } catch {
+        // ignore
+      }
+    })();
+
     fetchAtendimentos();
     fetch(`${API_BASE}/config/options`)
       .then(r => r.json())
@@ -241,7 +263,13 @@ const ATD_CACHE_TTL = 30_000;
         <div className="flex items-center justify-end gap-3">
           <button className="text-[var(--text-muted)] hover:text-white transition-colors relative"><Bell size={20} /><span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span></button>
           <button className="text-[var(--text-muted)] hover:text-white transition-colors hidden sm:block"><Moon size={20} /></button>
-          <Image src="https://i.pravatar.cc/150?img=5" alt="Avatar" width={32} height={32} className="w-8 h-8 rounded-full border border-[var(--border)] object-cover" />
+          <div className="w-8 h-8 rounded-full border border-[var(--border)] bg-[var(--primary)]/15 overflow-hidden flex items-center justify-center text-[11px] font-semibold text-[var(--primary)]">
+            {photoSrc ? (
+              <Image src={photoSrc} alt="Avatar" width={32} height={32} unoptimized className="w-8 h-8 object-cover" />
+            ) : (
+              getUserInitials(profileName)
+            )}
+          </div>
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 """
 Configuração central do sistema mvpdepsicologia.
-Lê todas as variáveis de ambiente do .env (ou st.secrets no Streamlit Cloud).
+Lê todas as variáveis de ambiente do .env e do ambiente de runtime.
 """
 
 import os
@@ -24,19 +24,30 @@ for _env_candidate in [
         break
 
 def _get_secret(key: str, default: Optional[str] = None) -> Optional[str]:
-    """
-    Lê variável com prioridade:
-    1. st.secrets (Streamlit Cloud)
-    2. os.environ (local .env)
-    3. default
-    """
-    try:
-        import streamlit as st
-        if hasattr(st, "secrets") and key in st.secrets:
-            return str(st.secrets[key])
-    except Exception:
-        pass
-    return os.getenv(key, default)
+    """Lê variável de ambiente com fallback opcional."""
+    value = os.getenv(key, default)
+    return value.strip() if isinstance(value, str) else value
+
+
+def _gemini_fallback_models() -> list[str]:
+    """Retorna lista ordenada de modelos Gemini para fallback."""
+    raw = _get_secret("GEMINI_FALLBACK_MODELS", "") or ""
+    custom_models = [m.strip() for m in raw.split(",") if m.strip()]
+
+    # Ordem: modelo principal configurado + fallback explícito + defaults seguros.
+    candidates = [
+        _get_secret("GEMINI_MODEL", "gemini-2.5-flash") or "gemini-2.5-flash",
+        *custom_models,
+        "gemini-1.5-flash",
+        "gemini-1.5-pro",
+    ]
+
+    # Remove duplicados preservando ordem.
+    unique: list[str] = []
+    for model in candidates:
+        if model not in unique:
+            unique.append(model)
+    return unique
 
 @dataclass(frozen=True)
 class Settings:
@@ -61,10 +72,7 @@ class Settings:
     # ── Google Gemini AI ──────────────────────────────────────
     gemini_api_key: Optional[str] = field(default_factory=lambda: _get_secret("GOOGLE_API_KEY") or _get_secret("GEMINI_API_KEY"))
     gemini_model: str = field(default_factory=lambda: _get_secret("GEMINI_MODEL", "gemini-2.5-flash"))
-
-    # ── n8n Cloud ─────────────────────────────────────────────
-    n8n_webhook_base_url: Optional[str] = field(default_factory=lambda: _get_secret("N8N_WEBHOOK_BASE_URL"))
-    n8n_webhook_secret: Optional[str] = field(default_factory=lambda: _get_secret("N8N_WEBHOOK_SECRET"))
+    gemini_fallback_models: list[str] = field(default_factory=_gemini_fallback_models)
 
     # ── Google Docs ───────────────────────────────────────────
     google_docs_template_id: Optional[str] = field(default_factory=lambda: _get_secret("GOOGLE_DOCS_TEMPLATE_ID"))
@@ -86,10 +94,6 @@ class Settings:
     @property
     def has_ai(self) -> bool:
         return bool(self.gemini_api_key)
-
-    @property
-    def has_n8n(self) -> bool:
-        return bool(self.n8n_webhook_base_url)
 
 # Singleton global
 settings = Settings()

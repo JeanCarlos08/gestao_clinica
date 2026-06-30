@@ -128,18 +128,6 @@ PAGES_CONFIG: dict[str, dict] = {
 }
 
 # ─────────────────────────────────────────────────────────────
-# n8n — Endpoints de webhook
-# ─────────────────────────────────────────────────────────────
-
-N8N_EVENT_ATENDIMENTO_CRIADO: str = "atendimento-criado"
-N8N_EVENT_LEMBRETE: str = "lembrete-agendamento"
-N8N_EVENT_RELATORIO_SEMANAL: str = "relatorio-semanal"
-N8N_EVENT_STATUS_CHANGED: str = "status-alterado"
-
-N8N_TIMEOUT_SECONDS: int = 10
-N8N_MAX_RETRIES: int = 3
-
-# ─────────────────────────────────────────────────────────────
 # Logs
 # ─────────────────────────────────────────────────────────────
 
@@ -222,7 +210,6 @@ CLINIC_PREF_EMAIL: str = "clinic_email"
 CLINIC_PREF_THEME: str = "clinic_theme"
 CLINIC_PREF_LAYOUT: str = "clinic_layout"
 CLINIC_PREF_GOOGLE_DOC_ID: str = "clinic_google_doc_id"
-CLINIC_PREF_N8N_URL: str = "clinic_n8n_url"
 CLINIC_PREF_USER_NAME: str = "user_display_name"
 CLINIC_PREF_USER_EMAIL: str = "user_email"
 CLINIC_PREF_USER_PHOTO: str = "user_photo_base64"

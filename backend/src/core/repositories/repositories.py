@@ -72,13 +72,8 @@ class AuditoriaRepository:
         LGPD: Nunca logar dados pessoais (nome, CPF, email) no campo detalhes.
         """
         try:
-            # Tenta capturar usuário da sessão Streamlit se não informado
             if not usuario:
-                try:
-                    import streamlit as st  # type: ignore
-                    usuario = st.session_state.get("user_name", "system")
-                except Exception:
-                    usuario = "system"
+                usuario = "system"
 
             with connection_scope() as conn:
                 cur = conn.cursor()

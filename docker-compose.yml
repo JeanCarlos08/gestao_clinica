@@ -1,8 +1,6 @@
-version: "3.9"
-
 services:
 
-  # ── App Streamlit ─────────────────────────────────────────
+  # ── API (FastAPI) ─────────────────────────────────────────
   app:
     build: ./backend
     container_name: mvpdepsicologia_app
@@ -13,38 +11,9 @@ services:
     volumes:
       - ./logs:/app/logs
       - ./data:/app/data
-    depends_on:
-      n8n:
-        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-
-  # ── n8n (Self-hosted, alternativa ao n8n Cloud para dev) ──
-  n8n:
-    image: n8nio/n8n:latest
-    container_name: mvpdepsicologia_n8n
-    ports:
-      - "5678:5678"
-    environment:
-      - N8N_BASIC_AUTH_ACTIVE=true
-      - N8N_BASIC_AUTH_USER=admin
-      - N8N_BASIC_AUTH_PASSWORD=n8n_password_troque_em_producao
-      - WEBHOOK_URL=http://localhost:5678/
-      - GENERIC_TIMEZONE=America/Sao_Paulo
-    volumes:
-      - n8n_data:/home/node/.n8n
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:5678/healthz || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-
-volumes:
-  n8n_data:
-    driver: local

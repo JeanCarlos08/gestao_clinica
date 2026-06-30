@@ -62,7 +62,7 @@ class DuplicateRecordError(DatabaseError):
 # ─────────────────────────────────────────────────────────────
 
 class ServiceUnavailableError(AppBaseError):
-    """Serviço externo indisponível (n8n, Gemini, Google Docs, etc.)."""
+    """Serviço externo indisponível (Gemini, Google Docs, etc.)."""
 
     def __init__(self, service_name: str, reason: str | None = None) -> None:
         super().__init__(
@@ -70,16 +70,6 @@ class ServiceUnavailableError(AppBaseError):
             details=reason,
         )
         self.service_name = service_name
-
-
-class N8NWebhookError(ServiceUnavailableError):
-    """Falha ao disparar webhook n8n."""
-
-    def __init__(self, webhook_url: str, status_code: int | None = None) -> None:
-        reason = f"HTTP {status_code}" if status_code else "Sem resposta"
-        super().__init__(service_name="n8n", reason=reason)
-        self.webhook_url = webhook_url
-        self.status_code = status_code
 
 
 # ─────────────────────────────────────────────────────────────

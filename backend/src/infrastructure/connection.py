@@ -5,7 +5,6 @@ Responsabilidade única: gerenciar conexões de forma segura e eficiente.
 NÃO contém lógica de negócio nem queries de domínio.
 
 Compatível com:
-- Streamlit Cloud (st.secrets)
 - Variáveis de ambiente (.env)
 - DATABASE_URL completa
 - Variáveis individuais (db_host, db_port, etc.)
@@ -31,11 +30,6 @@ try:
 except ImportError:  # pragma: no cover
     POSTGRES_AVAILABLE = False
     logger.warning("psycopg2 não encontrado. Instale 'psycopg2-binary'.")
-
-try:
-    import streamlit as st  # type: ignore
-except Exception:  # pragma: no cover
-    st = None  # type: ignore
 
 # ─────────────────────────────────────────────────────────────
 # Configuração — Chaves aceitas
@@ -102,7 +96,7 @@ def _parse_database_url(url: str) -> Dict[str, str]:
 
 
 def _build_config_from_mapping(source: Any) -> Optional[Dict[str, str]]:
-    """Tenta construir configuração de banco a partir de um mapping (st.secrets ou os.environ)."""
+    """Tenta construir configuração de banco a partir de um mapping (os.environ)."""
     normalized = _normalize_mapping(source)
     if not normalized:
         return None
@@ -128,23 +122,13 @@ def _build_config_from_mapping(source: Any) -> Optional[Dict[str, str]]:
 def _load_db_config() -> Dict[str, str]:
     """
     Carrega a configuração do banco com cache.
-    Prioridade: st.secrets → os.environ
+    Prioridade: os.environ
     """
     global _DB_CONFIG_CACHE
     if _DB_CONFIG_CACHE is not None:
         return _DB_CONFIG_CACHE
 
-    # 1. Streamlit Secrets (Cloud)
-    if st is not None:
-        secrets = getattr(st, "secrets", None)
-        if secrets is not None:
-            config = _build_config_from_mapping(secrets)
-            if config:
-                _DB_CONFIG_CACHE = config
-                logger.info("Configuração do banco carregada via st.secrets.")
-                return _DB_CONFIG_CACHE
-
-    # 2. Variáveis de Ambiente / .env
+    # Variáveis de Ambiente / .env
     config = _build_config_from_mapping(os.environ)
     if config:
         _DB_CONFIG_CACHE = config
@@ -153,7 +137,7 @@ def _load_db_config() -> Dict[str, str]:
 
     raise RuntimeError(
         "Banco não configurado. Defina DATABASE_URL ou as variáveis "
-        "db_host, db_port, db_name, db_user, db_password no .env ou st.secrets."
+        "db_host, db_port, db_name, db_user, db_password no .env."
     )
 
 

@@ -23,7 +23,6 @@ from core.config import settings
 from infrastructure.connection import ensure_schema
 from core.repositories.repositories import atendimento_repo, arquivo_repo, auditoria_repo, documento_repo
 from core.entities.models import DocumentoCreate
-from services.n8n_service import n8n_service
 from core.repositories.user_repositories import user_repo, clinic_config_repo
 from core.repositories.repositories import preferences_repo
 from services.lgpd_service import get_lgpd_service
@@ -181,7 +180,6 @@ class ConfigClinicaUpdate(BaseModel):
     clinic_address: Optional[str] = None
     clinic_email: Optional[str] = None
     clinic_google_doc_id: Optional[str] = None
-    clinic_n8n_url: Optional[str] = None
     user_display_name: Optional[str] = None
     user_email: Optional[str] = None
 
@@ -421,18 +419,6 @@ async def create_atendimento(
         ))
         if not new_id:
             raise HTTPException(status_code=500, detail="Erro ao criar atendimento.")
-        # Dispara webhook n8n (fail-safe: não bloqueia a resposta)
-        try:
-            n8n_service.trigger_atendimento_criado(
-                atendimento_id=new_id,
-                nome=payload.nome,
-                empresa=payload.empresa,
-                modalidade=payload.modalidade,
-                data_str=payload.data,
-                hora_str=payload.hora,
-            )
-        except Exception as _n8n_err:
-            logger.warning(f"N8N webhook não disparado ao criar atendimento: {_n8n_err}")
         return {"id": new_id, "mensagem": "Atendimento criado com sucesso."}
     except ValueError:
         raise HTTPException(status_code=400, detail="Formato de data ou hora inválido.")
@@ -445,10 +431,6 @@ async def update_atendimento(
 ):
     from datetime import date, time
     from core.entities.models import AtendimentoUpdate
-    
-    # Captura status anterior para detectar mudança
-    existing = atendimento_repo.get_by_id(atendimento_id) if hasattr(atendimento_repo, "get_by_id") else None
-    status_anterior = existing.status if existing else None
 
     try:
         success = atendimento_repo.update(atendimento_id, AtendimentoUpdate(
@@ -461,17 +443,6 @@ async def update_atendimento(
         ))
         if not success:
             raise HTTPException(status_code=404, detail="Atendimento não encontrado ou erro ao atualizar.")
-        # Dispara webhook n8n se o status mudou
-        novo_status = payload.status or "Agendado"
-        if status_anterior and status_anterior != novo_status:
-            try:
-                n8n_service.trigger_status_changed(
-                    atendimento_id=atendimento_id,
-                    status_anterior=status_anterior,
-                    novo_status=novo_status,
-                )
-            except Exception as _n8n_err:
-                logger.warning(f"N8N webhook não disparado ao atualizar status: {_n8n_err}")
         return {"mensagem": "Atendimento atualizado com sucesso."}
     except ValueError:
         raise HTTPException(status_code=400, detail="Formato de data ou hora inválido.")
@@ -519,15 +490,19 @@ async def gerar_parecer(payload: IAPayload, current_user: dict = Depends(get_cur
         f"Anotações brutas:\n{payload.notas}"
     )
     
-    try:
-        model = genai.GenerativeModel(settings.gemini_model)
-        response = model.generate_content(prompt)
-        if not response.text:
-            raise HTTPException(status_code=500, detail="A IA não retornou um texto válido.")
-        return {"texto": response.text.strip()}
-    except Exception as e:
-        logger.error(f"Erro no Gemini: {str(e)}")
-        raise HTTPException(status_code=500, detail="Erro ao gerar texto com IA.")
+    last_error: Exception | None = None
+    for model_name in settings.gemini_fallback_models:
+        try:
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(prompt)
+            if response and response.text:
+                return {"texto": response.text.strip(), "model": model_name}
+        except Exception as e:
+            last_error = e
+            logger.warning(f"Gemini modelo '{model_name}' falhou: {type(e).__name__}")
+
+    logger.error(f"Erro no Gemini em todos os modelos: {last_error}")
+    raise HTTPException(status_code=503, detail="Falha ao gerar texto com IA. Verifique permissões da API Key e modelo Gemini habilitado.")
 
 # ─────────────────────────────────────────────────────────────
 # Laudos Endpoints (Google Docs)
