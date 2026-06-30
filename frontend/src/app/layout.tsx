@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Manrope } from "next/font/google";
 import Sidebar from "@/components/Sidebar";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const manrope = Manrope({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"] });
 
 export const metadata: Metadata = {
   title: "Clínica IA",
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport = {
-  themeColor: "#0ea5e9",
+  themeColor: "#0b140c",
 };
 
 export default function RootLayout({
@@ -29,7 +29,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <body className={`${inter.className} bg-[var(--background)] text-[var(--foreground)] antialiased flex h-screen overflow-hidden`}>
+      <body className={`${manrope.className} bg-[var(--background)] text-[var(--foreground)] antialiased flex h-screen overflow-hidden app-premium-bg`}>
         <Sidebar />
         <main className="flex-1 flex flex-col h-full overflow-hidden bg-[var(--background)] pt-14 md:pt-0">
           {children}

@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ComponentType } from "react";
+import { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { Users, CalendarCheck, TrendingUp, Activity, Bell, Calendar as CalendarIcon, Clock, ChevronRight } from "lucide-react";
+import Image from "next/image";
+import { Users, CalendarCheck, TrendingUp, Activity, Bell, Calendar as CalendarIcon, Clock, ChevronRight, type LucideIcon } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { getLoggedUserProfile } from "@/lib/auth";
 
@@ -115,7 +116,7 @@ export default function DashboardPage() {
   const isFirstLoad = loading && !stats && atendimentos.length === 0;
 
   return (
-    <div className="p-4 sm:p-8 w-full h-full overflow-y-auto scrollbar-hide bg-[#050a06]">
+    <div className="p-4 sm:p-8 w-full h-full overflow-y-auto scrollbar-hide bg-transparent fade-up">
       {/* Header */}
       <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-4 mb-8">
         <div>
@@ -136,7 +137,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 fade-up">
         {isFirstLoad ? (
           Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="bg-[#0a100a] border border-[#1e2e1e] rounded-2xl p-6 animate-pulse">
@@ -157,7 +158,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         {/* Chart Section */}
-        <div className="lg:col-span-2 bg-[#0a100a] border border-[#1e2e1e] rounded-2xl p-6 shadow-xl relative overflow-hidden group">
+        <div className="lg:col-span-2 premium-surface rounded-2xl p-6 relative overflow-hidden group fade-up">
           <div className="absolute inset-0 bg-gradient-to-br from-[var(--primary)]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
           <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
             Evolução de Atendimentos
@@ -172,7 +173,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Upcoming Appointments */}
-        <div className="bg-[#0a100a] border border-[#1e2e1e] rounded-2xl p-6 shadow-xl flex flex-col">
+        <div className="premium-surface rounded-2xl p-6 flex flex-col fade-up">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-bold text-white">Próximas Consultas</h3>
             <button className="text-xs text-[var(--primary)] hover:text-white transition-colors font-medium flex items-center">
@@ -213,7 +214,7 @@ interface MetricCardProps {
   value: string;
   change: string;
   tone?: BadgeTone;
-  icon: ComponentType<{ className?: string; size?: number }>;
+  icon: LucideIcon;
   color: string;
   bgColor: string;
   borderColor: string;
@@ -221,7 +222,7 @@ interface MetricCardProps {
 
 function MetricCard({ title, value, change, tone = "neutral", icon: Icon, color, bgColor, borderColor }: MetricCardProps) {
   return (
-    <div className="bg-[#0a100a] border border-[#1e2e1e] rounded-2xl p-6 shadow-lg hover:shadow-2xl hover:border-[#243024] hover:-translate-y-1 transition-all duration-300 group overflow-hidden relative">
+    <div className="premium-surface rounded-2xl p-6 hover:shadow-2xl hover:border-[#243024] hover:-translate-y-1 transition-all duration-300 group overflow-hidden relative fade-up">
       <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-gradient-to-br from-white/5 to-transparent rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
       <div className="flex items-center justify-between mb-4 relative z-10">
         <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${bgColor} ${borderColor} border transition-colors group-hover:border-opacity-50`}>
@@ -362,14 +363,20 @@ function PatientAvatar({ name, photo }: { name: string; photo?: string | null })
     .map((part) => part[0]?.toUpperCase() || "")
     .join("");
 
-    if (photo) {
+  if (photo) {
     return (
-      // @ts-expect-error - photo may be a base64 string from API
       <div className="w-12 h-12 rounded-full border-2 border-[#1e2e1e] group-hover:border-[var(--primary)] transition-colors bg-[transparent] flex items-center justify-center text-white font-bold text-sm flex-shrink-0 overflow-hidden">
-        <img src={photo} alt={name} className="w-full h-full object-cover" />
+        <Image
+          src={photo}
+          alt={name}
+          width={48}
+          height={48}
+          unoptimized
+          className="w-full h-full object-cover"
+        />
       </div>
     );
-    }
+  }
 
   return (
     <div className="w-12 h-12 rounded-full border-2 border-[#1e2e1e] group-hover:border-[var(--primary)] transition-colors bg-gradient-to-br from-[var(--primary)]/30 to-[#111811] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">

@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import {
   Settings, User, Building2, Phone, Mail, MapPin,
-  Link, Bot, Save, Loader2, CheckCircle2, AlertCircle,
+  Link, Save, Loader2, CheckCircle2, AlertCircle,
   Shield, Clock, Activity
 } from "lucide-react";
 
@@ -55,7 +56,6 @@ export default function ConfiguracoesPage() {
   const [clinicEmail, setClinicEmail] = useState("");
   const [clinicAddress, setClinicAddress] = useState("");
   const [clinicGoogleDoc, setClinicGoogleDoc] = useState("");
-  const [clinicN8n, setClinicN8n] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [userEmail, setUserEmail] = useState("");
 
@@ -87,7 +87,6 @@ export default function ConfiguracoesPage() {
         setClinicEmail(c.clinic_email || "");
         setClinicAddress(c.clinic_address || "");
         setClinicGoogleDoc(c.clinic_google_doc_id || "");
-        setClinicN8n(c.clinic_n8n_url || "");
         setDisplayName(cfgData.usuario.display_name || "");
         setUserEmail(cfgData.usuario.email || "");
         if (audRes.ok) setAuditoria(await audRes.json());
@@ -111,7 +110,6 @@ export default function ConfiguracoesPage() {
           clinic_email: clinicEmail || null,
           clinic_address: clinicAddress || null,
           clinic_google_doc_id: clinicGoogleDoc || null,
-          clinic_n8n_url: clinicN8n || null,
           user_display_name: displayName || null,
           user_email: userEmail || null,
         }),
@@ -194,7 +192,7 @@ export default function ConfiguracoesPage() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-6 fade-up">
         {tabs.map(t=>(
           <button key={t.id} onClick={()=>setActiveTab(t.id)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab===t.id?"bg-[var(--primary)] text-black":"bg-[var(--card)] border border-[var(--border)] text-[var(--text-muted)] hover:text-white"}`}>
@@ -232,16 +230,22 @@ export default function ConfiguracoesPage() {
                 </div>
               )}
 
-              <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-6">
+              <div className="premium-surface rounded-xl p-6 fade-up">
                 <div className="flex items-center gap-2 font-semibold mb-6"><Building2 size={18} className="text-[var(--primary)]"/> Dados da Clínica</div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div>
                     <label className={labelClass}>Logotipo da clínica</label>
                     <div className="flex items-center gap-3">
-                      <div className="w-20 h-12 rounded overflow-hidden bg-[var(--card)] border border-[var(--border)] flex items-center justify-center">
-                        {config.clinica.clinic_logo_base64 ? (
-                          // @ts-expect-error - base64 string from API
-                          <img src={config.clinica.clinic_logo_base64} alt="Logo" className="w-full h-full object-contain" />
+                      <div className="w-20 h-12 rounded overflow-hidden bg-[var(--card)] border border-[var(--border)] flex items-center justify-center relative">
+                        {config?.clinica?.clinic_logo_base64 ? (
+                          <Image
+                            src={config.clinica.clinic_logo_base64}
+                            alt="Logo"
+                            fill
+                            unoptimized
+                            sizes="80px"
+                            className="object-contain"
+                          />
                         ) : (
                           <div className="text-xs text-[var(--text-muted)]">Sem logo</div>
                         )}
@@ -270,18 +274,13 @@ export default function ConfiguracoesPage() {
                 </div>
               </div>
 
-              <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-6">
-                <div className="flex items-center gap-2 font-semibold mb-6"><Bot size={18} className="text-[var(--primary)]"/> Integrações</div>
+              <div className="premium-surface rounded-xl p-6 fade-up">
+                <div className="flex items-center gap-2 font-semibold mb-6"><Link size={18} className="text-[var(--primary)]"/> Integrações</div>
                 <div className="space-y-5">
                   <div>
                     <label className={labelClass}><Link size={11} className="inline mr-1"/>Google Doc ID (Template)</label>
                     <input className={inputClass} value={clinicGoogleDoc} onChange={e=>setClinicGoogleDoc(e.target.value)} placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms"/>
                     <p className="text-[10px] text-[var(--text-muted)] mt-1">ID do documento Google Docs usado como template de laudos.</p>
-                  </div>
-                  <div>
-                    <label className={labelClass}><Link size={11} className="inline mr-1"/>URL n8n (Automação)</label>
-                    <input className={inputClass} value={clinicN8n} onChange={e=>setClinicN8n(e.target.value)} placeholder="https://seu-n8n.app/webhook/..."/>
-                    <p className="text-[10px] text-[var(--text-muted)] mt-1">Webhook para automações via n8n (notificações, IA, etc).</p>
                   </div>
                 </div>
               </div>
@@ -291,16 +290,22 @@ export default function ConfiguracoesPage() {
           {/* Aba Perfil */}
           {activeTab==="perfil" && config && (
             <div className="space-y-6">
-              <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-6">
+              <div className="premium-surface rounded-xl p-6 fade-up">
                 <div className="flex items-center gap-2 font-semibold mb-6"><User size={18} className="text-[var(--primary)]"/> Informações do Perfil</div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div>
                     <label className={labelClass}>Foto do Usuário</label>
                     <div className="flex items-center gap-3">
-                      <div className="w-14 h-14 rounded-full overflow-hidden bg-[var(--card)]">
+                      <div className="w-14 h-14 rounded-full overflow-hidden bg-[var(--card)] relative">
                         {config.clinica.user_photo_base64 ? (
-                          // @ts-expect-error - base64 string from API
-                          <img src={config.clinica.user_photo_base64} alt="Foto" className="w-full h-full object-cover" />
+                          <Image
+                            src={config.clinica.user_photo_base64}
+                            alt="Foto"
+                            fill
+                            unoptimized
+                            sizes="56px"
+                            className="object-cover"
+                          />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-sm text-[var(--text-muted)]">{(config.usuario.display_name||config.usuario.username||"?")[0]}</div>
                         )}

@@ -29,6 +29,12 @@ from utils.logger import get_logger
 logger = get_logger(__name__)
 
 
+def render_configuracoes() -> None:
+    """Renderiza a página de configurações com controle de permissão."""
+    if not has_permission(PERM_MANAGE_CONFIGURACOES):
+        st.error("Você não tem permissão para acessar Configurações.")
+        return
+
     st.markdown("""
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
             <div>
@@ -64,7 +70,10 @@ logger = get_logger(__name__)
     with tab6:
         _tab_perfil()
     with tab7:
-        _tab_logs()
+        if has_permission(PERM_VIEW_LOGS):
+            _tab_logs()
+        else:
+            st.info("Seu perfil não possui acesso aos logs do sistema.")
 
 
 # ─────────────────────────────────────────────────────────────

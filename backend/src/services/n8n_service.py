@@ -46,17 +46,33 @@ class N8NService:
     """
 
     def __init__(self) -> None:
-        self._base_url = (settings.n8n_webhook_base_url or "").rstrip("/")
+        self._env_base_url = (settings.n8n_webhook_base_url or "").rstrip("/")
         self._secret = settings.n8n_webhook_secret
+
+    def _resolve_base_url(self) -> str:
+        """
+        Resolve a URL base do n8n em tempo de execução.
+        Prioridade: .env > configuração da clínica no banco.
+        """
+        if self._env_base_url:
+            return self._env_base_url
+        # Tenta buscar do banco (configuração salva na UI)
+        try:
+            from core.repositories.user_repositories import clinic_config_repo
+            from utils.constants import CLINIC_PREF_N8N_URL
+            db_url = (clinic_config_repo.get(CLINIC_PREF_N8N_URL, "") or "").rstrip("/")
+            return db_url
+        except Exception:
+            return ""
 
     @property
     def is_configured(self) -> bool:
-        """Retorna True se a URL base do n8n está configurada."""
-        return bool(self._base_url)
+        """Retorna True se a URL base do n8n está configurada (env ou banco)."""
+        return bool(self._resolve_base_url())
 
     def _build_url(self, event: str) -> str:
         """Constrói a URL completa do webhook para um evento."""
-        return f"{self._base_url}/{event}"
+        return f"{self._resolve_base_url()}/{event}"
 
     def _build_headers(self) -> Dict[str, str]:
         """Constrói os headers da requisição."""

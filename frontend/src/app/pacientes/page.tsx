@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Search, Users, CalendarClock, Activity, RefreshCw, Loader2 } from "lucide-react";
 
 interface PacienteResumo {
@@ -23,6 +24,7 @@ export default function PacientesPage() {
   const [pacientes, setPacientes] = useState<PacienteResumo[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
+  const [debouncedQ, setDebouncedQ] = useState("");
 
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api";
 
@@ -31,7 +33,7 @@ export default function PacientesPage() {
     if (!token) { router.push('/'); return; }
 
     // Mostra cache imediatamente quando não há query de busca
-    if (!q) {
+    if (!debouncedQ) {
       try {
         const cached = localStorage.getItem(PAC_CACHE_KEY);
         if (cached) {
@@ -45,21 +47,26 @@ export default function PacientesPage() {
     }
 
     try {
-      const res = await fetch(`${API_BASE}/pacientes?q=${encodeURIComponent(q)}`, {
+      const res = await fetch(`${API_BASE}/pacientes?q=${encodeURIComponent(debouncedQ)}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.status === 401) { localStorage.removeItem('token'); router.push('/'); return; }
       const data = await res.json() as PacienteResumo[];
       setPacientes(data);
-      if (!q) localStorage.setItem(PAC_CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
+      if (!debouncedQ) localStorage.setItem(PAC_CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
     } catch (error) {
       console.error("Erro ao carregar pacientes:", error);
     } finally {
       setLoading(false);
     }
-  }, [API_BASE, q, router]);
+  }, [API_BASE, debouncedQ, router]);
 
-  const uploadPacientePhoto = async (paciente: PacienteResumo & { foto?: string }, file?: File | null) => {
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebouncedQ(q), 280);
+    return () => clearTimeout(timeout);
+  }, [q]);
+
+  const uploadPacientePhoto = async (paciente: PacienteResumo, file?: File | null) => {
     if (!file) return;
     const token = localStorage.getItem('token');
     if (!token) return;
@@ -91,7 +98,7 @@ export default function PacientesPage() {
   const totalAtendimentos = pacientes.reduce((sum, paciente) => sum + paciente.total_atendimentos, 0);
 
   return (
-    <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-8 scrollbar-hide">
+    <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-8 scrollbar-hide fade-up">
       <div className="flex items-start justify-between gap-4 mb-8">
         <div>
           <div className="flex items-center gap-3 mb-1">
@@ -128,7 +135,7 @@ export default function PacientesPage() {
         />
       </div>
 
-      <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden">
+      <div className="premium-surface rounded-xl overflow-hidden fade-up">
         <div className="p-4 border-b border-[var(--border)] flex items-center justify-between">
           <div className="font-semibold text-sm flex items-center gap-2"><CalendarClock size={16} className="text-[var(--primary)]" /> Pacientes do banco</div>
           <div className="text-xs text-[var(--text-muted)]">{loading ? "Carregando..." : `${pacientes.length} registro(s)`}</div>
@@ -165,8 +172,14 @@ export default function PacientesPage() {
                     <div className="flex items-center">
                       <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-[var(--primary)]/30 to-[#111811] flex items-center justify-center">
                         {paciente.foto ? (
-                          // @ts-expect-error - foto may be base64 from API
-                          <img src={paciente.foto} alt={paciente.nome} className="w-full h-full object-cover" />
+                          <Image
+                            src={paciente.foto}
+                            alt={paciente.nome}
+                            width={48}
+                            height={48}
+                            unoptimized
+                            className="w-full h-full object-cover"
+                          />
                         ) : (
                           paciente.nome.split(" ").slice(0,2).map((p:string)=>p[0]?.toUpperCase()).join("")
                         )}

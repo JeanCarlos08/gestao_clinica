@@ -67,7 +67,7 @@ class TestValidateStatus:
             assert validate_status(status) is None
 
     def test_status_invalido(self):
-        assert validate_status("Pendente") is not None
+        assert validate_status("StatusInexistente") is not None
 
 
 class TestValidateFileUpload:

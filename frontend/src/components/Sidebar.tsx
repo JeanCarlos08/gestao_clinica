@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   Home, ClipboardList, BarChart2, Upload, Settings, Bot, LogOut, FileText, Users,
@@ -63,7 +64,7 @@ export default function Sidebar() {
   const navContent = (
     <>
       <div className="overflow-y-auto scrollbar-hide pb-4 flex-1">
-        <div className="p-5 flex items-center gap-3 border-b border-[var(--border)] mb-4">
+        <div className="p-5 flex items-center gap-3 border-b border-[var(--border)] mb-4 bg-[linear-gradient(120deg,rgba(34,197,94,0.08),transparent_45%)]">
           <div className="text-[var(--primary)]">
             <Sparkles size={24} />
           </div>
@@ -73,8 +74,14 @@ export default function Sidebar() {
         <div className="flex items-center gap-3 px-5 mb-6">
           <div className="w-10 h-10 rounded-full bg-[var(--primary)] flex items-center justify-center text-black font-bold overflow-hidden flex-shrink-0">
             {photoSrc ? (
-              // @ts-expect-error - photo may be base64 from API
-              <img src={photoSrc} alt="avatar" className="w-full h-full object-cover" />
+              <Image
+                src={photoSrc}
+                alt="avatar"
+                width={40}
+                height={40}
+                unoptimized
+                className="w-full h-full object-cover"
+              />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-sm">
                 {getUserInitials(profile.displayName)}
