@@ -249,6 +249,17 @@ _SCHEMA_STATEMENTS = (
     );
     """,
     """
+    CREATE TABLE IF NOT EXISTS temporary_permissions (
+        id              SERIAL PRIMARY KEY,
+        google_doc_id   VARCHAR(255) NOT NULL,
+        permission_id   VARCHAR(255) NOT NULL,
+        created_by      VARCHAR(255),
+        expires_at      TIMESTAMPTZ,
+        revoked         BOOLEAN DEFAULT FALSE,
+        criado_em       TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    );
+    """,
+    """
     CREATE TABLE IF NOT EXISTS notas (
         id        SERIAL PRIMARY KEY,
         titulo    VARCHAR(255) NOT NULL,

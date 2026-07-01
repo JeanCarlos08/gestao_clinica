@@ -46,7 +46,41 @@ export default function DocEditorPage() {
       <p className="text-sm text-muted-foreground mb-2">O documento será carregado no iframe abaixo. Se o Google bloquear o embed, use o link para abrir em nova aba.</p>
       {loading && <div>Carregando documento...</div>}
       {error && <div className="text-red-600">{error}</div>}
-      {docId && <GoogleDocsIframe docId={docId} makePublic={false} />}
+      {docId && (
+        <div>
+          <div className="mb-3 flex items-center gap-2">
+            <input id="tempMinutes" type="number" min={1} defaultValue={30} className="w-24 p-2 rounded bg-[var(--card)] border" />
+            <button
+              onClick={async () => {
+                const token = localStorage.getItem('token')
+                const minutes = (document.getElementById('tempMinutes') as HTMLInputElement).value
+                try {
+                  const res = await fetch('/api/docs/embed', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ doc_id: docId, temporary_minutes: Number(minutes) }) })
+                  const j = await res.json()
+                  if (!res.ok) throw new Error(j.detail || 'Falha')
+                  alert(`Permissão criada: ${j.permission_id}. Expira em: ${j.expires_at}`)
+                } catch (err: any) { alert(err.message || String(err)) }
+              }}
+              className="px-3 py-1 bg-[var(--primary)] text-white rounded"
+            >Conceder Acesso Temporário</button>
+            <button
+              onClick={async () => {
+                const token = localStorage.getItem('token')
+                const perm = prompt('Permission ID para revogar (copie do alerta)')
+                if (!perm) return
+                try {
+                  const res = await fetch('/api/docs/revoke', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ doc_id: docId, permission_id: perm }) })
+                  const j = await res.json()
+                  if (!res.ok) throw new Error(j.detail || 'Falha')
+                  alert('Permissão revogada')
+                } catch (err: any) { alert(err.message || String(err)) }
+              }}
+              className="px-3 py-1 bg-red-600 text-white rounded"
+            >Revogar Acesso</button>
+          </div>
+          <GoogleDocsIframe docId={docId} makePublic={false} />
+        </div>
+      )}
     </main>
   )
 }

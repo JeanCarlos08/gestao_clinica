@@ -22,6 +22,7 @@ from pydantic import BaseModel, EmailStr, Field
 from core.config import settings
 from infrastructure.connection import ensure_schema
 from core.repositories.repositories import atendimento_repo, arquivo_repo, auditoria_repo, documento_repo
+from core.repositories.repositories import temporary_permission_repo
 from core.entities.models import DocumentoCreate
 from core.repositories.user_repositories import user_repo, clinic_config_repo
 from core.repositories.repositories import preferences_repo
@@ -74,6 +75,43 @@ async def _startup() -> None:
             )
     except Exception as e:
         logger.warning(f"Startup: bootstrap do admin não concluído: {e}")
+
+    # Background task: revoga permissões temporárias expiradas a cada minuto
+    try:
+        import asyncio
+
+        async def _revoke_loop():
+            from services.credentials_loader import load_credentials
+            from google.oauth2 import service_account
+            from googleapiclient.discovery import build
+
+            while True:
+                try:
+                    expired = temporary_permission_repo.list_expired()
+                    if expired:
+                        try:
+                            creds = load_credentials()
+                            scopes = ["https://www.googleapis.com/auth/drive"]
+                            sa_creds = service_account.Credentials.from_service_account_info(creds, scopes=scopes)
+                            drive = build("drive", "v3", credentials=sa_creds, cache_discovery=False)
+                        except Exception as e:
+                            logger.warning(f"Revoker: não foi possível inicializar Drive client: {e}")
+                            expired = []
+
+                        for item in expired:
+                            try:
+                                drive.permissions().delete(fileId=item["google_doc_id"], permissionId=item["permission_id"]).execute()
+                                temporary_permission_repo.mark_revoked(item["id"])
+                                logger.info(f"Revoked temporary permission {item['permission_id']} for doc {item['google_doc_id']}")
+                            except Exception as e:
+                                logger.warning(f"Erro ao revogar permissão automática: {e}")
+                except Exception as e:
+                    logger.debug(f"Revoker loop error: {e}")
+                await asyncio.sleep(60)
+
+        asyncio.create_task(_revoke_loop())
+    except Exception as e:
+        logger.debug(f"Não foi possível iniciar revoker loop: {e}")
 
 # CORS: lê domínios permitidos do .env — NUNCA usar "*" em produção
 _raw_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000")
@@ -247,6 +285,19 @@ async def create_doc_embed_link(payload: DocsEmbedRequest, request: Request):
                 expires_at = (datetime.datetime.utcnow() + datetime.timedelta(minutes=int(temp_minutes))).isoformat() + "Z"
                 result["permission_id"] = perm.get("id")
                 result["expires_at"] = expires_at
+                # registra no banco para revogação automática posterior
+                try:
+                    # obter usuário do token
+                    auth = request.headers.get("Authorization", "")
+                    token = None
+                    if auth.startswith("Bearer "):
+                        token = auth.split("Bearer ", 1)[1]
+                    from services.security import verify_access_token
+                    payload_token = verify_access_token(token) if token else None
+                    created_by = payload_token.get("sub") if payload_token else None
+                    temporary_permission_repo.create(payload.doc_id, perm.get("id"), created_by, expires_at)
+                except Exception as e:
+                    logger.warning(f"Falha ao registrar permissão temporária no banco: {e}")
             except Exception as e:
                 logger.warning(f"Falha ao criar permissão temporária: {e}")
 
@@ -284,6 +335,13 @@ async def revoke_doc_permission(payload: dict, request: Request):
         sa_creds = service_account.Credentials.from_service_account_info(load_credentials(), scopes=scopes)
         drive = build("drive", "v3", credentials=sa_creds, cache_discovery=False)
         drive.permissions().delete(fileId=doc_id, permissionId=perm_id).execute()
+        # marca como revogada no banco se existir
+        try:
+            # se perm_id for numérico (id da tabela), tentar mark_revoked por id numérico; caso contrário, buscar por permission_id
+            temporary_permission_repo.mark_revoked(int(payload.get("db_id"))) if payload.get("db_id") else None
+        except Exception:
+            # fallback: procurar e marcar por permission_id não implementado (silencioso)
+            pass
         return {"revoked": True}
     except Exception as e:
         logger.warning(f"Falha ao revogar permissão: {e}")
