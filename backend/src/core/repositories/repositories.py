@@ -680,6 +680,30 @@ class DocumentoRepository:
             logger.error(f"Erro ao listar documentos: {e}")
             return []
 
+    def find_by_atendimento(self, atendimento_id: int) -> Documento | None:
+        """Retorna o documento mais recente associado a um `atendimento_id`."""
+        try:
+            with connection_scope(commit=False) as conn:
+                cur = conn.cursor()
+                cur.execute(
+                    f"SELECT id, titulo, google_doc_id, tipo, atendimento_id, criado_em FROM {TABLE_DOCUMENTOS} WHERE atendimento_id = %s ORDER BY criado_em DESC LIMIT 1",
+                    (atendimento_id,),
+                )
+                r = cur.fetchone()
+                if not r:
+                    return None
+                return Documento(
+                    id=r["id"],
+                    titulo=r["titulo"],
+                    google_doc_id=r["google_doc_id"],
+                    tipo=r["tipo"],
+                    atendimento_id=r.get("atendimento_id"),
+                    criado_em=r.get("criado_em"),
+                )
+        except Exception as e:
+            logger.error(f"Erro ao buscar documento por atendimento: {e}")
+            return None
+
     def delete(self, doc_id: int) -> bool:
         """Remove um documento."""
         try:

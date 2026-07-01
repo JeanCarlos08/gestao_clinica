@@ -167,7 +167,7 @@ class EsquecimentoResponse(BaseModel):
 # Router
 # ─────────────────────────────────────────────────────────────
 
-from fastapi import APIRouter, UploadFile, File, Form
+from fastapi import APIRouter, UploadFile, File, Form, Request
 
 api_router = APIRouter(prefix="/api")
 
@@ -178,15 +178,25 @@ api_router = APIRouter(prefix="/api")
 class DocsEmbedRequest(BaseModel):
     doc_id: str
     make_public: bool = False
+    temporary_minutes: Optional[int] = None
 
 
 @api_router.post("/docs/embed", tags=["Docs"])
-async def create_doc_embed_link(payload: DocsEmbedRequest, current_user: dict = Depends(get_current_user)):
+async def create_doc_embed_link(payload: DocsEmbedRequest, request: Request):
     """Retorna uma URL de edição/incorporação para um Google Doc.
 
     Se `make_public=True`, tenta criar uma permissão `anyoneWithLink`=writer
     usando as credenciais de service account carregadas pelo `credentials_loader`.
     """
+    # Validação manual do token (evita dependência por ordem de definição)
+    auth = request.headers.get("Authorization", "")
+    token = None
+    if auth.startswith("Bearer "):
+        token = auth.split("Bearer ", 1)[1]
+    from services.security import verify_access_token
+    if not token or not verify_access_token(token):
+        raise HTTPException(status_code=401, detail="Token inválido ou ausente.")
+
     try:
         creds = None
         from services.credentials_loader import load_credentials
@@ -207,22 +217,77 @@ async def create_doc_embed_link(payload: DocsEmbedRequest, current_user: dict = 
         sa_creds = service_account.Credentials.from_service_account_info(creds, scopes=scopes)
         drive = build("drive", "v3", credentials=sa_creds, cache_discovery=False)
 
-        if payload.make_public:
-            # Cria permissão pública para edição (cuidado: permite edição por qualquer um com link)
+        edit_url = f"https://docs.google.com/document/d/{payload.doc_id}/edit"
+
+        result: dict = {"edit_url": edit_url, "embed_url": edit_url}
+
+        # Se pedir make_public sem tempo, cria permissão anyone writer (risco de segurança)
+        if payload.make_public and not getattr(payload, "temporary_minutes", None):
             try:
-                drive.permissions().create(
+                perm = drive.permissions().create(
                     fileId=payload.doc_id,
                     body={"type": "anyone", "role": "writer"},
-                    fields="id",
+                    fields="id,role,type",
                 ).execute()
+                result["permission_id"] = perm.get("id")
             except Exception as e:
-                # Log e continuar retornando a URL de edição, não falhar totalmente
                 logger.warning(f"Falha ao criar permissão pública: {e}")
 
-        edit_url = f"https://docs.google.com/document/d/{payload.doc_id}/edit"
-        return {"edit_url": edit_url, "embed_url": edit_url}
+        # Suporte a permissões temporárias: cria permissão e retorna id + expiração
+        temp_minutes = getattr(payload, "temporary_minutes", None)
+        if temp_minutes:
+            try:
+                perm = drive.permissions().create(
+                    fileId=payload.doc_id,
+                    body={"type": "anyone", "role": "writer"},
+                    fields="id,role,type",
+                ).execute()
+                import datetime
+
+                expires_at = (datetime.datetime.utcnow() + datetime.timedelta(minutes=int(temp_minutes))).isoformat() + "Z"
+                result["permission_id"] = perm.get("id")
+                result["expires_at"] = expires_at
+            except Exception as e:
+                logger.warning(f"Falha ao criar permissão temporária: {e}")
+
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao preparar link do documento: {e}")
+
+
+
+@api_router.post("/docs/revoke", tags=["Docs"])
+async def revoke_doc_permission(payload: dict, request: Request):
+    """Revoga uma permissão criada anteriormente no Drive.
+
+    Payload esperado: {"doc_id": "<id>", "permission_id": "<perm id>"}
+    """
+    auth = request.headers.get("Authorization", "")
+    token = None
+    if auth.startswith("Bearer "):
+        token = auth.split("Bearer ", 1)[1]
+    from services.security import verify_access_token
+    if not token or not verify_access_token(token):
+        raise HTTPException(status_code=401, detail="Token inválido ou ausente.")
+
+    doc_id = payload.get("doc_id")
+    perm_id = payload.get("permission_id")
+    if not doc_id or not perm_id:
+        raise HTTPException(status_code=400, detail="doc_id e permission_id são obrigatórios.")
+
+    try:
+        from google.oauth2 import service_account
+        from googleapiclient.discovery import build
+        from services.credentials_loader import load_credentials
+
+        scopes = ["https://www.googleapis.com/auth/drive"]
+        sa_creds = service_account.Credentials.from_service_account_info(load_credentials(), scopes=scopes)
+        drive = build("drive", "v3", credentials=sa_creds, cache_discovery=False)
+        drive.permissions().delete(fileId=doc_id, permissionId=perm_id).execute()
+        return {"revoked": True}
+    except Exception as e:
+        logger.warning(f"Falha ao revogar permissão: {e}")
+        raise HTTPException(status_code=500, detail=f"Falha ao revogar permissão: {e}")
 
 
 # ─────────────────────────────────────────────────────────────
@@ -669,6 +734,15 @@ async def list_laudos(current_user: dict = Depends(get_current_user)):
         for d in documentos
         if d.tipo == "laudo"
     ]
+
+
+@api_router.get("/pacientes/{atendimento_id}/document", tags=["Pacientes"])
+async def get_paciente_document(atendimento_id: int, current_user: dict = Depends(get_current_user)):
+    """Retorna o `google_doc_id` mais recente associado ao atendimento/paciente."""
+    doc = documento_repo.find_by_atendimento(atendimento_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Documento não encontrado para esse atendimento.")
+    return {"google_doc_id": doc.google_doc_id, "db_id": doc.id, "titulo": doc.titulo}
 
 
 @api_router.post("/laudos/gerar", response_model=LaudoResponse, tags=["Laudos"])
