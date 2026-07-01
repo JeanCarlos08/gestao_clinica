@@ -34,6 +34,8 @@ from utils.constants import CLINIC_PREF_USER_PHOTO, CLINIC_PREF_LOGO, MODALIDADE
 
 logger = get_logger(__name__)
 
+import os
+
 # ─────────────────────────────────────────────────────────────
 # App e CORS
 # ─────────────────────────────────────────────────────────────
@@ -476,11 +478,23 @@ class IAPayload(BaseModel):
 @api_router.post("/ia/gerar-parecer", tags=["IA"])
 async def gerar_parecer(payload: IAPayload, current_user: dict = Depends(get_current_user)):
     """Gera um parecer clínico formal usando Google Gemini."""
-    if not settings.gemini_api_key:
-        raise HTTPException(status_code=503, detail="Chave da API do Gemini não configurada no servidor.")
-    
+    # Verifica fontes de credenciais: API key (GOOGLE_API_KEY/GEMINI_API_KEY) ou ADC
+    has_api_key = bool(settings.gemini_api_key)
+    has_adc = bool(os.getenv("GOOGLE_APPLICATION_CREDENTIALS"))
+    if not has_api_key and not has_adc:
+        logger.error("Gemini credenciais ausentes. GOOGLE_API_KEY/GEMINI_API_KEY ou GOOGLE_APPLICATION_CREDENTIALS não configurado.")
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "IA (Gemini) não configurada. Defina a variável de ambiente `GOOGLE_API_KEY` ou `GEMINI_API_KEY`, "
+                "ou configure Application Default Credentials e aponte `GOOGLE_APPLICATION_CREDENTIALS` para o JSON da service account."
+            ),
+        )
+
     import google.generativeai as genai
-    genai.configure(api_key=settings.gemini_api_key)
+    # Configure somente se houver API key explícita; caso contrário o client tentará ADC
+    if has_api_key:
+        genai.configure(api_key=settings.gemini_api_key)
     
     prompt = (
         f"Você é um psicólogo/psiquiatra experiente. Escreva um parágrafo formal e bem estruturado "
