@@ -75,6 +75,7 @@ export default function LaudosPage() {
       if (res.status === 401) { localStorage.removeItem("token"); router.push("/"); return; }
       const data = await res.json();
       setLaudos(data as LaudoGerado[]);
+      try { sessionStorage.setItem("laudos_cache", JSON.stringify(data)); } catch {}
     } catch {
       // lista fica vazia; não bloqueia a UI
     } finally {
@@ -85,7 +86,20 @@ export default function LaudosPage() {
   useEffect(() => {
     const token = getToken();
     if (!token) { router.push("/"); return; }
-    fetchLaudos();
+    // show cached laudos immediately for perceived speed
+    try {
+      const raw = sessionStorage.getItem("laudos_cache");
+      if (raw) {
+        setLaudos(JSON.parse(raw));
+        setLoadingLaudos(false);
+        // refresh in background
+        setTimeout(() => fetchLaudos(), 100);
+      } else {
+        fetchLaudos();
+      }
+    } catch {
+      fetchLaudos();
+    }
     fetch(`${API()}/laudos/template-status`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then((d) => setTemplateOk(d.configurado === true))
@@ -99,6 +113,20 @@ export default function LaudosPage() {
     if (!token) { router.push("/"); return; }
 
     setIsGenerating(true);
+    // optimistic UI: add temporary placeholder laudo
+    const tempId = `tmp-${Date.now()}`;
+    const optimistic: LaudoGerado = {
+      id: tempId,
+      titulo: `Laudo - ${form.nome}`,
+      paciente: form.nome,
+      tipo: TIPOS_AVALIACAO.filter((t) => form.tipos[t.key]).map((t) => t.label).join(", ") || form.motivo || "Laudo",
+      data: new Date().toLocaleDateString("pt-BR"),
+      status: "Gerando...",
+      url: "",
+      embed_url: "",
+    };
+    setLaudos((prev) => [optimistic, ...prev]);
+
     try {
       const payload = {
         nome_paciente: form.nome,
@@ -135,12 +163,16 @@ export default function LaudosPage() {
         embed_url: data.embed_url,
       };
 
+      // replace optimistic placeholder with real result
+      setLaudos((prev) => [novoDoc, ...prev.filter((l) => l.id !== tempId)]);
+      try { sessionStorage.setItem("laudos_cache", JSON.stringify([novoDoc, ...laudos])); } catch {}
       setIsModalOpen(false);
       setForm(defaultForm);
       setEditorDoc(novoDoc);
-      await fetchLaudos(); // recarrega lista do banco
       showToast("success", "Laudo gerado com sucesso!");
     } catch (err: unknown) {
+      // remove optimistic placeholder
+      setLaudos((prev) => prev.filter((l) => !l.id.toString().startsWith("tmp-")));
       showToast("error", err instanceof Error ? err.message : "Falha ao gerar laudo.");
     } finally {
       setIsGenerating(false);
@@ -165,7 +197,7 @@ export default function LaudosPage() {
       URL.revokeObjectURL(url);
       setLaudos((prev) => prev.map((l) => l.id === laudo.id ? { ...l, status: "PDF Exportado" } : l));
       showToast("success", "PDF baixado com sucesso!");
-    } catch {
+    } catch (e) {
       showToast("error", "Falha ao exportar PDF.");
     } finally {
       setDownloadingId(null);
@@ -263,8 +295,18 @@ export default function LaudosPage() {
             </thead>
             <tbody className="divide-y divide-[#1e2e1e]">
               {loadingLaudos ? (
-                <tr><td colSpan={6} className="px-6 py-12 text-center text-[var(--text-muted)]"><Loader2 size={20} className="animate-spin inline mr-2" />Carregando laudos...</td></tr>
-              ) : laudos.filter((l) => !searchQ || l.paciente.toLowerCase().includes(searchQ.toLowerCase())).length === 0 ? (
+                  // skeleton rows for perceived speed
+                  Array.from({ length: 4 }).map((_, i) => (
+                    <tr key={`skeleton-${i}`} className="group list-item-fade">
+                      <td className="px-6 py-4"><div className="h-4 w-40 skeleton rounded-md" /></td>
+                      <td className="px-6 py-4"><div className="h-5 w-48 skeleton rounded-md" /></td>
+                      <td className="px-6 py-4"><div className="h-4 w-24 skeleton rounded-md" /></td>
+                      <td className="px-6 py-4"><div className="h-4 w-20 skeleton rounded-md" /></td>
+                      <td className="px-6 py-4"><div className="h-4 w-20 skeleton rounded-full" /></td>
+                      <td className="px-6 py-4 text-right"><div className="h-8 w-24 skeleton rounded-xl inline-block" /></td>
+                    </tr>
+                  ))
+                ) : laudos.filter((l) => !searchQ || l.paciente.toLowerCase().includes(searchQ.toLowerCase())).length === 0 ? (
                 <tr><td colSpan={6} className="px-6 py-12 text-center text-[var(--text-muted)]">{searchQ ? "Nenhum laudo encontrado para a busca." : "Nenhum laudo gerado ainda."}</td></tr>
               ) : laudos.filter((l) => !searchQ || l.paciente.toLowerCase().includes(searchQ.toLowerCase())).map((laudo) => (
                 <tr key={laudo.id} className="hover:bg-[#111811]/50 transition-colors group">
@@ -295,7 +337,22 @@ export default function LaudosPage() {
         {/* Mobile cards */}
         <div className="md:hidden divide-y divide-[#1e2e1e]">
           {loadingLaudos ? (
-            <p className="p-8 text-center text-[var(--text-muted)] text-sm flex items-center justify-center gap-2"><Loader2 size={16} className="animate-spin" /> Carregando...</p>
+            // mobile skeleton cards
+            Array.from({ length: 3 }).map((_, i) => (
+              <div key={`mskel-${i}`} className="p-4 space-y-3 list-item-fade">
+                <div className="flex justify-between items-start gap-2">
+                  <div>
+                    <div className="h-4 w-36 skeleton rounded-md" />
+                    <div className="h-3 w-28 mt-2 skeleton rounded-md" />
+                  </div>
+                  <div className="h-5 w-16 skeleton rounded-full" />
+                </div>
+                <div className="flex gap-2">
+                  <div className="flex-1 h-9 skeleton rounded-lg" />
+                  <div className="flex-1 h-9 skeleton rounded-lg" />
+                </div>
+              </div>
+            ))
           ) : laudos.filter((l) => !searchQ || l.paciente.toLowerCase().includes(searchQ.toLowerCase())).length === 0 ? (
             <p className="p-8 text-center text-[var(--text-muted)] text-sm">{searchQ ? "Nenhum laudo encontrado." : "Nenhum laudo gerado ainda."}</p>
           ) : laudos.filter((l) => !searchQ || l.paciente.toLowerCase().includes(searchQ.toLowerCase())).map((laudo) => (
