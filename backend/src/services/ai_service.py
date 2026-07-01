@@ -50,23 +50,45 @@ class AIService:
             return False
 
         try:
-            import google.generativeai as genai
-            genai.configure(api_key=settings.gemini_api_key)
-        except ImportError:
-            logger.error("AI: google-generativeai não instalado.")
+            from services.ai_helpers import get_genai_or_none
+            genai = get_genai_or_none(settings.gemini_api_key)
+            if genai is None:
+                logger.error("AI: nenhuma SDK GenAI disponível (google.genai).")
+                return False
+        except Exception as e:
+            logger.error(f"AI: erro ao inicializar cliente GenAI: {e}")
             return False
 
         candidates = settings.gemini_fallback_models
 
+        # Tenta inicializar modelos com o cliente obtido (adapter `google.genai`)
         for model_name in candidates:
             try:
                 model = genai.GenerativeModel(model_name)
-                cls._model = model
-                logger.info(f"AI: Modelo '{model_name}' inicializado com sucesso.")
-                return True
+                # Teste rápido para verificar se o modelo realmente gera texto
+                try:
+                    test_resp = None
+                    try:
+                        test_resp = model.generate_content('Teste rápido: diga OK em uma palavra')
+                    except Exception:
+                        test_resp = None
+
+                    text = getattr(test_resp, 'text', None) if test_resp is not None else None
+                    if text and str(text).strip():
+                        cls._model = model
+                        logger.info(f"AI: Modelo '{model_name}' inicializado com sucesso.")
+                        return True
+                    else:
+                        logger.warning(f"AI: Modelo '{model_name}' não retornou texto válido. Tentando próximo.")
+                        continue
+                except Exception as e:
+                    logger.warning(f"AI: Erro ao testar modelo '{model_name}': {type(e).__name__}")
+                    continue
             except Exception as e:
                 logger.warning(f"AI: Modelo '{model_name}' indisponível: {type(e).__name__}")
                 continue
+
+        # Não há fallback legado — se nenhum modelo funcionou, falhamos explicitamente
 
         logger.error("AI: Nenhum modelo Gemini disponível para esta API Key.")
         return False
