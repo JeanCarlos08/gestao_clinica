@@ -173,6 +173,59 @@ api_router = APIRouter(prefix="/api")
 
 
 # ─────────────────────────────────────────────────────────────
+# Google Docs embed helper
+# ─────────────────────────────────────────────────────────────
+class DocsEmbedRequest(BaseModel):
+    doc_id: str
+    make_public: bool = False
+
+
+@api_router.post("/docs/embed", tags=["Docs"])
+async def create_doc_embed_link(payload: DocsEmbedRequest, current_user: dict = Depends(get_current_user)):
+    """Retorna uma URL de edição/incorporação para um Google Doc.
+
+    Se `make_public=True`, tenta criar uma permissão `anyoneWithLink`=writer
+    usando as credenciais de service account carregadas pelo `credentials_loader`.
+    """
+    try:
+        creds = None
+        from services.credentials_loader import load_credentials
+        creds = load_credentials()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Não foi possível carregar credenciais: {e}")
+
+    try:
+        from google.oauth2 import service_account
+        from googleapiclient.discovery import build
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Google API client não disponível: {e}")
+
+    try:
+        scopes = [
+            "https://www.googleapis.com/auth/drive",
+        ]
+        sa_creds = service_account.Credentials.from_service_account_info(creds, scopes=scopes)
+        drive = build("drive", "v3", credentials=sa_creds, cache_discovery=False)
+
+        if payload.make_public:
+            # Cria permissão pública para edição (cuidado: permite edição por qualquer um com link)
+            try:
+                drive.permissions().create(
+                    fileId=payload.doc_id,
+                    body={"type": "anyone", "role": "writer"},
+                    fields="id",
+                ).execute()
+            except Exception as e:
+                # Log e continuar retornando a URL de edição, não falhar totalmente
+                logger.warning(f"Falha ao criar permissão pública: {e}")
+
+        edit_url = f"https://docs.google.com/document/d/{payload.doc_id}/edit"
+        return {"edit_url": edit_url, "embed_url": edit_url}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao preparar link do documento: {e}")
+
+
+# ─────────────────────────────────────────────────────────────
 # Pydantic Schemas — Configurações
 # ─────────────────────────────────────────────────────────────
 
@@ -491,10 +544,11 @@ async def gerar_parecer(payload: IAPayload, current_user: dict = Depends(get_cur
             ),
         )
 
-    import google.generativeai as genai
-    # Configure somente se houver API key explícita; caso contrário o client tentará ADC
-    if has_api_key:
-        genai.configure(api_key=settings.gemini_api_key)
+    from services.ai_helpers import get_genai_or_none
+    genai = get_genai_or_none(settings.gemini_api_key)
+    if genai is None:
+        logger.error("Gemini: nenhuma SDK disponível para GenAI.")
+        raise HTTPException(status_code=503, detail="IA (Gemini) não disponível no servidor.")
     
     prompt = (
         f"Você é um psicólogo/psiquiatra experiente. Escreva um parágrafo formal e bem estruturado "
@@ -517,6 +571,37 @@ async def gerar_parecer(payload: IAPayload, current_user: dict = Depends(get_cur
 
     logger.error(f"Erro no Gemini em todos os modelos: {last_error}")
     raise HTTPException(status_code=503, detail="Falha ao gerar texto com IA. Verifique permissões da API Key e modelo Gemini habilitado.")
+
+
+@api_router.get("/ia/diagnostics", tags=["IA"])
+async def ia_diagnostics(current_user: dict = Depends(get_current_user)):
+    """Endpoint seguro de diagnóstico para checar se IA/Google Docs estão configurados.
+
+    Retorna apenas flags booleanas e metadados não sensíveis — NÃO expõe chaves ou JSONs.
+    """
+    has_api_key = bool(settings.gemini_api_key)
+    has_adc = bool(os.getenv("GOOGLE_APPLICATION_CREDENTIALS"))
+
+    # Tenta verificar se o loader de credenciais do Google consegue obter algo (sem retornar o conteúdo)
+    google_creds_loadable = False
+    try:
+        from services.credentials_loader import load_credentials
+        try:
+            load_credentials()
+            google_creds_loadable = True
+        except Exception:
+            google_creds_loadable = False
+    except Exception:
+        google_creds_loadable = False
+
+    return {
+        "has_ai": settings.has_ai,
+        "gemini_key_set": has_api_key,
+        "uses_adc": has_adc,
+        "gemini_model": settings.gemini_model,
+        "gemini_fallback_models": settings.gemini_fallback_models,
+        "google_service_account_loadable": google_creds_loadable,
+    }
 
 # ─────────────────────────────────────────────────────────────
 # Laudos Endpoints (Google Docs)
