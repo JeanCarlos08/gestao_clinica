@@ -61,3 +61,24 @@ npm run dev
 - Paciente: `POST /api/pacientes/{slug}/photo`
 
 Observação: imagens são salvas em base64 em `user_preferences`.
+
+## Google Docs integration (test & configuration)
+
+To test the Google Docs editor end-to-end you need service account credentials and a Google Docs template ID (for laudo generation) or an existing doc id for manual testing.
+
+1. Provide credentials for Google APIs. Options supported by the project (see `backend/src/services/credentials_loader.py`):
+	- Place `credentials.json` in the project root (recommended for local dev).
+	- Set `GOOGLE_SERVICE_ACCOUNT_JSON_B64` with base64-encoded JSON.
+	- Configure Secret Manager (set `CREDENTIALS_SOURCE=secret_manager` and related env vars).
+
+2. (Optional) Configure `GOOGLE_DOCS_TEMPLATE_ID` in the `.env` to enable automatic laudo generation from a template.
+
+3. To create a test Google Doc using the loaded service account credentials run:
+
+```bash
+python backend/scripts/create_test_doc.py
+```
+
+The script prints the newly created `doc_id` and a view URL you can use to test the modal in the frontend.
+
+If you prefer, provide an existing `doc_id` and open the modal from the frontend page for a patient.

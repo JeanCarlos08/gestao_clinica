@@ -3,6 +3,7 @@
 import React from "react"
 import { useParams } from "next/navigation"
 import GoogleDocsIframe from "../../../components/GoogleDocsIframe"
+import GoogleDocsModal from "../../../components/GoogleDocsModal"
 
 export default function DocEditorPage() {
   const params = useParams()
@@ -10,6 +11,7 @@ export default function DocEditorPage() {
   const [docId, setDocId] = React.useState<string | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
+  const [modalOpen, setModalOpen] = React.useState(false)
 
   React.useEffect(() => {
     if (!id) return
@@ -77,8 +79,15 @@ export default function DocEditorPage() {
               }}
               className="px-3 py-1 bg-red-600 text-white rounded"
             >Revogar Acesso</button>
+            <button
+              onClick={() => setModalOpen(true)}
+              className="px-3 py-1 bg-blue-600 text-white rounded"
+            >Abrir Editor</button>
           </div>
-          <GoogleDocsIframe docId={docId} makePublic={false} />
+          {/* Modal popup */}
+          {modalOpen && docId && (
+            <GoogleDocsModal docId={docId} onClose={() => setModalOpen(false)} />
+          )}
         </div>
       )}
     </main>
