@@ -680,6 +680,30 @@ class DocumentoRepository:
             logger.error(f"Erro ao listar documentos: {e}")
             return []
 
+    def find_by_atendimento(self, atendimento_id: int) -> Documento | None:
+        """Retorna o documento mais recente associado a um `atendimento_id`."""
+        try:
+            with connection_scope(commit=False) as conn:
+                cur = conn.cursor()
+                cur.execute(
+                    f"SELECT id, titulo, google_doc_id, tipo, atendimento_id, criado_em FROM {TABLE_DOCUMENTOS} WHERE atendimento_id = %s ORDER BY criado_em DESC LIMIT 1",
+                    (atendimento_id,),
+                )
+                r = cur.fetchone()
+                if not r:
+                    return None
+                return Documento(
+                    id=r["id"],
+                    titulo=r["titulo"],
+                    google_doc_id=r["google_doc_id"],
+                    tipo=r["tipo"],
+                    atendimento_id=r.get("atendimento_id"),
+                    criado_em=r.get("criado_em"),
+                )
+        except Exception as e:
+            logger.error(f"Erro ao buscar documento por atendimento: {e}")
+            return None
+
     def delete(self, doc_id: int) -> bool:
         """Remove um documento."""
         try:
@@ -688,6 +712,49 @@ class DocumentoRepository:
                 cur.execute(f"DELETE FROM {TABLE_DOCUMENTOS} WHERE id = %s", (doc_id,))
                 return cur.rowcount > 0
         except Exception:
+            return False
+
+
+class TemporaryPermissionRepository:
+    """Gerencia permissões temporárias criadas pelo sistema."""
+
+    def create(self, google_doc_id: str, permission_id: str, created_by: str | None, expires_at: str | None) -> int:
+        try:
+            with connection_scope() as conn:
+                cur = conn.cursor()
+                cur.execute(
+                    f"INSERT INTO temporary_permissions (google_doc_id, permission_id, created_by, expires_at) VALUES (%s, %s, %s, %s) RETURNING id",
+                    (google_doc_id, permission_id, created_by, expires_at),
+                )
+                r = cur.fetchone()
+                return int(r["id"]) if r else 0
+        except Exception as e:
+            logger.error(f"Erro ao criar temporary permission: {e}")
+            return 0
+
+    def list_expired(self) -> list[dict]:
+        try:
+            with connection_scope(commit=False) as conn:
+                cur = conn.cursor()
+                cur.execute(
+                    "SELECT id, google_doc_id, permission_id FROM temporary_permissions WHERE revoked = FALSE AND expires_at IS NOT NULL AND expires_at <= NOW()"
+                )
+                return [
+                    {"id": r["id"], "google_doc_id": r["google_doc_id"], "permission_id": r["permission_id"]}
+                    for r in cur.fetchall()
+                ]
+        except Exception as e:
+            logger.error(f"Erro ao listar permissões expiradas: {e}")
+            return []
+
+    def mark_revoked(self, perm_id: int) -> bool:
+        try:
+            with connection_scope() as conn:
+                cur = conn.cursor()
+                cur.execute("UPDATE temporary_permissions SET revoked = TRUE WHERE id = %s", (perm_id,))
+                return cur.rowcount > 0
+        except Exception as e:
+            logger.error(f"Erro ao marcar permissão como revogada: {e}")
             return False
 
 
@@ -700,3 +767,4 @@ arquivo_repo = ArquivoRepository()
 preferences_repo = PreferencesRepository()
 documento_repo = DocumentoRepository()
 auditoria_repo = AuditoriaRepository()
+temporary_permission_repo = TemporaryPermissionRepository()

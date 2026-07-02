@@ -22,6 +22,7 @@ from pydantic import BaseModel, EmailStr, Field
 from core.config import settings
 from infrastructure.connection import ensure_schema
 from core.repositories.repositories import atendimento_repo, arquivo_repo, auditoria_repo, documento_repo
+from core.repositories.repositories import temporary_permission_repo
 from core.entities.models import DocumentoCreate
 from core.repositories.user_repositories import user_repo, clinic_config_repo
 from core.repositories.repositories import preferences_repo
@@ -74,6 +75,43 @@ async def _startup() -> None:
             )
     except Exception as e:
         logger.warning(f"Startup: bootstrap do admin não concluído: {e}")
+
+    # Background task: revoga permissões temporárias expiradas a cada minuto
+    try:
+        import asyncio
+
+        async def _revoke_loop():
+            from services.credentials_loader import load_credentials
+            from google.oauth2 import service_account
+            from googleapiclient.discovery import build
+
+            while True:
+                try:
+                    expired = temporary_permission_repo.list_expired()
+                    if expired:
+                        try:
+                            creds = load_credentials()
+                            scopes = ["https://www.googleapis.com/auth/drive"]
+                            sa_creds = service_account.Credentials.from_service_account_info(creds, scopes=scopes)
+                            drive = build("drive", "v3", credentials=sa_creds, cache_discovery=False)
+                        except Exception as e:
+                            logger.warning(f"Revoker: não foi possível inicializar Drive client: {e}")
+                            expired = []
+
+                        for item in expired:
+                            try:
+                                drive.permissions().delete(fileId=item["google_doc_id"], permissionId=item["permission_id"]).execute()
+                                temporary_permission_repo.mark_revoked(item["id"])
+                                logger.info(f"Revoked temporary permission {item['permission_id']} for doc {item['google_doc_id']}")
+                            except Exception as e:
+                                logger.warning(f"Erro ao revogar permissão automática: {e}")
+                except Exception as e:
+                    logger.debug(f"Revoker loop error: {e}")
+                await asyncio.sleep(60)
+
+        asyncio.create_task(_revoke_loop())
+    except Exception as e:
+        logger.debug(f"Não foi possível iniciar revoker loop: {e}")
 
 # CORS: lê domínios permitidos do .env — NUNCA usar "*" em produção
 _raw_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000")
@@ -167,9 +205,147 @@ class EsquecimentoResponse(BaseModel):
 # Router
 # ─────────────────────────────────────────────────────────────
 
-from fastapi import APIRouter, UploadFile, File, Form
+from fastapi import APIRouter, UploadFile, File, Form, Request
 
 api_router = APIRouter(prefix="/api")
+
+
+# ─────────────────────────────────────────────────────────────
+# Google Docs embed helper
+# ─────────────────────────────────────────────────────────────
+class DocsEmbedRequest(BaseModel):
+    doc_id: str
+    make_public: bool = False
+    temporary_minutes: Optional[int] = None
+
+
+@api_router.post("/docs/embed", tags=["Docs"])
+async def create_doc_embed_link(payload: DocsEmbedRequest, request: Request):
+    """Retorna uma URL de edição/incorporação para um Google Doc.
+
+    Se `make_public=True`, tenta criar uma permissão `anyoneWithLink`=writer
+    usando as credenciais de service account carregadas pelo `credentials_loader`.
+    """
+    # Validação manual do token (evita dependência por ordem de definição)
+    auth = request.headers.get("Authorization", "")
+    token = None
+    if auth.startswith("Bearer "):
+        token = auth.split("Bearer ", 1)[1]
+    from services.security import verify_access_token
+    if not token or not verify_access_token(token):
+        raise HTTPException(status_code=401, detail="Token inválido ou ausente.")
+
+    try:
+        creds = None
+        from services.credentials_loader import load_credentials
+        creds = load_credentials()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Não foi possível carregar credenciais: {e}")
+
+    try:
+        from google.oauth2 import service_account
+        from googleapiclient.discovery import build
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Google API client não disponível: {e}")
+
+    try:
+        scopes = [
+            "https://www.googleapis.com/auth/drive",
+        ]
+        sa_creds = service_account.Credentials.from_service_account_info(creds, scopes=scopes)
+        drive = build("drive", "v3", credentials=sa_creds, cache_discovery=False)
+
+        edit_url = f"https://docs.google.com/document/d/{payload.doc_id}/edit"
+
+        result: dict = {"edit_url": edit_url, "embed_url": edit_url}
+
+        # Se pedir make_public sem tempo, cria permissão anyone writer (risco de segurança)
+        if payload.make_public and not getattr(payload, "temporary_minutes", None):
+            try:
+                perm = drive.permissions().create(
+                    fileId=payload.doc_id,
+                    body={"type": "anyone", "role": "writer"},
+                    fields="id,role,type",
+                ).execute()
+                result["permission_id"] = perm.get("id")
+            except Exception as e:
+                logger.warning(f"Falha ao criar permissão pública: {e}")
+
+        # Suporte a permissões temporárias: cria permissão e retorna id + expiração
+        temp_minutes = getattr(payload, "temporary_minutes", None)
+        if temp_minutes:
+            try:
+                perm = drive.permissions().create(
+                    fileId=payload.doc_id,
+                    body={"type": "anyone", "role": "writer"},
+                    fields="id,role,type",
+                ).execute()
+                import datetime
+
+                expires_at = (datetime.datetime.utcnow() + datetime.timedelta(minutes=int(temp_minutes))).isoformat() + "Z"
+                result["permission_id"] = perm.get("id")
+                result["expires_at"] = expires_at
+                # registra no banco para revogação automática posterior
+                try:
+                    # obter usuário do token
+                    auth = request.headers.get("Authorization", "")
+                    token = None
+                    if auth.startswith("Bearer "):
+                        token = auth.split("Bearer ", 1)[1]
+                    from services.security import verify_access_token
+                    payload_token = verify_access_token(token) if token else None
+                    created_by = payload_token.get("sub") if payload_token else None
+                    temporary_permission_repo.create(payload.doc_id, perm.get("id"), created_by, expires_at)
+                except Exception as e:
+                    logger.warning(f"Falha ao registrar permissão temporária no banco: {e}")
+            except Exception as e:
+                logger.warning(f"Falha ao criar permissão temporária: {e}")
+
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao preparar link do documento: {e}")
+
+
+
+@api_router.post("/docs/revoke", tags=["Docs"])
+async def revoke_doc_permission(payload: dict, request: Request):
+    """Revoga uma permissão criada anteriormente no Drive.
+
+    Payload esperado: {"doc_id": "<id>", "permission_id": "<perm id>"}
+    """
+    auth = request.headers.get("Authorization", "")
+    token = None
+    if auth.startswith("Bearer "):
+        token = auth.split("Bearer ", 1)[1]
+    from services.security import verify_access_token
+    if not token or not verify_access_token(token):
+        raise HTTPException(status_code=401, detail="Token inválido ou ausente.")
+
+    doc_id = payload.get("doc_id")
+    perm_id = payload.get("permission_id")
+    if not doc_id or not perm_id:
+        raise HTTPException(status_code=400, detail="doc_id e permission_id são obrigatórios.")
+
+    try:
+        from google.oauth2 import service_account
+        from googleapiclient.discovery import build
+        from services.credentials_loader import load_credentials
+
+        scopes = ["https://www.googleapis.com/auth/drive"]
+        sa_creds = service_account.Credentials.from_service_account_info(load_credentials(), scopes=scopes)
+        drive = build("drive", "v3", credentials=sa_creds, cache_discovery=False)
+        drive.permissions().delete(fileId=doc_id, permissionId=perm_id).execute()
+        # marca como revogada no banco se existir
+        try:
+            # se perm_id for numérico (id da tabela), tentar mark_revoked por id numérico; caso contrário, buscar por permission_id
+            temporary_permission_repo.mark_revoked(int(payload.get("db_id"))) if payload.get("db_id") else None
+        except Exception:
+            # fallback: procurar e marcar por permission_id não implementado (silencioso)
+            pass
+        return {"revoked": True}
+    except Exception as e:
+        logger.warning(f"Falha ao revogar permissão: {e}")
+        raise HTTPException(status_code=500, detail=f"Falha ao revogar permissão: {e}")
 
 
 # ─────────────────────────────────────────────────────────────
@@ -491,10 +667,11 @@ async def gerar_parecer(payload: IAPayload, current_user: dict = Depends(get_cur
             ),
         )
 
-    import google.generativeai as genai
-    # Configure somente se houver API key explícita; caso contrário o client tentará ADC
-    if has_api_key:
-        genai.configure(api_key=settings.gemini_api_key)
+    from services.ai_helpers import get_genai_or_none
+    genai = get_genai_or_none(settings.gemini_api_key)
+    if genai is None:
+        logger.error("Gemini: nenhuma SDK disponível para GenAI.")
+        raise HTTPException(status_code=503, detail="IA (Gemini) não disponível no servidor.")
     
     prompt = (
         f"Você é um psicólogo/psiquiatra experiente. Escreva um parágrafo formal e bem estruturado "
@@ -517,6 +694,37 @@ async def gerar_parecer(payload: IAPayload, current_user: dict = Depends(get_cur
 
     logger.error(f"Erro no Gemini em todos os modelos: {last_error}")
     raise HTTPException(status_code=503, detail="Falha ao gerar texto com IA. Verifique permissões da API Key e modelo Gemini habilitado.")
+
+
+@api_router.get("/ia/diagnostics", tags=["IA"])
+async def ia_diagnostics(current_user: dict = Depends(get_current_user)):
+    """Endpoint seguro de diagnóstico para checar se IA/Google Docs estão configurados.
+
+    Retorna apenas flags booleanas e metadados não sensíveis — NÃO expõe chaves ou JSONs.
+    """
+    has_api_key = bool(settings.gemini_api_key)
+    has_adc = bool(os.getenv("GOOGLE_APPLICATION_CREDENTIALS"))
+
+    # Tenta verificar se o loader de credenciais do Google consegue obter algo (sem retornar o conteúdo)
+    google_creds_loadable = False
+    try:
+        from services.credentials_loader import load_credentials
+        try:
+            load_credentials()
+            google_creds_loadable = True
+        except Exception:
+            google_creds_loadable = False
+    except Exception:
+        google_creds_loadable = False
+
+    return {
+        "has_ai": settings.has_ai,
+        "gemini_key_set": has_api_key,
+        "uses_adc": has_adc,
+        "gemini_model": settings.gemini_model,
+        "gemini_fallback_models": settings.gemini_fallback_models,
+        "google_service_account_loadable": google_creds_loadable,
+    }
 
 # ─────────────────────────────────────────────────────────────
 # Laudos Endpoints (Google Docs)
@@ -584,6 +792,15 @@ async def list_laudos(current_user: dict = Depends(get_current_user)):
         for d in documentos
         if d.tipo == "laudo"
     ]
+
+
+@api_router.get("/pacientes/{atendimento_id}/document", tags=["Pacientes"])
+async def get_paciente_document(atendimento_id: int, current_user: dict = Depends(get_current_user)):
+    """Retorna o `google_doc_id` mais recente associado ao atendimento/paciente."""
+    doc = documento_repo.find_by_atendimento(atendimento_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Documento não encontrado para esse atendimento.")
+    return {"google_doc_id": doc.google_doc_id, "db_id": doc.id, "titulo": doc.titulo}
 
 
 @api_router.post("/laudos/gerar", response_model=LaudoResponse, tags=["Laudos"])

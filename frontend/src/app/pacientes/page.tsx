@@ -151,6 +151,7 @@ export default function PacientesPage() {
                 <th className="p-4 font-medium">Último atendimento</th>
                 <th className="p-4 font-medium">Modalidades</th>
                 <th className="p-4 font-medium">Status</th>
+                <th className="p-4 font-medium">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -202,6 +203,14 @@ export default function PacientesPage() {
                     <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-[var(--status-concluido-bg)] text-[var(--status-concluido)]">
                       {paciente.status || "Ativo"}
                     </span>
+                  </td>
+                  <td className="p-4">
+                    <button
+                      onClick={() => router.push(`/pacientes/${paciente.id}/doc-editor`)}
+                      className="text-sm px-3 py-1 bg-[var(--primary)] rounded text-white hover:opacity-90"
+                    >
+                      Editar Documento
+                    </button>
                   </td>
                 </tr>
               ))}
