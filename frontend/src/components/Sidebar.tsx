@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   Home, ClipboardList, BarChart2, Upload, Settings, Bot, LogOut, FileText, Users,
-  Menu, X, Sparkles
+  Menu, X, Sparkles, ChevronDown, ChevronUp, Send,
 } from "lucide-react";
 import { buildDisplayName, getLoggedUserProfile, getUserInitials } from "@/lib/auth";
 
@@ -20,14 +20,21 @@ const NAV_ITEMS = [
   { href: "/configuracoes", label: "Configurações", icon: Settings },
 ];
 
+type Message = { role: "user" | "assistant"; text: string };
+
 export default function Sidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [profile, setProfile] = useState({ displayName: "Usuário", role: "" });
   const [photoSrc, setPhotoSrc] = useState<string | null>(null);
+
+  // AI chat state
+  const [chatOpen, setChatOpen] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [aiQuery, setAiQuery] = useState("");
-  const [aiReply, setAiReply] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     setOpen(false);
@@ -44,11 +51,7 @@ export default function Sidebar() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     const user = getLoggedUserProfile(token);
-    setProfile({
-      displayName: user.displayName,
-      role: user.role,
-    });
-    // fetch clinic/user photo if available
+    setProfile({ displayName: user.displayName, role: user.role });
     (async () => {
       try {
         if (!token) return;
@@ -61,26 +64,40 @@ export default function Sidebar() {
     })();
   }, []);
 
+  // Auto-scroll on new messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, aiLoading]);
+
+  // Focus input when chat opens
+  useEffect(() => {
+    if (chatOpen) setTimeout(() => inputRef.current?.focus(), 100);
+  }, [chatOpen]);
+
   const isActive = (href: string) =>
     pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
 
   const handleAiChat = async () => {
-    if (!aiQuery.trim() || aiLoading) return;
+    const q = aiQuery.trim();
+    if (!q || aiLoading) return;
+    setAiQuery("");
+    setMessages((prev) => [...prev, { role: "user", text: q }]);
     setAiLoading(true);
-    setAiReply(null);
     try {
       const token = localStorage.getItem("token");
       const res = await fetch((process.env.NEXT_PUBLIC_API_URL || "/api") + "/ia/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ pergunta: aiQuery.trim() }),
+        body: JSON.stringify({ pergunta: q }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Erro ao consultar IA");
-      setAiReply(data.resposta);
-      setAiQuery("");
+      setMessages((prev) => [...prev, { role: "assistant", text: data.resposta }]);
     } catch (err: unknown) {
-      setAiReply(err instanceof Error ? `❌ ${err.message}` : "❌ Erro ao consultar IA");
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", text: err instanceof Error ? `❌ ${err.message}` : "❌ Erro ao consultar IA" },
+      ]);
     } finally {
       setAiLoading(false);
     }
@@ -88,7 +105,7 @@ export default function Sidebar() {
 
   const navContent = (
     <>
-      <div className="overflow-y-auto scrollbar-hide pb-4 flex-1">
+      <div className="overflow-y-auto scrollbar-hide pb-4 flex-1 min-h-0">
         <div className="p-5 flex items-center gap-3 border-b border-[var(--border)] mb-4 bg-[linear-gradient(120deg,rgba(34,197,94,0.08),transparent_45%)]">
           <div className="text-[var(--primary)]">
             <Sparkles size={24} />
@@ -99,14 +116,7 @@ export default function Sidebar() {
         <div className="flex items-center gap-3 px-5 mb-6">
           <div className="w-10 h-10 rounded-full bg-[var(--primary)] flex items-center justify-center text-black font-bold overflow-hidden flex-shrink-0">
             {photoSrc ? (
-              <Image
-                src={photoSrc}
-                alt="avatar"
-                width={40}
-                height={40}
-                unoptimized
-                className="w-full h-full object-cover"
-              />
+              <Image src={photoSrc} alt="avatar" width={40} height={40} unoptimized className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-sm">
                 {getUserInitials(profile.displayName)}
@@ -136,41 +146,98 @@ export default function Sidebar() {
           ))}
         </nav>
 
-        <div className="mx-4 mt-6 p-4 rounded-xl border border-[var(--border)] bg-[var(--card)]">
-          <div className="flex items-center gap-2 text-[var(--primary)] font-semibold text-sm mb-2">
-            <Bot size={16} /> IA Assistente
-          </div>
-          <p className="text-xs text-[var(--text-muted)] mb-3">Pergunte sobre seus dados...</p>
-          <div className="relative">
-            <input
-              type="text"
-              value={aiQuery}
-              onChange={(e) => setAiQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && aiQuery.trim() && !aiLoading) {
-                  handleAiChat();
-                }
-              }}
-              placeholder="Ex: Resumo de hoje"
-              className="w-full bg-[var(--background)] border border-[var(--border)] rounded-md py-2 pl-3 pr-8 text-xs text-white focus:outline-none focus:border-[var(--primary)]"
-              disabled={aiLoading}
-            />
-            <button
-              className="absolute right-2 top-2 text-[var(--primary)] disabled:opacity-40"
-              type="button"
-              disabled={aiLoading || !aiQuery.trim()}
-              onClick={handleAiChat}
-            >
-              {aiLoading ? (
-                <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" /></svg>
-              ) : (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4Z"/></svg>
+        {/* ─── AI Chat ─── */}
+        <div className="mx-3 mt-6 rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
+          {/* Header / toggle */}
+          <button
+            type="button"
+            onClick={() => setChatOpen((v) => !v)}
+            className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-[var(--primary)] hover:bg-white/5 transition-colors"
+          >
+            <span className="flex items-center gap-2">
+              <Bot size={16} />
+              IA Assistente
+              {messages.length > 0 && (
+                <span className="ml-1 text-[10px] bg-[var(--primary)] text-black rounded-full px-1.5 py-0.5 font-bold">
+                  {messages.length}
+                </span>
               )}
-            </button>
-          </div>
-          {aiReply && (
-            <div className="mt-3 text-xs text-[var(--text-label)] bg-[var(--background)] rounded-lg p-2 max-h-40 overflow-y-auto whitespace-pre-wrap border border-[var(--border)]">
-              {aiReply}
+            </span>
+            {chatOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
+
+          {chatOpen && (
+            <div className="flex flex-col border-t border-[var(--border)]">
+              {/* Messages area */}
+              <div className="flex flex-col gap-2 p-3 h-56 overflow-y-auto scrollbar-hide">
+                {messages.length === 0 && (
+                  <div className="flex flex-col items-center justify-center h-full gap-2 text-center">
+                    <Bot size={28} className="text-[var(--primary)] opacity-60" />
+                    <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                      Olá! Pergunte sobre pacientes,<br />atendimentos ou estatísticas.
+                    </p>
+                  </div>
+                )}
+                {messages.map((msg, i) => (
+                  <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                    {msg.role === "assistant" && (
+                      <div className="w-5 h-5 rounded-full bg-[var(--primary)] flex items-center justify-center mr-1.5 mt-0.5 flex-shrink-0">
+                        <Bot size={11} className="text-black" />
+                      </div>
+                    )}
+                    <div
+                      className={`max-w-[85%] px-3 py-2 rounded-2xl text-xs leading-relaxed whitespace-pre-wrap ${
+                        msg.role === "user"
+                          ? "bg-[var(--primary)] text-black rounded-br-sm font-medium"
+                          : "bg-[var(--background)] text-[var(--text-label)] border border-[var(--border)] rounded-bl-sm"
+                      }`}
+                    >
+                      {msg.text}
+                    </div>
+                  </div>
+                ))}
+                {/* Typing indicator */}
+                {aiLoading && (
+                  <div className="flex justify-start items-end gap-1.5">
+                    <div className="w-5 h-5 rounded-full bg-[var(--primary)] flex items-center justify-center flex-shrink-0">
+                      <Bot size={11} className="text-black" />
+                    </div>
+                    <div className="bg-[var(--background)] border border-[var(--border)] rounded-2xl rounded-bl-sm px-3 py-2.5 flex gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] animate-bounce [animation-delay:0ms]" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] animate-bounce [animation-delay:150ms]" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] animate-bounce [animation-delay:300ms]" />
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Input */}
+              <div className="flex items-end gap-2 p-2 border-t border-[var(--border)] bg-[var(--background)]">
+                <textarea
+                  ref={inputRef}
+                  value={aiQuery}
+                  onChange={(e) => setAiQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleAiChat();
+                    }
+                  }}
+                  placeholder="Mensagem..."
+                  rows={1}
+                  disabled={aiLoading}
+                  className="flex-1 resize-none bg-transparent text-xs text-white placeholder:text-[var(--text-muted)] focus:outline-none py-1.5 max-h-20 overflow-y-auto scrollbar-hide disabled:opacity-50"
+                />
+                <button
+                  type="button"
+                  onClick={handleAiChat}
+                  disabled={aiLoading || !aiQuery.trim()}
+                  className="w-7 h-7 rounded-full bg-[var(--primary)] flex items-center justify-center text-black flex-shrink-0 disabled:opacity-30 hover:opacity-90 transition-opacity"
+                >
+                  <Send size={13} />
+                </button>
+              </div>
             </div>
           )}
         </div>
