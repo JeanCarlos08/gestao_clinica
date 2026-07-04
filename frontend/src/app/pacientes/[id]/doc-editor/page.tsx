@@ -2,8 +2,8 @@
 
 import React from "react"
 import { useParams } from "next/navigation"
-import GoogleDocsIframe from "../../../components/GoogleDocsIframe"
-import GoogleDocsModal from "../../../components/GoogleDocsModal"
+import GoogleDocsIframe from "@/components/GoogleDocsIframe"
+import GoogleDocsModal from "@/components/GoogleDocsModal"
 
 export default function DocEditorPage() {
   const params = useParams()
