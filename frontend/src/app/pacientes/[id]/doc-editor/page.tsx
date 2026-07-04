@@ -2,7 +2,6 @@
 
 import React from "react"
 import { useParams } from "next/navigation"
-import GoogleDocsIframe from "@/components/GoogleDocsIframe"
 import GoogleDocsModal from "@/components/GoogleDocsModal"
 
 export default function DocEditorPage() {
@@ -30,8 +29,8 @@ export default function DocEditorPage() {
         }
         const j = await res.json()
         if (mounted) setDocId(j.google_doc_id)
-      } catch (err: any) {
-        if (mounted) setError(err.message || String(err))
+      } catch (err: unknown) {
+        if (mounted) setError(err instanceof Error ? err.message : String(err))
       } finally {
         if (mounted) setLoading(false)
       }
@@ -61,7 +60,7 @@ export default function DocEditorPage() {
                   const j = await res.json()
                   if (!res.ok) throw new Error(j.detail || 'Falha')
                   alert(`Permissão criada: ${j.permission_id}. Expira em: ${j.expires_at}`)
-                } catch (err: any) { alert(err.message || String(err)) }
+                } catch (err: unknown) { alert(err instanceof Error ? err.message : String(err)) }
               }}
               className="px-3 py-1 bg-[var(--primary)] text-white rounded"
             >Conceder Acesso Temporário</button>
@@ -75,7 +74,7 @@ export default function DocEditorPage() {
                   const j = await res.json()
                   if (!res.ok) throw new Error(j.detail || 'Falha')
                   alert('Permissão revogada')
-                } catch (err: any) { alert(err.message || String(err)) }
+                } catch (err: unknown) { alert(err instanceof Error ? err.message : String(err)) }
               }}
               className="px-3 py-1 bg-red-600 text-white rounded"
             >Revogar Acesso</button>

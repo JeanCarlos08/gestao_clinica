@@ -197,7 +197,7 @@ export default function LaudosPage() {
       URL.revokeObjectURL(url);
       setLaudos((prev) => prev.map((l) => l.id === laudo.id ? { ...l, status: "PDF Exportado" } : l));
       showToast("success", "PDF baixado com sucesso!");
-    } catch (e) {
+    } catch {
       showToast("error", "Falha ao exportar PDF.");
     } finally {
       setDownloadingId(null);

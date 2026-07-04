@@ -27,8 +27,8 @@ export default function GoogleDocsIframe({ docId, makePublic = false }: Props) {
         }
         const j = await res.json()
         if (mounted) setUrl(j.embed_url || j.edit_url)
-      } catch (err: any) {
-        if (mounted) setError(err.message || String(err))
+      } catch (err: unknown) {
+        if (mounted) setError(err instanceof Error ? err.message : String(err))
       }
     }
 
