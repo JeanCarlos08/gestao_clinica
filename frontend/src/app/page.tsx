@@ -487,6 +487,8 @@ export default function LoginPage() {
               <div className="auth-card-footer">
                 <Shield size={12} />
                 Acesso protegido &nbsp;·&nbsp; Tentativas: {attempts}/5
+                <a href="/privacy" className="ml-3 text-sm text-gray-300 hover:text-white">Privacy</a>
+                <a href="/terms" className="ml-3 text-sm text-gray-300 hover:text-white">Terms</a>
               </div>
             </div>
           </div>
