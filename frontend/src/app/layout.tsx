@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import Sidebar from "@/components/Sidebar";
+import AISidebar from "@/components/AISidebar";
 import "./globals.css";
 
 const manrope = Manrope({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"] });
@@ -34,6 +35,7 @@ export default function RootLayout({
         <main className="flex-1 flex flex-col h-full overflow-hidden bg-[var(--background)] pt-14 md:pt-0">
           {children}
         </main>
+        <AISidebar />
       </body>
     </html>
   );
