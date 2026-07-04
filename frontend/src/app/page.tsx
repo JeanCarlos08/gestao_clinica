@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Loader2, Shield, Sparkles } from "lucide-react";
+import { Eye, EyeOff, Loader2, Shield, Sparkles, X } from "lucide-react";
+
+const API = () => process.env.NEXT_PUBLIC_API_URL || "/api";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -11,6 +13,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [attempts, setAttempts] = useState(0);
+  const [consentModal, setConsentModal] = useState<null | "google" | "microsoft" | "apple">(null);
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -23,9 +26,7 @@ export default function LoginPage() {
       formData.append("username", username);
       formData.append("password", password);
 
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api";
-
-      const response = await fetch(`${API_BASE}/token`, {
+      const response = await fetch(`${API()}/token`, {
         method: "POST",
         body: formData,
       });
@@ -42,6 +43,31 @@ export default function LoginPage() {
       setError(err instanceof Error ? err.message : "Erro ao fazer login");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Registra consentimento e redireciona para OAuth do provedor
+  const handleSocialLogin = async (provider: "google" | "microsoft" | "apple") => {
+    // Registra consentimento LGPD antes de redirecionar
+    try {
+      await fetch(`${API()}/lgpd/consentimentos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          titular_nome: "Usuário",
+          finalidade: "agendamento",
+          base_legal: "consentimento",
+          provider,
+        }),
+      });
+    } catch { /* não bloquear o login se o registro de consentimento falhar */ }
+
+    if (provider === "google") {
+      window.location.href = `${API()}/auth/google`;
+    } else {
+      // Microsoft e Apple: em desenvolvimento
+      setError(`Login com ${provider === "microsoft" ? "Microsoft" : "Apple"} em breve.`);
+      setConsentModal(null);
     }
   };
 
@@ -355,7 +381,7 @@ export default function LoginPage() {
               {/* Social logins */}
               <div className="auth-socials">
                 {/* Google */}
-                <button type="button" className="auth-social-btn" title="Entrar com Google (em breve)">
+                <button type="button" className="auth-social-btn" onClick={() => setConsentModal("google")} title="Entrar com Google">
                   <svg width="17" height="17" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                     <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -366,7 +392,7 @@ export default function LoginPage() {
                 </button>
 
                 {/* Microsoft */}
-                <button type="button" className="auth-social-btn" title="Entrar com Microsoft (em breve)">
+                <button type="button" className="auth-social-btn" onClick={() => setConsentModal("microsoft")} title="Entrar com Microsoft (em breve)">
                   <svg width="16" height="16" viewBox="0 0 21 21">
                     <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
                     <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
@@ -377,7 +403,7 @@ export default function LoginPage() {
                 </button>
 
                 {/* Apple */}
-                <button type="button" className="auth-social-btn" title="Entrar com Apple (em breve)">
+                <button type="button" className="auth-social-btn" onClick={() => setConsentModal("apple")} title="Entrar com Apple (em breve)">
                   <svg width="15" height="17" viewBox="0 0 814 1000" fill="white">
                     <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105.5-57.2-155.5-127.9C46.7 790.7 0 663 0 541.8c0-194.3 127.4-297.5 252.8-297.5 66.1 0 121.2 43.4 162.7 43.4 39.5 0 101.1-46 176.3-46 28.5 0 130.9 2.6 198.3 99.2zm-234-181.5c31.1-36.9 53.1-88.1 53.1-139.3 0-7.1-.6-14.3-1.9-20.1-50.6 1.9-110.8 33.7-147.1 75.8-28.5 32.4-55.1 83.6-55.1 135.5 0 7.8 1.3 15.6 1.9 18.1 3.2.6 8.4 1.3 13.6 1.3 45.4 0 102.5-30.4 135.5-71.3z"/>
                   </svg>
@@ -468,6 +494,55 @@ export default function LoginPage() {
           <div className="auth-bottom">Clínica IA v2.0 &nbsp;·&nbsp; © 2025 Todos os direitos reservados</div>
         </div>
       </div>
+
+      {/* Modal de consentimento LGPD */}
+      {consentModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-2xl bg-[#0d1a0e] border border-[rgba(34,197,94,0.2)] shadow-2xl p-6 flex flex-col gap-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[rgba(34,197,94,0.1)] border border-[rgba(34,197,94,0.2)] flex items-center justify-center flex-shrink-0">
+                  <Shield size={18} className="text-[#22c55e]" />
+                </div>
+                <div>
+                  <h2 className="text-white font-bold text-base leading-tight">Consentimento LGPD</h2>
+                  <p className="text-[11px] text-[#6b7c6b]">Lei nº 13.709/2018 — Art. 8º</p>
+                </div>
+              </div>
+              <button onClick={() => setConsentModal(null)} className="p-1.5 rounded-lg text-[#6b7c6b] hover:text-white transition-colors">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="text-sm text-[#a3b5a3] leading-relaxed space-y-2">
+              <p>Ao continuar, você <strong className="text-white">autoriza</strong> o tratamento dos seus dados pessoais (nome, e-mail) para:</p>
+              <ul className="list-disc list-inside space-y-1 text-[#8fa88f] pl-1">
+                <li>Identificação e autenticação na plataforma</li>
+                <li>Agendamento e gestão de atendimentos clínicos</li>
+                <li>Comunicação sobre consultas e resultados</li>
+              </ul>
+              <p className="text-xs text-[#6b7c6b] pt-1">
+                Base legal: <strong>Consentimento</strong> (Art. 7º, I). Você pode revogar a qualquer momento em <em>Configurações &rsaquo; Privacidade</em>.
+              </p>
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => setConsentModal(null)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-white/[0.04] text-[#a3b5a3] border border-[rgba(255,255,255,0.08)] hover:text-white transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => handleSocialLogin(consentModal)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-[#22c55e] text-black hover:opacity-90 transition-opacity"
+              >
+                Aceitar e Continuar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

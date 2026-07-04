@@ -77,6 +77,11 @@ class Settings:
     # ── Google Docs ───────────────────────────────────────────
     google_docs_template_id: Optional[str] = field(default_factory=lambda: _get_secret("GOOGLE_DOCS_TEMPLATE_ID"))
 
+    # ── Google OAuth (login social) ───────────────────────────
+    google_oauth_client_id: Optional[str] = field(default_factory=lambda: _get_secret("GOOGLE_OAUTH_CLIENT_ID"))
+    google_oauth_client_secret: Optional[str] = field(default_factory=lambda: _get_secret("GOOGLE_OAUTH_CLIENT_SECRET"))
+    frontend_url: str = field(default_factory=lambda: _get_secret("FRONTEND_URL", "http://localhost:3000"))
+
     # ── Autenticação ──────────────────────────────────────────
     auth_username: str = field(default_factory=lambda: _get_secret("APP_ADMIN_USER", "admin"))
     auth_password: Optional[str] = field(default_factory=lambda: _get_secret("APP_ADMIN_PASS"))

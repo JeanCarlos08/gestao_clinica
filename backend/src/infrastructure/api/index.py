@@ -10,6 +10,7 @@ Inclui:
 """
 
 import os
+from datetime import timedelta
 from typing import Optional
 
 import uvicorn
@@ -1384,6 +1385,62 @@ async def info_lgpd():
     }
 
 
+@api_router.get(
+    "/lgpd/ropa",
+    tags=["LGPD"],
+    summary="ROPA — Registro de Atividades de Tratamento (Art. 37)",
+)
+async def get_ropa(current_user: dict = Depends(get_current_user)):
+    """Gera o Registro de Atividades de Tratamento dinamicamente."""
+    lgpd = get_lgpd_service()
+    return lgpd.gerar_ropa()
+
+
+@api_router.get(
+    "/lgpd/dpo",
+    tags=["LGPD"],
+    summary="Consultar configuração do DPO",
+)
+async def get_dpo_config(current_user: dict = Depends(get_current_user)):
+    lgpd = get_lgpd_service()
+    return lgpd.info_dpo()
+
+
+class DPOUpdatePayload(BaseModel):
+    dpo_nome: Optional[str] = None
+    dpo_email: Optional[str] = None
+    dpo_telefone: Optional[str] = None
+    empresa_nome: Optional[str] = None
+    empresa_cnpj: Optional[str] = None
+    empresa_endereco: Optional[str] = None
+
+
+@api_router.put(
+    "/lgpd/dpo",
+    tags=["LGPD"],
+    summary="Atualizar dados do DPO (admin)",
+)
+async def update_dpo_config(body: DPOUpdatePayload, current_user: dict = Depends(get_current_user)):
+    """Atualiza os dados do DPO (Encarregado de Dados)."""
+    lgpd = get_lgpd_service()
+    dados = {k: v for k, v in body.model_dump().items() if v is not None}
+    if not dados:
+        raise HTTPException(status_code=400, detail="Nenhum campo informado.")
+    ok = lgpd.atualizar_dpo(dados)
+    return {"sucesso": ok, "atualizados": list(dados.keys())}
+
+
+@api_router.get(
+    "/lgpd/esquecimentos",
+    tags=["LGPD"],
+    summary="Histórico de esquecimentos executados (sem PII)",
+)
+async def historico_esquecimentos(limit: int = 100, current_user: dict = Depends(get_current_user)):
+    """Lista todos os esquecimentos executados. Não contém PII — apenas hashes."""
+    lgpd = get_lgpd_service()
+    return {"total": limit, "registros": lgpd.historico_esquecimentos(limit=limit)}
+
+
 # ─────────────────────────────────────────────────────────────
 # Health Check
 # ─────────────────────────────────────────────────────────────
@@ -1393,6 +1450,102 @@ async def info_lgpd():
 async def health_check():
     """Health check público."""
     return {"status": "ok", "version": "2.1.0"}
+
+
+# ─────────────────────────────────────────────────────────────
+# Google OAuth 2.0 — Login Social
+# ─────────────────────────────────────────────────────────────
+
+@api_router.get("/auth/google", tags=["Auth"])
+async def google_oauth_redirect():
+    """Inicia o fluxo OAuth com Google. Redireciona para a tela de consentimento."""
+    client_id = settings.google_oauth_client_id
+    if not client_id:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Login com Google não configurado. Configure GOOGLE_OAUTH_CLIENT_ID.",
+        )
+    from fastapi.responses import RedirectResponse
+    import urllib.parse
+
+    redirect_uri = f"{settings.frontend_url.rstrip('/')}/api/auth/google/callback"
+    params = urllib.parse.urlencode({
+        "client_id": client_id,
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "scope": "openid email profile",
+        "access_type": "offline",
+        "prompt": "select_account",
+    })
+    return RedirectResponse(url=f"https://accounts.google.com/o/oauth2/v2/auth?{params}")
+
+
+@api_router.get("/auth/google/callback", tags=["Auth"])
+async def google_oauth_callback(code: str = None, error: str = None):
+    """Recebe o callback do Google, troca o code por token e gera JWT interno."""
+    from fastapi.responses import RedirectResponse
+    import urllib.parse, json
+
+    frontend_base = settings.frontend_url.rstrip("/")
+
+    if error or not code:
+        return RedirectResponse(url=f"{frontend_base}/auth/callback?error=acesso_negado")
+
+    client_id = settings.google_oauth_client_id
+    client_secret = settings.google_oauth_client_secret
+    if not client_id or not client_secret:
+        return RedirectResponse(url=f"{frontend_base}/auth/callback?error=nao_configurado")
+
+    # Troca code por access_token
+    try:
+        import httpx  # type: ignore
+        redirect_uri = f"{frontend_base}/api/auth/google/callback"
+        async with httpx.AsyncClient() as client:
+            token_res = await client.post(
+                "https://oauth2.googleapis.com/token",
+                data={
+                    "code": code,
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "redirect_uri": redirect_uri,
+                    "grant_type": "authorization_code",
+                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                timeout=10,
+            )
+        token_data = token_res.json()
+        if "error" in token_data:
+            return RedirectResponse(url=f"{frontend_base}/auth/callback?error=token_invalido")
+
+        # Busca info do usuário
+        async with httpx.AsyncClient() as client:
+            user_res = await client.get(
+                "https://www.googleapis.com/oauth2/v3/userinfo",
+                headers={"Authorization": f"Bearer {token_data['access_token']}"},
+                timeout=10,
+            )
+        user_info = user_res.json()
+
+        email: str = user_info.get("email", "")
+        name: str = user_info.get("name", email.split("@")[0] if email else "Usuário")
+        picture: str = user_info.get("picture", "")
+
+        if not email:
+            return RedirectResponse(url=f"{frontend_base}/auth/callback?error=email_nao_obtido")
+
+        # Gera JWT interno para o usuário Google
+        jwt_token = create_access_token(
+            data={"sub": email, "name": name, "picture": picture, "provider": "google"},
+            expires_delta=timedelta(minutes=settings.jwt_expiration_minutes),
+        )
+        params = urllib.parse.urlencode({"token": jwt_token, "name": name})
+        return RedirectResponse(url=f"{frontend_base}/auth/callback?{params}")
+
+    except ImportError:
+        return RedirectResponse(url=f"{frontend_base}/auth/callback?error=httpx_nao_instalado")
+    except Exception as exc:
+        logger.error(f"Google OAuth callback error: {exc}")
+        return RedirectResponse(url=f"{frontend_base}/auth/callback?error=erro_interno")
 
 
 # ─────────────────────────────────────────────────────────────

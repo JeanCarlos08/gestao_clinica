@@ -54,7 +54,6 @@ export default function LaudosPage() {
   const [laudos, setLaudos] = useState<LaudoGerado[]>([]);
   const [searchQ, setSearchQ] = useState("");
   const [templateOk, setTemplateOk] = useState<boolean | null>(null);
-  const [editorDoc, setEditorDoc] = useState<LaudoGerado | null>(null);
   const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
@@ -168,8 +167,8 @@ export default function LaudosPage() {
       try { sessionStorage.setItem("laudos_cache", JSON.stringify([novoDoc, ...laudos])); } catch {}
       setIsModalOpen(false);
       setForm(defaultForm);
-      setEditorDoc(novoDoc);
-      showToast("success", "Laudo gerado com sucesso!");
+      showToast("success", "Laudo gerado! Abrindo editor…");
+      router.push(`/laudos/${novoDoc.id}/editor`);
     } catch (err: unknown) {
       // remove optimistic placeholder
       setLaudos((prev) => prev.filter((l) => !l.id.toString().startsWith("tmp-")));
@@ -321,7 +320,7 @@ export default function LaudosPage() {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <button onClick={() => setEditorDoc(laudo)} className="p-2 text-blue-400 hover:bg-blue-400/10 rounded-lg" title="Editar no Google Docs"><Eye size={16} /></button>
+                      <button onClick={() => router.push(`/laudos/${laudo.id}/editor`)} className="p-2 text-blue-400 hover:bg-blue-400/10 rounded-lg" title="Abrir editor completo"><Eye size={16} /></button>
                       <a href={laudo.url} target="_blank" rel="noopener noreferrer" className="p-2 text-[var(--text-muted)] hover:text-white hover:bg-white/5 rounded-lg" title="Abrir em nova aba"><ExternalLink size={16} /></a>
                       <button onClick={() => downloadPdf(laudo)} disabled={downloadingId === laudo.id} className="p-2 text-[var(--primary)] hover:bg-[var(--primary)]/10 rounded-lg disabled:opacity-50" title="Baixar PDF">
                         {downloadingId === laudo.id ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
@@ -365,7 +364,7 @@ export default function LaudosPage() {
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[var(--primary)]/10 text-[var(--primary)]">{laudo.status}</span>
               </div>
               <div className="flex gap-2">
-                <button onClick={() => setEditorDoc(laudo)} className="flex-1 py-2 text-xs font-medium rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20">Visualizar</button>
+                <button onClick={() => router.push(`/laudos/${laudo.id}/editor`)} className="flex-1 py-2 text-xs font-medium rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20">Abrir Editor</button>
                 <button onClick={() => downloadPdf(laudo)} disabled={downloadingId === laudo.id} className="flex-1 py-2 text-xs font-medium rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/20 disabled:opacity-50">
                   {downloadingId === laudo.id ? "Exportando…" : "PDF"}
                 </button>
@@ -444,31 +443,6 @@ export default function LaudosPage() {
               </button>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Modal — Editor iframe */}
-      {editorDoc && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-black/80 backdrop-blur-sm">
-          <div className="flex items-center justify-between p-3 sm:p-4 bg-[#0a100a] border-b border-[#1e2e1e] gap-2">
-            <div className="min-w-0">
-              <h3 className="font-bold text-white truncate">{editorDoc.titulo}</h3>
-              <p className="text-xs text-[var(--text-muted)] truncate">{editorDoc.paciente}</p>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <button onClick={() => downloadPdf(editorDoc)} disabled={downloadingId === editorDoc.id} className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/30 disabled:opacity-50">
-                {downloadingId === editorDoc.id ? "Exportando…" : "Exportar PDF"}
-              </button>
-              <a href={editorDoc.url} target="_blank" rel="noopener noreferrer" className="p-2 text-[var(--text-muted)] hover:text-white" title="Abrir no Google Docs"><ExternalLink size={18} /></a>
-              <button onClick={() => setEditorDoc(null)} className="p-2 text-[var(--text-muted)] hover:text-white"><X size={20} /></button>
-            </div>
-          </div>
-          <iframe
-            src={editorDoc.embed_url}
-            className="flex-1 w-full bg-white"
-            title={`Editor — ${editorDoc.titulo}`}
-            allow="autoplay"
-          />
         </div>
       )}
     </div>

@@ -13,7 +13,10 @@ import os
 from datetime import datetime, UTC
 from typing import Any, Dict, List, Optional
 
-from core.repositories.lgpd_repositories import consentimento_repo, login_attempt_repo
+from core.repositories.lgpd_repositories import (
+    consentimento_repo, login_attempt_repo,
+    esquecimento_auditoria_repo, dpo_config_repo,
+)
 from infrastructure.connection import connection_scope
 from utils.logger import get_logger
 from utils.audit import log_event
@@ -233,15 +236,24 @@ class LGPDService:
 
             resultado["sucesso"] = True
 
-            # 5. Registrar auditoria (sem PII real)
+            # 5. Registrar auditoria imutável no banco (sem PII)
+            auditoria_id = esquecimento_auditoria_repo.registrar(
+                titular_email=email,
+                consentimentos_removidos=resultado["consentimentos_removidos"],
+                atendimentos_anonimizados=resultado["atendimentos_anonimizados"],
+            )
+            resultado["auditoria_id"] = auditoria_id
+
+            # 6. Registrar também no log de auditoria (arquivo)
             safe = anonymize_for_logging({"email": email, "nome": nome or ""})
             log_event("direito_esquecimento_executado", {
                 "titular": safe,
+                "auditoria_id": auditoria_id,
                 "consentimentos_removidos": resultado["consentimentos_removidos"],
                 "atendimentos_anonimizados": resultado["atendimentos_anonimizados"],
             })
 
-            logger.warning(f"ESQUECIMENTO executado: {resultado}")
+            logger.warning(f"ESQUECIMENTO executado (auditoria #{auditoria_id}): {resultado}")
 
         except Exception as e:
             logger.error(f"Erro ao executar esquecimento: {e}")
@@ -270,13 +282,26 @@ class LGPDService:
 
     def info_dpo(self) -> Dict[str, str]:
         """Retorna informações públicas do DPO (Encarregado de Dados)."""
+        cfg = dpo_config_repo.get_all()
         return {
-            "dpo_nome": DPO_NOME,
-            "dpo_email": DPO_EMAIL,
+            "dpo_nome": cfg.get("dpo_nome", DPO_NOME),
+            "dpo_email": cfg.get("dpo_email", DPO_EMAIL),
+            "dpo_telefone": cfg.get("dpo_telefone", ""),
             "lei": "LGPD - Lei nº 13.709/2018",
             "autoridade": "ANPD - Autoridade Nacional de Proteção de Dados",
             "contato_anpd": "https://www.gov.br/anpd",
         }
+
+    def atualizar_dpo(self, dados: Dict[str, str]) -> bool:
+        """Atualiza dados do DPO (admin only)."""
+        campos_permitidos = {"dpo_nome", "dpo_email", "dpo_telefone", "empresa_nome", "empresa_cnpj", "empresa_endereco"}
+        ok = True
+        for chave, valor in dados.items():
+            if chave in campos_permitidos:
+                if not dpo_config_repo.set(chave, str(valor)):
+                    ok = False
+        log_event("dpo_config_atualizado", {"campos": list(dados.keys())})
+        return ok
 
     def bases_legais(self) -> Dict[str, str]:
         """Retorna as bases legais utilizadas no sistema."""
@@ -286,6 +311,83 @@ class LGPDService:
             "obrigacao_legal": "Art. 7º, II — Cumprimento de obrigação legal",
             "tutela_saude": "Art. 7º, VIII — Tutela da saúde (dados de saúde: Art. 11, II, f)",
         }
+
+    def gerar_ropa(self) -> Dict[str, Any]:
+        """Gera o Registro de Atividades de Tratamento (ROPA) dinamicamente."""
+        cfg = dpo_config_repo.get_all()
+        try:
+            with __import__("infrastructure.connection", fromlist=["connection_scope"]).connection_scope(commit=False) as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT COUNT(*) AS total FROM consentimentos WHERE revogado = FALSE")
+                total_consentimentos = (cur.fetchone() or {}).get("total", 0)
+                cur.execute("SELECT COUNT(*) AS total FROM atendimentos")
+                total_atendimentos = (cur.fetchone() or {}).get("total", 0)
+                cur.execute("SELECT COUNT(*) AS total FROM lgpd_esquecimentos")
+                total_esquecimentos = (cur.fetchone() or {}).get("total", 0)
+        except Exception:
+            total_consentimentos = total_atendimentos = total_esquecimentos = 0
+
+        return {
+            "versao": "1.0",
+            "gerado_em": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+            "lei": "LGPD — Lei nº 13.709/2018",
+            "controlador": {
+                "nome": cfg.get("empresa_nome", "Clínica IA"),
+                "cnpj": cfg.get("empresa_cnpj", "Não informado"),
+                "endereco": cfg.get("empresa_endereco", "Não informado"),
+            },
+            "dpo": {
+                "nome": cfg.get("dpo_nome", DPO_NOME),
+                "email": cfg.get("dpo_email", DPO_EMAIL),
+                "telefone": cfg.get("dpo_telefone", ""),
+            },
+            "atividades_tratamento": [
+                {
+                    "nome": "Gestão de atendimentos clínicos",
+                    "finalidade": "Agendamento, acompanhamento e histórico de atendimentos psicológicos",
+                    "base_legal": "Art. 7º, VIII — Tutela da saúde",
+                    "dados_tratados": ["nome", "data_atendimento", "modalidade", "observações clínicas"],
+                    "titulares": "Pacientes",
+                    "compartilhamento": "Sem compartilhamento com terceiros",
+                    "retencao": "7 anos (obrigação legal — CFP)",
+                    "total_registros": total_atendimentos,
+                },
+                {
+                    "nome": "Consentimento do titular",
+                    "finalidade": "Registro formal de consentimento para tratamento de dados",
+                    "base_legal": "Art. 7º, I — Consentimento",
+                    "dados_tratados": ["nome", "e-mail", "IP de origem", "finalidade aceita"],
+                    "titulares": "Pacientes e usuários",
+                    "compartilhamento": "Sem compartilhamento",
+                    "retencao": "Até revogação ou esquecimento",
+                    "total_registros": total_consentimentos,
+                },
+                {
+                    "nome": "Elaboração de laudos psicológicos",
+                    "finalidade": "Geração de laudos via IA e Google Docs",
+                    "base_legal": "Art. 7º, VIII — Tutela da saúde",
+                    "dados_tratados": ["nome", "dados clínicos"],
+                    "titulares": "Pacientes",
+                    "compartilhamento": "Google Docs (processamento)",
+                    "retencao": "7 anos",
+                    "total_registros": None,
+                },
+            ],
+            "direitos_titulares": {
+                "acesso": "GET /api/lgpd/titulares/{email}/dados",
+                "portabilidade": "GET /api/lgpd/titulares/{email}/dados",
+                "revogacao": "DELETE /api/lgpd/consentimentos/{email}",
+                "esquecimento": "POST /api/lgpd/titulares/esquecimento",
+                "dpo_contato": cfg.get("dpo_email", DPO_EMAIL),
+            },
+            "auditoria": {
+                "total_esquecimentos_executados": total_esquecimentos,
+            },
+        }
+
+    def historico_esquecimentos(self, limit: int = 100) -> list:
+        """Lista histórico de esquecimentos executados (sem PII)."""
+        return esquecimento_auditoria_repo.listar(limit=limit)
 
 
 # ─────────────────────────────────────────────────────────────

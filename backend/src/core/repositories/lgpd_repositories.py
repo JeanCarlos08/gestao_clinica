@@ -303,3 +303,121 @@ class LoginAttemptRepository:
 
 consentimento_repo = ConsentimentoRepository()
 login_attempt_repo = LoginAttemptRepository()
+
+
+# ─────────────────────────────────────────────────────────────
+# Esquecimento Repository — Auditoria imutável (Art. 18, VI)
+# ─────────────────────────────────────────────────────────────
+
+class EsquecimentoAuditoriaRepository:
+    """
+    Registro imutável de esquecimentos executados.
+    Nunca contém PII — apenas hash SHA-256 do e-mail do titular.
+    """
+
+    def registrar(
+        self,
+        titular_email: str,
+        consentimentos_removidos: int,
+        atendimentos_anonimizados: int,
+        executado_por: str = "sistema",
+    ) -> Optional[int]:
+        import hashlib
+        titular_hash = hashlib.sha256(titular_email.lower().encode()).hexdigest()
+        try:
+            with connection_scope() as conn:
+                cur = conn.cursor()
+                cur.execute(
+                    """
+                    INSERT INTO lgpd_esquecimentos
+                        (titular_hash, consentimentos_removidos, atendimentos_anonimizados, executado_por)
+                    VALUES (%s, %s, %s, %s)
+                    RETURNING id
+                    """,
+                    (titular_hash, consentimentos_removidos, atendimentos_anonimizados, executado_por),
+                )
+                row = cur.fetchone()
+                return int(row["id"]) if row else None
+        except Exception as e:
+            logger.error(f"Erro ao registrar auditoria de esquecimento: {e}")
+            return None
+
+    def listar(self, limit: int = 100) -> list:
+        try:
+            with connection_scope(commit=False) as conn:
+                cur = conn.cursor()
+                cur.execute(
+                    "SELECT * FROM lgpd_esquecimentos ORDER BY executado_em DESC LIMIT %s",
+                    (min(limit, 500),),
+                )
+                return [dict(r) for r in cur.fetchall()]
+        except Exception as e:
+            logger.error(f"Erro ao listar esquecimentos: {e}")
+            return []
+
+
+# ─────────────────────────────────────────────────────────────
+# DPO Config Repository
+# ─────────────────────────────────────────────────────────────
+
+class DPOConfigRepository:
+    """Configuração do DPO armazenada no banco (editável via admin)."""
+
+    _DEFAULTS = {
+        "dpo_nome": "Encarregado de Dados (DPO)",
+        "dpo_email": "dpo@clinicaia.com.br",
+        "dpo_telefone": "",
+        "empresa_nome": "Clínica IA",
+        "empresa_cnpj": "",
+        "empresa_endereco": "",
+        "lei": "LGPD — Lei nº 13.709/2018",
+        "anpd_url": "https://www.gov.br/anpd",
+    }
+
+    def get(self, chave: str) -> Optional[str]:
+        import os
+        # Env vars têm prioridade
+        env_map = {"dpo_nome": "DPO_NOME", "dpo_email": "DPO_EMAIL"}
+        if chave in env_map and os.getenv(env_map[chave]):
+            return os.getenv(env_map[chave])
+        try:
+            with connection_scope(commit=False) as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT valor FROM lgpd_config WHERE chave = %s", (chave,))
+                row = cur.fetchone()
+                return row["valor"] if row else self._DEFAULTS.get(chave)
+        except Exception:
+            return self._DEFAULTS.get(chave)
+
+    def set(self, chave: str, valor: str) -> bool:
+        try:
+            with connection_scope() as conn:
+                cur = conn.cursor()
+                cur.execute(
+                    """
+                    INSERT INTO lgpd_config (chave, valor, updated_at)
+                    VALUES (%s, %s, NOW())
+                    ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor, updated_at = NOW()
+                    """,
+                    (chave[:100], valor[:2000]),
+                )
+            return True
+        except Exception as e:
+            logger.error(f"Erro ao salvar config DPO '{chave}': {e}")
+            return False
+
+    def get_all(self) -> dict:
+        result = dict(self._DEFAULTS)
+        try:
+            with connection_scope(commit=False) as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT chave, valor FROM lgpd_config")
+                for row in cur.fetchall():
+                    result[row["chave"]] = row["valor"]
+        except Exception:
+            pass
+        return result
+
+
+esquecimento_auditoria_repo = EsquecimentoAuditoriaRepository()
+dpo_config_repo = DPOConfigRepository()

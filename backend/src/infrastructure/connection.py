@@ -361,6 +361,30 @@ _SCHEMA_STATEMENTS = (
     """,
     "CREATE INDEX IF NOT EXISTS idx_login_attempts_user ON login_attempts (username, tentado_em DESC);",
     "CREATE INDEX IF NOT EXISTS idx_login_attempts_ip ON login_attempts (ip_address, tentado_em DESC);",
+    # ── LGPD: Registro imutável de esquecimentos executados (Art. 18, VI) ──
+    """
+    CREATE TABLE IF NOT EXISTS lgpd_esquecimentos (
+        id              SERIAL PRIMARY KEY,
+        titular_hash    VARCHAR(64) NOT NULL,
+        consentimentos_removidos INTEGER DEFAULT 0,
+        atendimentos_anonimizados INTEGER DEFAULT 0,
+        executado_em    TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        executado_por   VARCHAR(100)
+    );
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_esquecimentos_hash ON lgpd_esquecimentos (titular_hash);",
+    # ── LGPD: Configuração DPO (editável via admin) ──
+    """
+    CREATE TABLE IF NOT EXISTS lgpd_config (
+        chave   VARCHAR(100) PRIMARY KEY,
+        valor   TEXT NOT NULL,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    );
+    """,
+    # ── LGPD: Registros de consentimento na tela de login ──
+    """
+    ALTER TABLE consentimentos ADD COLUMN IF NOT EXISTS provider VARCHAR(50);
+    """,
 )
 
 
