@@ -25,6 +25,9 @@ export default function Sidebar() {
   const [open, setOpen] = useState(false);
   const [profile, setProfile] = useState({ displayName: "Usuário", role: "" });
   const [photoSrc, setPhotoSrc] = useState<string | null>(null);
+  const [aiQuery, setAiQuery] = useState("");
+  const [aiReply, setAiReply] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
   useEffect(() => {
     setOpen(false);
@@ -60,6 +63,28 @@ export default function Sidebar() {
 
   const isActive = (href: string) =>
     pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
+
+  const handleAiChat = async () => {
+    if (!aiQuery.trim() || aiLoading) return;
+    setAiLoading(true);
+    setAiReply(null);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch((process.env.NEXT_PUBLIC_API_URL || "/api") + "/ia/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ pergunta: aiQuery.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Erro ao consultar IA");
+      setAiReply(data.resposta);
+      setAiQuery("");
+    } catch (err: unknown) {
+      setAiReply(err instanceof Error ? `❌ ${err.message}` : "❌ Erro ao consultar IA");
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const navContent = (
     <>
@@ -119,13 +144,35 @@ export default function Sidebar() {
           <div className="relative">
             <input
               type="text"
+              value={aiQuery}
+              onChange={(e) => setAiQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && aiQuery.trim() && !aiLoading) {
+                  handleAiChat();
+                }
+              }}
               placeholder="Ex: Resumo de hoje"
               className="w-full bg-[var(--background)] border border-[var(--border)] rounded-md py-2 pl-3 pr-8 text-xs text-white focus:outline-none focus:border-[var(--primary)]"
+              disabled={aiLoading}
             />
-            <button className="absolute right-2 top-2 text-[var(--primary)]" type="button">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4Z"/></svg>
+            <button
+              className="absolute right-2 top-2 text-[var(--primary)] disabled:opacity-40"
+              type="button"
+              disabled={aiLoading || !aiQuery.trim()}
+              onClick={handleAiChat}
+            >
+              {aiLoading ? (
+                <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" /></svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4Z"/></svg>
+              )}
             </button>
           </div>
+          {aiReply && (
+            <div className="mt-3 text-xs text-[var(--text-label)] bg-[var(--background)] rounded-lg p-2 max-h-40 overflow-y-auto whitespace-pre-wrap border border-[var(--border)]">
+              {aiReply}
+            </div>
+          )}
         </div>
       </div>
 

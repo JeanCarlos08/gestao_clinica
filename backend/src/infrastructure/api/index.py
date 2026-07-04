@@ -756,6 +756,53 @@ class LaudoResponse(BaseModel):
     embed_url: str
 
 
+# ─────────────────────────────────────────────────────────────
+# IA Chat (Barra Lateral)
+# ─────────────────────────────────────────────────────────────
+
+class IAChatPayload(BaseModel):
+    pergunta: str = Field(..., min_length=1, max_length=1000)
+
+
+@api_router.post("/ia/chat", tags=["IA"])
+async def ia_chat(payload: IAChatPayload, current_user: dict = Depends(get_current_user)):
+    """Chat da barra lateral: responde perguntas com base nos dados da clínica."""
+    from services.ai_service import AIService
+    from core.entities.models import AtendimentoFilter
+    import json as _json
+
+    # Monta contexto resumido para não estourar o token limit
+    stats = atendimento_repo.get_stats()
+    atendimentos = atendimento_repo.list_all(filters=AtendimentoFilter(limit=200))
+    context = {
+        "stats": {
+            "total_atendimentos": stats.total_atendimentos,
+            "total_pacientes": stats.total_pacientes,
+            "agendados": stats.agendados,
+            "atendidos": stats.atendidos,
+            "concluidos": stats.concluidos,
+            "cancelados": stats.cancelados,
+            "atendimentos_hoje": stats.atendimentos_hoje,
+            "atendimentos_mes": stats.atendimentos_mes,
+            "por_modalidade": stats.por_modalidade,
+            "por_empresa": stats.por_empresa,
+        },
+        "atendimentos": [
+            {
+                "nome": a.nome,
+                "empresa": a.empresa,
+                "modalidade": a.modalidade,
+                "data": a.data.strftime("%Y-%m-%d") if a.data else "",
+                "status": a.status,
+            }
+            for a in atendimentos
+        ],
+    }
+
+    resposta = AIService.chat_with_data(payload.pergunta, _json.dumps(context, ensure_ascii=False))
+    return {"resposta": resposta}
+
+
 def _format_date_br(value: str) -> str:
     """Converte YYYY-MM-DD para DD/MM/YYYY; mantém DD/MM/YYYY."""
     from datetime import datetime
