@@ -89,6 +89,14 @@ main {
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
+/* Mobile viewport height - prevent content cut-off by browser chrome */
+html {
+  height: -webkit-fill-available;
+}
+body {
+  min-height: -webkit-fill-available;
+}
+
 /* Thin green scrollbar for panels */
 .scrollbar-thin::-webkit-scrollbar { width: 4px; }
 .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }

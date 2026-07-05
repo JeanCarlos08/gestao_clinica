@@ -120,7 +120,7 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight mb-2">Bom dia, {displayName}! ✨</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-2">Bom dia, {displayName}! ✨</h1>
           <p className="text-[var(--text-label)] font-medium">Aqui está o resumo da sua clínica hoje.</p>
         </div>
         
@@ -137,10 +137,10 @@ export default function DashboardPage() {
       </div>
 
       {/* Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 fade-up">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8 fade-up">
         {isFirstLoad ? (
           Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="bg-[#0a100a] border border-[#1e2e1e] rounded-2xl p-6 animate-pulse">
+            <div key={i} className="bg-[#0a100a] border border-[#1e2e1e] rounded-2xl p-4 sm:p-6 animate-pulse">
               <div className="flex justify-between mb-4"><div className="w-12 h-12 rounded-xl bg-[#1e2e1e]" /><div className="w-12 h-5 rounded-full bg-[#1e2e1e]" /></div>
               <div className="h-3 w-24 rounded bg-[#1e2e1e] mb-2" />
               <div className="h-8 w-16 rounded bg-[#1e2e1e]" />
@@ -156,7 +156,7 @@ export default function DashboardPage() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
         {/* Chart Section */}
         <div className="lg:col-span-2 premium-surface rounded-2xl p-6 relative overflow-hidden group fade-up">
           <div className="absolute inset-0 bg-gradient-to-br from-[var(--primary)]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
@@ -222,7 +222,7 @@ interface MetricCardProps {
 
 function MetricCard({ title, value, change, tone = "neutral", icon: Icon, color, bgColor, borderColor }: MetricCardProps) {
   return (
-    <div className="premium-surface rounded-2xl p-6 hover:shadow-2xl hover:border-[#243024] hover:-translate-y-1 transition-all duration-300 group overflow-hidden relative fade-up">
+    <div className="premium-surface rounded-2xl p-4 sm:p-6 hover:shadow-2xl hover:border-[#243024] hover:-translate-y-1 transition-all duration-300 group overflow-hidden relative fade-up">
       <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-gradient-to-br from-white/5 to-transparent rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
       <div className="flex items-center justify-between mb-4 relative z-10">
         <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${bgColor} ${borderColor} border transition-colors group-hover:border-opacity-50`}>
@@ -233,7 +233,7 @@ function MetricCard({ title, value, change, tone = "neutral", icon: Icon, color,
         </div>
       </div>
       <h3 className="text-[var(--text-label)] text-sm font-medium mb-1 relative z-10">{title}</h3>
-      <p className="text-3xl font-extrabold text-white tracking-tight relative z-10">{value}</p>
+      <p className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight relative z-10">{value}</p>
     </div>
   );
 }

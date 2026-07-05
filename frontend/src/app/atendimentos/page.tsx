@@ -246,7 +246,7 @@ const ATD_CACHE_TTL = 30_000;
       
       {/* Toast */}
       {toast && (
-        <div className={`fixed top-6 right-6 px-4 py-3 rounded-lg flex items-center gap-2 shadow-xl z-50 text-white font-medium ${
+        <div className={`fixed top-16 sm:top-6 right-4 sm:right-6 px-4 py-3 rounded-lg flex items-center gap-2 shadow-xl z-50 text-white font-medium ${
           toast.type === "success" ? "bg-green-600" : "bg-red-600"
         }`}>
           {toast.type === "success" ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
@@ -281,22 +281,22 @@ const ATD_CACHE_TTL = 30_000;
         <p className="text-[var(--text-muted)] text-sm">Gerenciamento de Consultas e Procedimentos</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-        <div className="bg-[var(--card)] p-5 rounded-xl border border-[var(--border)] relative overflow-hidden">
-          <div className="text-[11px] text-[var(--text-label)] font-semibold uppercase tracking-wider mb-2">Total</div>
-          <div className="text-3xl font-bold text-[var(--primary)] mb-1">{atendimentos.length}</div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6">
+        <div className="bg-[var(--card)] p-3 sm:p-5 rounded-xl border border-[var(--border)] relative overflow-hidden">
+          <div className="text-[10px] sm:text-[11px] text-[var(--text-label)] font-semibold uppercase tracking-wider mb-1 sm:mb-2">Total</div>
+          <div className="text-2xl sm:text-3xl font-bold text-[var(--primary)] mb-1">{atendimentos.length}</div>
         </div>
-        <div className="bg-[var(--card)] p-5 rounded-xl border border-[var(--border)] relative">
-          <div className="flex justify-between items-start mb-2">
-            <div className="text-[11px] text-[var(--text-label)] font-semibold uppercase tracking-wider">Concluídos</div>
-            <div className="w-8 h-8 rounded-full border-2 border-[var(--status-concluido)] flex items-center justify-center text-[var(--status-concluido)]"><CheckCircle2 size={16} /></div>
+        <div className="bg-[var(--card)] p-3 sm:p-5 rounded-xl border border-[var(--border)] relative">
+          <div className="flex justify-between items-start mb-1 sm:mb-2">
+            <div className="text-[10px] sm:text-[11px] text-[var(--text-label)] font-semibold uppercase tracking-wider">Concluídos</div>
+            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 border-[var(--status-concluido)] flex items-center justify-center text-[var(--status-concluido)]"><CheckCircle2 size={14} /></div>
           </div>
-          <div className="text-3xl font-bold mb-1">{totalConcluidos}</div>
+          <div className="text-2xl sm:text-3xl font-bold mb-1">{totalConcluidos}</div>
         </div>
-        <div className="bg-[var(--card)] p-5 rounded-xl border border-[var(--border)] relative">
-          <div className="flex justify-between items-start mb-2">
-            <div className="text-[11px] text-[var(--text-label)] font-semibold uppercase tracking-wider">Em Andamento</div>
-            <div className="w-8 h-8 rounded-full border-2 border-[var(--status-andamento)] flex items-center justify-center text-[var(--status-andamento)]"><Clock size={16} /></div>
+        <div className="bg-[var(--card)] p-3 sm:p-5 rounded-xl border border-[var(--border)] relative">
+          <div className="flex justify-between items-start mb-1 sm:mb-2">
+            <div className="text-[10px] sm:text-[11px] text-[var(--text-label)] font-semibold uppercase tracking-wider">Em Andamento</div>
+            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 border-[var(--status-andamento)] flex items-center justify-center text-[var(--status-andamento)]"><Clock size={14} /></div>
           </div>
           <div className="text-3xl font-bold mb-1">{totalAndamento}</div>
         </div>
