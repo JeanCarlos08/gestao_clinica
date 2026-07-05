@@ -80,7 +80,7 @@ class Settings:
     # ── Google OAuth (login social) ───────────────────────────
     google_oauth_client_id: Optional[str] = field(default_factory=lambda: _get_secret("GOOGLE_OAUTH_CLIENT_ID"))
     google_oauth_client_secret: Optional[str] = field(default_factory=lambda: _get_secret("GOOGLE_OAUTH_CLIENT_SECRET"))
-    frontend_url: str = field(default_factory=lambda: _get_secret("FRONTEND_URL", "http://localhost:3000"))
+    frontend_url: str = field(default_factory=lambda: _get_secret("FRONTEND_URL", "https://gestao-clinica.vercel.app"))
 
     # ── Autenticação ──────────────────────────────────────────
     auth_username: str = field(default_factory=lambda: _get_secret("APP_ADMIN_USER", "admin"))
