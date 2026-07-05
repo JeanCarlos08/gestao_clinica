@@ -136,9 +136,13 @@ export default function Sidebar() {
           <LogOut size={16} strokeWidth={2} />
           Encerrar sessão
         </button>
-        <div className="mt-3 px-3 flex items-center gap-1.5">
+        <div className="mt-3 px-3 flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] opacity-60" />
           <span className="text-[10px] text-[var(--text-muted)]">Clínica IA v2.0 &nbsp;·&nbsp; © 2025</span>
+          <div className="ml-auto flex items-center gap-2">
+            <Link href="/privacy" className="text-[10px] text-[var(--text-muted)] hover:text-white">Privacy</Link>
+            <Link href="/terms" className="text-[10px] text-[var(--text-muted)] hover:text-white">Terms</Link>
+          </div>
         </div>
       </div>
     </>
