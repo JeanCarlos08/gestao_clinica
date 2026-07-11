@@ -37,27 +37,29 @@ class AIService:
     _initialized = False
 
     @classmethod
-    def _initialize(cls) -> bool:
+    def _initialize(cls) -> tuple[bool, str]:
         """
         Inicializa o modelo Gemini com fallback automático.
         Testa candidatos em ordem de preferência.
+        Retorna (True, "OK") em sucesso ou (False, "Razão da falha") em erro.
         """
         if cls._model is not None:
-            return True
+            return True, "OK"
 
         if not settings.has_ai:
-            logger.warning("AI: Chave da API não configurada (GOOGLE_API_KEY).")
-            return False
+            msg = "AI: Chave da API não configurada (GOOGLE_API_KEY)."
+            logger.warning(msg)
+            return False, "A chave da API de IA (GOOGLE_API_KEY) não foi configurada no servidor."
 
         try:
             from services.ai_helpers import get_genai_or_none
             genai = get_genai_or_none(settings.gemini_api_key)
             if genai is None:
                 logger.error("AI: nenhuma SDK GenAI disponível (google.genai).")
-                return False
+                return False, "A biblioteca de IA do Google (`google-genai`) não está instalada no servidor."
         except Exception as e:
             logger.error(f"AI: erro ao inicializar cliente GenAI: {e}")
-            return False
+            return False, "Ocorreu um erro inesperado ao inicializar o serviço de IA."
 
         candidates = settings.gemini_fallback_models
 
@@ -77,7 +79,7 @@ class AIService:
                     if text and str(text).strip():
                         cls._model = model
                         logger.info(f"AI: Modelo '{model_name}' inicializado com sucesso.")
-                        return True
+                        return True, "OK"
                     else:
                         logger.warning(f"AI: Modelo '{model_name}' não retornou texto válido. Tentando próximo.")
                         continue
@@ -90,8 +92,9 @@ class AIService:
 
         # Não há fallback legado — se nenhum modelo funcionou, falhamos explicitamente
 
-        logger.error("AI: Nenhum modelo Gemini disponível para esta API Key.")
-        return False
+        msg = "AI: Nenhum modelo Gemini disponível para esta API Key ou os modelos configurados falharam."
+        logger.error(msg)
+        return False, "Nenhum modelo de IA está disponível ou funcionando. Verifique a chave de API e os logs do servidor."
 
     @classmethod
     def analyze_pdf_content(cls, file_content: bytes, filename: str) -> str:
@@ -105,8 +108,9 @@ class AIService:
         Returns:
             Resumo clínico em texto Markdown ou mensagem de erro.
         """
-        if not cls._initialize():
-            return "❌ IA não configurada. Adicione GOOGLE_API_KEY no .env ou st.secrets."
+        is_ready, reason = cls._initialize()
+        if not is_ready:
+            return f"❌ IA indisponível: {reason}"
 
         try:
             prompt = f"""
@@ -152,8 +156,9 @@ class AIService:
         Returns:
             Parecer clínico formatado em Markdown.
         """
-        if not cls._initialize():
-            return "❌ IA não configurada."
+        is_ready, reason = cls._initialize()
+        if not is_ready:
+            return f"❌ IA indisponível: {reason}"
 
         try:
             prompt = f"""
@@ -195,8 +200,9 @@ class AIService:
         Returns:
             Dicas em formato Markdown com emojis.
         """
-        if not cls._initialize():
-            return "💡 Cadastre a chave de IA (GOOGLE_API_KEY) para receber insights automáticos."
+        is_ready, reason = cls._initialize()
+        if not is_ready:
+            return f"💡 IA indisponível: {reason}"
 
         try:
             prompt = f"""
@@ -232,7 +238,8 @@ class AIService:
         Returns:
             Tuple (is_valid: bool, error_message: str)
         """
-        if not cls._initialize():
+        is_ready, _ = cls._initialize()
+        if not is_ready:
             return True, ""  # Em modo degradado, não bloqueia
 
         try:
@@ -269,8 +276,9 @@ class AIService:
         Returns:
             Resposta da IA em Markdown.
         """
-        if not cls._initialize():
-            return "❌ IA não disponível."
+        is_ready, reason = cls._initialize()
+        if not is_ready:
+            return f"❌ IA indisponível: {reason}"
 
         try:
             prompt = f"""
@@ -297,7 +305,8 @@ class AIService:
     @property
     def is_available(self) -> bool:
         """Retorna True se a IA está configurada e disponível."""
-        return self._initialize()
+        is_ready, _ = self._initialize()
+        return is_ready
 
 
 # Singleton global
