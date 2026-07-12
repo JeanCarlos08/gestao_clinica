@@ -1,400 +1,281 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
-  Settings, User, Building2, Phone, Mail, MapPin,
-  Link, Save, Loader2, CheckCircle2, AlertCircle,
-  Shield, Clock, Activity
+  Settings as SettingsIcon, Save, Building2, UserCircle, History, RefreshCw, CheckCircle2,
+  AlertCircle, Upload as UploadIcon, ShieldAlert,
 } from "lucide-react";
 
-interface Config {
-  clinica: Record<string, string>;
-  usuario: {
-    id: number | null;
-    username: string;
-    display_name: string;
-    email: string;
-    role: string;
-    created_at: string | null;
-    last_login: string | null;
-  };
-}
+interface Clinica { id: number; name: string; document: string; }
+interface ClinicaConfig { clinic_name: string; clinic_logo_base64: string | null; user_photo_base64: string | null; }
+interface AuditLog { id: number; user_id: number; action: string; details: string; timestamp: string; }
 
-interface AuditoriaEntry {
-  id: number;
-  acao: string;
-  entidade: string;
-  entidade_id: number | null;
-  detalhes: string | null;
-  usuario: string | null;
-  criado_em: string | null;
-}
-
-const ROLE_LABELS: Record<string, string> = {
-  admin: "Administrador", psicologo: "Psicólogo", recepcionista: "Recepcionista"
-};
-
-function formatDate(iso: string | null) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" });
-}
-
-export default function ConfiguracoesPage() {
+export default function ConfigPage() {
   const router = useRouter();
-  const [config, setConfig] = useState<Config | null>(null);
-  const [auditoria, setAuditoria] = useState<AuditoriaEntry[]>([]);
+  const [activeTab, setActiveTab] = useState<"clinica" | "perfil" | "auditoria">("clinica");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<"clinica"|"perfil"|"auditoria">("clinica");
-  const [msg, setMsg] = useState<{type:"success"|"error"; text:string}|null>(null);
+  const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  // Form fields
-  const [clinicName, setClinicName] = useState("");
-  const [clinicPhone, setClinicPhone] = useState("");
-  const [clinicEmail, setClinicEmail] = useState("");
-  const [clinicAddress, setClinicAddress] = useState("");
-  const [clinicGoogleDoc, setClinicGoogleDoc] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [userEmail, setUserEmail] = useState("");
+  const [clinica, setClinica] = useState<Clinica | null>(null);
+  const [config, setConfig] = useState<ClinicaConfig>({ clinic_name: "", clinic_logo_base64: null, user_photo_base64: null });
+  const [logs, setLogs] = useState<AuditLog[]>([]);
 
-  const getToken = () => localStorage.getItem("token");
+  const logoRef = useRef<HTMLInputElement>(null);
+  const photoRef = useRef<HTMLInputElement>(null);
+
   const API = () => process.env.NEXT_PUBLIC_API_URL || "/api";
+  const getToken = () => localStorage.getItem("token");
 
-  const showMsg = (type: "success"|"error", text: string) => {
-    setMsg({ type, text });
+  useEffect(() => {
+    const fetchData = async () => {
+      const tk = getToken();
+      if (!tk) { router.push("/"); return; }
+      setLoading(true);
+      try {
+        const [cRes, logsRes] = await Promise.all([
+          fetch(`${API()}/configuracoes`, { headers: { Authorization: `Bearer ${tk}` } }),
+          fetch(`${API()}/audit/logs`, { headers: { Authorization: `Bearer ${tk}` } }),
+        ]);
+        if (cRes.status === 401) { localStorage.removeItem("token"); router.push("/"); return; }
+        if (cRes.ok) {
+          const d = await cRes.json();
+          setClinica(d.clinica);
+          setConfig(d.config || { clinic_name: "", clinic_logo_base64: null, user_photo_base64: null });
+        }
+        if (logsRes.ok) setLogs(await logsRes.json());
+      } catch (e) { console.error(e); }
+      finally { setLoading(false); }
+    };
+    fetchData();
+  }, [router]);
+
+  const showMsg = (t: "success" | "error", text: string) => {
+    setMsg({ type: t, text });
     setTimeout(() => setMsg(null), 4000);
   };
 
-  useEffect(() => {
-    const fetchAll = async () => {
-      const token = getToken();
-      if (!token) { router.push("/"); return; }
-      setLoading(true);
-      try {
-        const [cfgRes, audRes] = await Promise.all([
-          fetch(`${API()}/configuracoes`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${API()}/auditoria?limit=50`, { headers: { Authorization: `Bearer ${token}` } }),
-        ]);
-        if (cfgRes.status === 401) { localStorage.removeItem("token"); router.push("/"); return; }
-        const cfgData: Config = await cfgRes.json();
-        setConfig(cfgData);
-        // Populate form
-        const c = cfgData.clinica;
-        setClinicName(c.clinic_name || "");
-        setClinicPhone(c.clinic_phone || "");
-        setClinicEmail(c.clinic_email || "");
-        setClinicAddress(c.clinic_address || "");
-        setClinicGoogleDoc(c.clinic_google_doc_id || "");
-        setDisplayName(cfgData.usuario.display_name || "");
-        setUserEmail(cfgData.usuario.email || "");
-        if (audRes.ok) setAuditoria(await audRes.json());
-      } catch { showMsg("error", "Erro ao carregar configurações."); }
-      finally { setLoading(false); }
-    };
-    fetchAll();
-  }, [router]);
-
-  const saveClinica = async () => {
-    const token = getToken();
-    if (!token) return;
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const tk = getToken();
+    if (!tk) return;
     setSaving(true);
     try {
       const res = await fetch(`${API()}/configuracoes`, {
         method: "PUT",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          clinic_name: clinicName || null,
-          clinic_phone: clinicPhone || null,
-          clinic_email: clinicEmail || null,
-          clinic_address: clinicAddress || null,
-          clinic_google_doc_id: clinicGoogleDoc || null,
-          user_display_name: displayName || null,
-          user_email: userEmail || null,
-        }),
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${tk}` },
+        body: JSON.stringify(config),
       });
-      if (!res.ok) { const e = await res.json(); showMsg("error", e.detail || "Erro ao salvar."); }
-      else showMsg("success", "Configurações salvas com sucesso!");
-    } catch { showMsg("error", "Falha ao salvar configurações."); }
+      if (res.ok) showMsg("success", "Configurações salvas com sucesso!");
+      else showMsg("error", "Erro ao salvar.");
+    } catch { showMsg("error", "Erro de conexão."); }
     finally { setSaving(false); }
   };
 
-  const uploadImage = async (field: "user_photo"|"clinic_logo", file?: File|null) => {
-    const token = getToken();
-    if (!token || !file) return;
-    setSaving(true);
+  const toBase64 = (f: File): Promise<string> => new Promise((res, rej) => {
+    const r = new FileReader(); r.readAsDataURL(f);
+    r.onload = () => res(r.result as string); r.onerror = e => rej(e);
+  });
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>, field: "clinic_logo_base64" | "user_photo_base64") => {
+    const f = e.target.files?.[0]; if (!f) return;
     try {
-      const fd = new FormData();
-      fd.append("field", field);
-      fd.append("file", file);
-      const res = await fetch(`${API()}/configuracoes/photo`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: fd,
-      });
-      if (!res.ok) { const e = await res.json(); showMsg("error", e.detail || "Falha ao enviar imagem."); }
-      else {
-        showMsg("success", "Imagem enviada com sucesso.");
-        // refresh config
-        const cfgRes = await fetch(`${API()}/configuracoes`, { headers: { Authorization: `Bearer ${token}` } });
-        if (cfgRes.ok) setConfig(await cfgRes.json());
-      }
-    } catch { showMsg("error", "Erro ao enviar imagem."); }
-    finally { setSaving(false); }
+      const b64 = await toBase64(f);
+      setConfig(prev => ({ ...prev, [field]: b64 }));
+    } catch { showMsg("error", "Falha ao ler imagem."); }
   };
-
-  const ACAO_COLOR: Record<string, string> = {
-    criar: "#22c55e", criar_atendimento: "#22c55e",
-    atualizar: "#3b82f6", atualizar_status: "#3b82f6",
-    excluir: "#ef4444", deletar: "#ef4444",
-    anexar: "#a855f7", desanexar: "#f97316",
-  };
-  const getAcaoColor = (acao: string) =>
-    ACAO_COLOR[acao.toLowerCase()] || ACAO_COLOR[Object.keys(ACAO_COLOR).find(k => acao.toLowerCase().includes(k)) || ""] || "#f59e0b";
-
-  const tabs = [
-    { id: "clinica" as const, label: "🏥 Clínica", icon: Building2 },
-    { id: "perfil" as const, label: "👤 Perfil", icon: User },
-    { id: "auditoria" as const, label: "📋 Auditoria", icon: Activity },
-  ];
-
-  const inputClass = "w-full bg-[var(--background)] border border-[var(--border)] rounded-lg py-2.5 px-4 text-sm text-white focus:outline-none focus:border-[var(--primary)] transition-colors";
-  const labelClass = "block text-[11px] text-[var(--text-label)] font-semibold uppercase tracking-wider mb-1.5";
 
   return (
-    <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-8 scrollbar-hide">
+    <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-8 scrollbar-hide fade-up">
       {/* Header */}
       <div className="flex items-start justify-between mb-8">
         <div>
-          <div className="flex items-center gap-3 mb-1">
-            <div className="bg-[var(--primary)]/10 text-[var(--primary)] p-2 rounded-lg"><Settings size={24}/></div>
-            <h1 className="text-2xl font-bold">Configurações</h1>
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-8 h-8 rounded-xl bg-slate-500/10 border border-slate-500/20 flex items-center justify-center">
+              <SettingsIcon size={16} className="text-slate-400" />
+            </div>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Configurações</span>
           </div>
-          <p className="text-[var(--text-muted)] text-sm">Gerencie os dados da clínica, perfil e auditoria</p>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Painel de Controle</h1>
+          <p className="text-[var(--text-muted)] text-sm mt-1">Gerencie informações da clínica, perfil e logs.</p>
         </div>
-        {activeTab !== "auditoria" && (
-          <button onClick={saveClinica} disabled={saving||loading}
-            className="flex items-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors shadow-[0_0_15px_rgba(34,197,94,0.3)] disabled:opacity-50">
-            {saving?<Loader2 size={16} className="animate-spin"/>:<Save size={16}/>}
-            {saving?"Salvando...":"Salvar"}
-          </button>
-        )}
       </div>
 
-      {/* Toast */}
       {msg && (
-        <div className={`flex items-center gap-3 p-4 rounded-xl border mb-6 text-sm ${
-          msg.type==="success"?"bg-green-500/10 border-green-500/30 text-green-400":"bg-red-500/10 border-red-500/30 text-red-400"
-        }`}>
-          {msg.type==="success"?<CheckCircle2 size={18}/>:<AlertCircle size={18}/>} {msg.text}
+        <div className={`flex items-center gap-3 p-4 rounded-xl border mb-6 text-sm animate-pulse ${msg.type === "success" ? "bg-green-500/10 border-green-500/30 text-green-400" : "bg-red-500/10 border-red-500/30 text-red-400"}`}>
+          {msg.type === "success" ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+          {msg.text}
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-6 fade-up">
-        {tabs.map(t=>(
-          <button key={t.id} onClick={()=>setActiveTab(t.id)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab===t.id?"bg-[var(--primary)] text-black":"bg-[var(--card)] border border-[var(--border)] text-[var(--text-muted)] hover:text-white"}`}>
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {loading ? (
-        <div className="flex items-center justify-center h-64 text-[var(--text-muted)]">
-          <Loader2 size={32} className="animate-spin mr-3"/> Carregando configurações...
+      <div className="flex flex-col lg:flex-row gap-8">
+        {/* Menu Lateral das Configurações */}
+        <div className="w-full lg:w-64 flex-shrink-0">
+          <div className="premium-surface rounded-2xl p-3 border border-[var(--border)] flex flex-col gap-1 sticky top-4">
+            {[
+              { id: "clinica", label: "Dados da Clínica", icon: Building2 },
+              { id: "perfil", label: "Perfil de Usuário", icon: UserCircle },
+              { id: "auditoria", label: "Auditoria & Logs", icon: History },
+            ].map(tab => {
+              const active = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as "clinica" | "perfil" | "auditoria")}
+                  className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                    active
+                      ? "bg-[var(--primary)]/10 text-[var(--primary)] shadow-[0_0_15px_rgba(34,197,94,0.1)] border border-[var(--primary)]/20"
+                      : "text-[var(--text-muted)] hover:bg-[var(--card-hover)] hover:text-white border border-transparent"
+                  }`}
+                >
+                  <tab.icon size={18} className={active ? "text-[var(--primary)]" : "text-[var(--text-muted)] group-hover:text-white"} />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      ) : (
-        <>
-          {/* Aba Clínica */}
-          {activeTab==="clinica" && (
-            <div className="space-y-6">
-              {/* Info card do usuário logado */}
-              {config && (
-                <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-full bg-[var(--primary)]/20 flex items-center justify-center flex-shrink-0">
-                    <span className="text-[var(--primary)] text-xl font-bold">
-                      {(config.usuario.display_name || config.usuario.username || "?")[0].toUpperCase()}
-                    </span>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          {loading ? (
+            <div className="premium-surface rounded-2xl p-10 flex flex-col items-center justify-center border border-[var(--border)]">
+              <RefreshCw size={32} className="animate-spin text-[var(--primary)] mb-4" />
+              <p className="text-[var(--text-muted)] font-medium">Carregando painel...</p>
+            </div>
+          ) : (
+            <div className="premium-surface rounded-2xl border border-[var(--border)] overflow-hidden fade-up-delay-1">
+              {/* Clínica Tab */}
+              {activeTab === "clinica" && (
+                <form onSubmit={handleSave}>
+                  <div className="p-6 sm:p-8 border-b border-[var(--border)] flex flex-col gap-8">
+                    <div className="flex items-center gap-6">
+                      <div className="w-24 h-24 rounded-2xl border-2 border-dashed border-[var(--border)] hover:border-[var(--primary)]/50 transition-colors bg-[var(--card)] flex items-center justify-center overflow-hidden cursor-pointer group relative shadow-inner" onClick={() => logoRef.current?.click()}>
+                        {config.clinic_logo_base64 ? (
+                          <>
+                            <Image src={config.clinic_logo_base64} alt="Logo" width={96} height={96} unoptimized className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                              <UploadIcon size={20} className="text-white" />
+                            </div>
+                          </>
+                        ) : (
+                          <div className="text-center group-hover:text-[var(--primary)] transition-colors">
+                            <Building2 size={28} className="mx-auto mb-1 opacity-50" />
+                            <span className="text-[10px] uppercase font-bold tracking-wider opacity-50">Upload Logo</span>
+                          </div>
+                        )}
+                        <input type="file" accept="image/*" ref={logoRef} className="hidden" onChange={e => handleFile(e, "clinic_logo_base64")} />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-bold text-white mb-1">Identidade Visual da Clínica</h2>
+                        <p className="text-sm text-[var(--text-muted)] max-w-md">Esta logo será utilizada nos laudos gerados (PDF e Docs) e no cabeçalho do sistema.</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      <div>
+                        <label className="block text-xs font-semibold text-[var(--text-label)] uppercase tracking-wider mb-2">Nome Fantasia</label>
+                        <input type="text" value={config.clinic_name} onChange={e => setConfig({ ...config, clinic_name: e.target.value })} className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[var(--primary)] focus:shadow-[0_0_0_2px_rgba(34,197,94,0.1)] transition-all" placeholder="Nome da Clínica" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-[var(--text-label)] uppercase tracking-wider mb-2">CNPJ / Documento</label>
+                        <input type="text" value={clinica?.document || ""} disabled className="w-full bg-[var(--card)] border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--text-muted)] cursor-not-allowed opacity-70" />
+                        <p className="text-[10px] text-[var(--text-muted)] mt-1.5">Documento vinculado à assinatura. Contate o suporte para alterar.</p>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="font-semibold text-white">{config.usuario.display_name || config.usuario.username}</div>
-                    <div className="text-xs text-[var(--primary)]">{ROLE_LABELS[config.usuario.role]||config.usuario.role}</div>
-                    <div className="text-xs text-[var(--text-muted)] mt-0.5">Último login: {formatDate(config.usuario.last_login)}</div>
+                  <div className="bg-[var(--card)] px-6 py-4 flex justify-end gap-3">
+                    <button type="submit" disabled={saving} className="flex items-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(34,197,94,0.25)] hover:shadow-[0_0_25px_rgba(34,197,94,0.4)] disabled:opacity-50">
+                      {saving ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />} Salvar Alterações
+                    </button>
                   </div>
-                  <div className="ml-auto text-right text-xs text-[var(--text-muted)]">
-                    <div className="flex items-center gap-1 justify-end"><Shield size={12}/> ID #{config.usuario.id}</div>
-                    <div className="mt-1 flex items-center gap-1 justify-end"><Clock size={12}/> Cadastro: {formatDate(config.usuario.created_at)}</div>
-                  </div>
-                </div>
+                </form>
               )}
 
-              <div className="premium-surface rounded-xl p-6 fade-up">
-                <div className="flex items-center gap-2 font-semibold mb-6"><Building2 size={18} className="text-[var(--primary)]"/> Dados da Clínica</div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div>
-                    <label className={labelClass}>Logotipo da clínica</label>
-                    <div className="flex items-center gap-3">
-                      <div className="w-20 h-12 rounded overflow-hidden bg-[var(--card)] border border-[var(--border)] flex items-center justify-center relative">
-                        {config?.clinica?.clinic_logo_base64 ? (
-                          <Image
-                            src={config.clinica.clinic_logo_base64}
-                            alt="Logo"
-                            fill
-                            unoptimized
-                            sizes="80px"
-                            className="object-contain"
-                          />
+              {/* Perfil Tab */}
+              {activeTab === "perfil" && (
+                <form onSubmit={handleSave}>
+                  <div className="p-6 sm:p-8 border-b border-[var(--border)] flex flex-col gap-8">
+                    <div className="flex items-center gap-6">
+                      <div className="w-24 h-24 rounded-full border-2 border-[var(--border)] hover:border-[var(--primary)]/50 transition-colors bg-[var(--card)] flex items-center justify-center overflow-hidden cursor-pointer group relative shadow-[0_0_20px_rgba(0,0,0,0.5)]" onClick={() => photoRef.current?.click()}>
+                        {config.user_photo_base64 ? (
+                          <>
+                            <Image src={config.user_photo_base64} alt="Avatar" width={96} height={96} unoptimized className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-full">
+                              <UploadIcon size={20} className="text-white" />
+                            </div>
+                          </>
                         ) : (
-                          <div className="text-xs text-[var(--text-muted)]">Sem logo</div>
+                          <div className="text-center group-hover:text-[var(--primary)] transition-colors">
+                            <UserCircle size={32} className="mx-auto mb-1 opacity-50" />
+                          </div>
                         )}
+                        <input type="file" accept="image/*" ref={photoRef} className="hidden" onChange={e => handleFile(e, "user_photo_base64")} />
                       </div>
                       <div>
-                        <input type="file" accept="image/*" id="clinic_logo_input" onChange={e=>uploadImage("clinic_logo", e.target.files?.[0]||null)} />
+                        <h2 className="text-lg font-bold text-white mb-1">Foto de Perfil</h2>
+                        <p className="text-sm text-[var(--text-muted)] max-w-md">Personalize seu avatar que aparece na barra lateral e em anotações.</p>
                       </div>
                     </div>
                   </div>
-                  <div>
-                    <label className={labelClass}><Building2 size={11} className="inline mr-1"/>Nome da Clínica</label>
-                    <input className={inputClass} value={clinicName} onChange={e=>setClinicName(e.target.value)} placeholder="Ex: Clínica Saúde Mental"/>
+                  <div className="bg-[var(--card)] px-6 py-4 flex justify-end gap-3">
+                    <button type="submit" disabled={saving} className="flex items-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(34,197,94,0.25)] hover:shadow-[0_0_25px_rgba(34,197,94,0.4)] disabled:opacity-50">
+                      {saving ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />} Atualizar Perfil
+                    </button>
                   </div>
-                  <div>
-                    <label className={labelClass}><Phone size={11} className="inline mr-1"/>Telefone</label>
-                    <input className={inputClass} value={clinicPhone} onChange={e=>setClinicPhone(e.target.value)} placeholder="(11) 9 9999-9999"/>
-                  </div>
-                  <div>
-                    <label className={labelClass}><Mail size={11} className="inline mr-1"/>E-mail da Clínica</label>
-                    <input className={inputClass} type="email" value={clinicEmail} onChange={e=>setClinicEmail(e.target.value)} placeholder="contato@clinica.com"/>
-                  </div>
-                  <div>
-                    <label className={labelClass}><MapPin size={11} className="inline mr-1"/>Endereço</label>
-                    <input className={inputClass} value={clinicAddress} onChange={e=>setClinicAddress(e.target.value)} placeholder="Rua, Número, Cidade"/>
-                  </div>
-                </div>
-              </div>
+                </form>
+              )}
 
-              <div className="premium-surface rounded-xl p-6 fade-up">
-                <div className="flex items-center gap-2 font-semibold mb-6"><Link size={18} className="text-[var(--primary)]"/> Integrações</div>
-                <div className="space-y-5">
-                  <div>
-                    <label className={labelClass}><Link size={11} className="inline mr-1"/>Google Doc ID (Template)</label>
-                    <input className={inputClass} value={clinicGoogleDoc} onChange={e=>setClinicGoogleDoc(e.target.value)} placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms"/>
-                    <p className="text-[10px] text-[var(--text-muted)] mt-1">ID do documento Google Docs usado como template de laudos.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Aba Perfil */}
-          {activeTab==="perfil" && config && (
-            <div className="space-y-6">
-              <div className="premium-surface rounded-xl p-6 fade-up">
-                <div className="flex items-center gap-2 font-semibold mb-6"><User size={18} className="text-[var(--primary)]"/> Informações do Perfil</div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div>
-                    <label className={labelClass}>Foto do Usuário</label>
-                    <div className="flex items-center gap-3">
-                      <div className="w-14 h-14 rounded-full overflow-hidden bg-[var(--card)] relative">
-                        {config.clinica.user_photo_base64 ? (
-                          <Image
-                            src={config.clinica.user_photo_base64}
-                            alt="Foto"
-                            fill
-                            unoptimized
-                            sizes="56px"
-                            className="object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-sm text-[var(--text-muted)]">{(config.usuario.display_name||config.usuario.username||"?")[0]}</div>
-                        )}
+              {/* Auditoria Tab */}
+              {activeTab === "auditoria" && (
+                <div className="p-0">
+                  <div className="p-6 border-b border-[var(--border)] bg-amber-500/5">
+                    <div className="flex gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
+                        <ShieldAlert size={20} className="text-amber-500" />
                       </div>
                       <div>
-                        <input type="file" accept="image/*" id="user_photo_input" onChange={e=>uploadImage("user_photo", e.target.files?.[0]||null)} />
+                        <h2 className="text-base font-bold text-white mb-1">Registro de Auditoria de Acessos</h2>
+                        <p className="text-xs text-[var(--text-muted)]">Histórico imutável de acessos e modificações no sistema, em conformidade com as diretrizes da LGPD.</p>
                       </div>
                     </div>
                   </div>
-                  <div>
-                    <label className={labelClass}>Username</label>
-                    <input className={`${inputClass} opacity-50 cursor-not-allowed`} value={config.usuario.username} disabled/>
-                    <p className="text-[10px] text-[var(--text-muted)] mt-1">Username não pode ser alterado por aqui.</p>
-                  </div>
-                  <div>
-                    <label className={labelClass}>Role / Perfil</label>
-                    <input className={`${inputClass} opacity-50 cursor-not-allowed`} value={ROLE_LABELS[config.usuario.role]||config.usuario.role} disabled/>
-                  </div>
-                  <div>
-                    <label className={labelClass}><User size={11} className="inline mr-1"/>Nome de Exibição</label>
-                    <input className={inputClass} value={displayName} onChange={e=>setDisplayName(e.target.value)} placeholder="Seu nome completo"/>
-                  </div>
-                  <div>
-                    <label className={labelClass}><Mail size={11} className="inline mr-1"/>E-mail do Usuário</label>
-                    <input className={inputClass} type="email" value={userEmail} onChange={e=>setUserEmail(e.target.value)} placeholder="voce@email.com"/>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-6">
-                <div className="flex items-center gap-2 font-semibold mb-4"><Shield size={18} className="text-[var(--primary)]"/> Sessão Atual</div>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="bg-[var(--background)] rounded-lg p-4">
-                    <div className="text-[var(--text-muted)] text-xs mb-1">Conta criada em</div>
-                    <div className="text-white font-medium">{formatDate(config.usuario.created_at)}</div>
-                  </div>
-                  <div className="bg-[var(--background)] rounded-lg p-4">
-                    <div className="text-[var(--text-muted)] text-xs mb-1">Último acesso</div>
-                    <div className="text-white font-medium">{formatDate(config.usuario.last_login)}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Aba Auditoria */}
-          {activeTab==="auditoria" && (
-            <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden">
-              <div className="p-5 border-b border-[var(--border)] flex items-center gap-2 font-semibold">
-                <Activity size={18} className="text-[var(--primary)]"/>
-                Log de Auditoria ({auditoria.length} registros)
-              </div>
-              {auditoria.length===0?(
-                <div className="p-16 text-center text-[var(--text-muted)]">Nenhum registro de auditoria.</div>
-              ):(
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="border-b border-[var(--border)] text-[10px] uppercase text-[var(--text-label)] tracking-wider">
-                        {["#","Ação","Entidade","ID","Detalhes","Usuário","Data/Hora"].map(h=>(
-                          <th key={h} className="p-4 font-medium">{h}</th>
+                  <div className="p-6">
+                    {logs.length === 0 ? (
+                      <div className="text-center text-[var(--text-muted)] py-10 text-sm bg-[var(--card)] rounded-xl border border-[var(--border)]">Nenhum registro encontrado.</div>
+                    ) : (
+                      <div className="space-y-4">
+                        {logs.map(log => (
+                          <div key={log.id} className="group flex gap-4 p-4 rounded-xl border border-[var(--border)] bg-[var(--card)] hover:bg-[var(--card-hover)] hover:border-[var(--border-light)] transition-colors">
+                            <div className="flex flex-col items-center pt-1">
+                              <div className="w-2 h-2 rounded-full bg-[var(--primary)] group-hover:shadow-[0_0_8px_rgba(34,197,94,0.6)] transition-shadow" />
+                              <div className="w-px h-full bg-[var(--border)] mt-2" />
+                            </div>
+                            <div className="flex-1 pb-2">
+                              <div className="flex items-start justify-between mb-1">
+                                <div className="text-sm font-bold text-white">{log.action}</div>
+                                <div className="text-[10px] text-[var(--text-muted)] bg-[var(--background)] px-2 py-1 rounded-md font-mono border border-[var(--border)]">
+                                  {new Date(log.timestamp).toLocaleString("pt-BR")}
+                                </div>
+                              </div>
+                              <div className="text-xs text-[var(--text-muted)] leading-relaxed">{log.details}</div>
+                              <div className="mt-2 text-[10px] font-semibold text-[var(--text-label)] uppercase tracking-wider">
+                                Usuário ID: {log.user_id}
+                              </div>
+                            </div>
+                          </div>
                         ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {auditoria.map((e,i)=>(
-                        <tr key={e.id} className="border-b border-[var(--border)] hover:bg-[var(--card-hover)] transition-colors">
-                          <td className="p-4 text-xs text-[var(--text-muted)]">{i+1}</td>
-                          <td className="p-4">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold"
-                              style={{background:`${getAcaoColor(e.acao)}20`, color:getAcaoColor(e.acao)}}>
-                              {e.acao}
-                            </span>
-                          </td>
-                          <td className="p-4 text-xs text-white font-mono">{e.entidade}</td>
-                          <td className="p-4 text-xs text-[var(--text-muted)]">{e.entidade_id ?? "—"}</td>
-                          <td className="p-4 text-xs text-[var(--text-muted)] max-w-[240px] truncate" title={e.detalhes||""}>{e.detalhes||"—"}</td>
-                          <td className="p-4 text-xs text-[var(--text-muted)]">{e.usuario||"system"}</td>
-                          <td className="p-4 text-xs text-[var(--text-muted)] whitespace-nowrap">{formatDate(e.criado_em)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
           )}
-        </>
-      )}
+        </div>
+      </div>
     </div>
   );
 }

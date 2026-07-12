@@ -54,19 +54,17 @@ def get_genai_or_none(api_key: Optional[str]):
                     # Nova SDK: use client.models.generate_content(model=..., contents=...)
                     if hasattr(self.client, 'models') and hasattr(self.client.models, 'generate_content'):
                         resp = self.client.models.generate_content(model=self.model, contents=input_text)
-                        # resp may have 'candidates' or 'output' or 'content'
-                        text = None
-                        if hasattr(resp, 'candidates'):
+                        text = getattr(resp, 'text', None)
+                        if not text and hasattr(resp, 'candidates'):
                             c = getattr(resp, 'candidates')
                             if c and len(c) > 0:
-                                text = getattr(c[0], 'content', None) or getattr(c[0], 'text', None)
+                                text = getattr(c[0], 'text', None) or getattr(c[0], 'content', None)
                         if not text and hasattr(resp, 'output'):
                             out = getattr(resp, 'output')
                             if out and len(out) > 0:
-                                text = getattr(out[0], 'content', None) or getattr(out[0], 'text', None)
+                                text = getattr(out[0], 'text', None) or getattr(out[0], 'content', None)
                         if not text and hasattr(resp, 'content'):
                             text = getattr(resp, 'content')
-                        # Coerce to string to avoid returning SDK-specific Content objects
                         if text is not None and not isinstance(text, str):
                             try:
                                 text = str(text)
@@ -84,8 +82,13 @@ def get_genai_or_none(api_key: Optional[str]):
                             except Exception:
                                 text = None
                         return type('R', (), {'text': text})
-                except Exception:
-                    pass
+                except Exception as e:
+                    err = str(e)
+                    if 'API_KEY_INVALID' in err or 'API key not valid' in err:
+                        logger.error("AI: chave da API Gemini inválida. Verifique GOOGLE_API_KEY em backend/.env")
+                    else:
+                        logger.warning(f"AI: erro na chamada Gemini ({self.model}): {type(e).__name__}: {e}")
+                    return type('R', (), {'text': None})
 
                 # Se nada funcionar, retorna None-text para sinalizar falha
                 return type('R', (), {'text': None})
