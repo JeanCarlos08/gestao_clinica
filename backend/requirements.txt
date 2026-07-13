@@ -6,10 +6,12 @@ python-multipart>=0.0.9
 
 # ── Banco de dados ───────────────────────────────────────────────
 psycopg2-binary>=2.9.9
+alembic>=1.13.0
 
 # ── Segurança / Auth ─────────────────────────────────────────────
 python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
+bcrypt>=4.1.0,<5.0.0
 
 # ── Utilitários ──────────────────────────────────────────────────
 python-dotenv>=1.0.0
@@ -29,6 +31,7 @@ fpdf2>=2.7.9
 python-docx>=1.1.0
 Pillow>=10.0.0
 
-# ── Testes (não instalados em prod via --no-dev, mas ok no build) ─
+# ── Testes ──────────────────────────────────────────────────────
 pytest>=8.0.0
 pytest-mock>=3.14.0
+pytest-cov>=5.0.0

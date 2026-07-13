@@ -58,12 +58,12 @@ def login(req: LoginRequest):
 
     if user:
         stored_hash = user_repo.get_password_hash(username)
-        if stored_hash and (password == stored_hash or verify_password(password, stored_hash)):
+        if stored_hash and verify_password(password, stored_hash):
             token = create_access_token({"sub": username, "user_id": user.id, "role": user.role})
             return LoginResponse(access_token=token, message=f"Bem-vindo(a), {user.display_name}!", user_id=user.id, display_name=user.display_name, role=user.role)
 
     # Fallback: .env creds
-    if settings.auth_password and username.lower() == settings.auth_username.lower() and (password == settings.auth_password or verify_password(password, settings.auth_password)):
+    if settings.auth_password and username.lower() == settings.auth_username.lower() and verify_password(password, settings.auth_password):
         token = create_access_token({"sub": username})
         return LoginResponse(access_token=token, message="Login via .env", user_id=0, display_name=username, role="admin")
 

@@ -199,7 +199,7 @@ WORKDIR /app
 COPY . .
 
 # Instalar dependências
-RUN pip install -q -r requirements.txt
+RUN pip install -q -r backend/requirements.txt
 
 # Executar scheduler em daemon
 CMD ["python", "scripts/scheduler.py", "--daemon", "--interval", "3600"]

@@ -2,11 +2,10 @@
 Funções utilitárias do sistema mvpdepsicologia.
 
 Helpers puros reutilizáveis por qualquer camada do sistema.
-Sem dependência de Streamlit, banco ou serviços externos.
+Sem dependência de banco ou serviços externos.
 """
 
 import base64
-import hashlib
 import re
 from datetime import date, datetime, time
 from typing import Any, Optional
@@ -90,13 +89,20 @@ def truncate_text(text: str, max_length: int = 100, suffix: str = "...") -> str:
 # ─────────────────────────────────────────────────────────────
 
 def hash_password(password: str) -> str:
-    """Retorna hash SHA-256 da senha. NÃO usar em produção com múltiplos usuários — usar bcrypt."""
-    return hashlib.sha256(password.encode("utf-8")).hexdigest()
+    """Retorna hash bcrypt da senha."""
+    from passlib.hash import bcrypt
+    return bcrypt.hash(password)
 
 
 def verify_password(password: str, hashed: str) -> bool:
-    """Verifica senha contra hash SHA-256."""
-    return hash_password(password) == hashed
+    """Verifica senha contra hash bcrypt. Suporta migração de hashes SHA-256 legados."""
+    from passlib.hash import bcrypt
+    if bcrypt.identify(hashed):
+        return bcrypt.verify(password, hashed)
+    import hashlib
+    if len(hashed) == 64:
+        return hashlib.sha256(password.encode("utf-8")).hexdigest() == hashed
+    return False
 
 
 # ─────────────────────────────────────────────────────────────

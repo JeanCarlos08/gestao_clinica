@@ -70,7 +70,7 @@ source .venv/bin/activate
 ### 2. Instalar Dependências
 
 ```bash
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 ```
 
 ### 3. Configurar Credenciais

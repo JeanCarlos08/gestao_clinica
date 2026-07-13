@@ -168,7 +168,7 @@ export default function Sidebar() {
         </button>
         <div className="px-3 flex items-center gap-2 pt-1">
           <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] opacity-40" />
-          <span className="text-[9px] text-[var(--text-muted)]">Clínica IA v3.0 · © 2025</span>
+          <span className="text-[9px] text-[var(--text-muted)]">Clínica IA v3.0.0 · © 2025</span>
           <div className="ml-auto flex items-center gap-2">
             <Link href="/privacy" className="text-[9px] text-[var(--text-muted)] hover:text-white transition-colors">Privacy</Link>
             <Link href="/terms" className="text-[9px] text-[var(--text-muted)] hover:text-white transition-colors">Terms</Link>

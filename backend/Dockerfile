@@ -1,11 +1,11 @@
-# Dockerfile — gestao_clinica v2.0
+# Dockerfile — gestao_clinica v3.0
 # Compatível com Render (usa $PORT injetado pela plataforma)
 
 FROM python:3.11-slim
 
 # Metadados
 LABEL maintainer="mvpdepsicologia"
-LABEL version="2.0.0"
+LABEL version="3.0.0"
 LABEL description="Sistema de Gestão Clínica Ocupacional"
 
 # Variáveis de ambiente de sistema

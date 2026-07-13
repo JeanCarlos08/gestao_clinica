@@ -191,7 +191,7 @@ examples/
   └── exemplo_laudos.py        # Exemplos de uso
 
 .env                           # Variáveis de ambiente
-requirements.txt               # Dependências (atualizado)
+backend/requirements.txt        # Dependências (atualizado)
 ```
 
 ---

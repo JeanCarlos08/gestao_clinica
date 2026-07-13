@@ -22,7 +22,7 @@ O sistema implementa **carregamento inteligente de credenciais** com fallback au
 
 2. **Instale dependências:**
    ```bash
-   pip install -r requirements.txt
+   pip install -r backend/requirements.txt
    ```
 
 3. **Verifique carregamento:**

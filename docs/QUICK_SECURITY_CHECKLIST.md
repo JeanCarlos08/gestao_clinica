@@ -16,7 +16,7 @@ chmod 600 credentials.json
 
 ### 3. Instalar pacote Secret Manager (opcional, para produção)
 ```bash
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 # ou só o pacote:
 pip install google-cloud-secret-manager
 ```

@@ -68,7 +68,7 @@ source /media/jean/7AF8AFA7F8AF5FDD/gestao_clinica/.venv/bin/activate
 ### 2. Instalar Dependências
 
 ```bash
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 ```
 
 ### 3. Obter credentials.json
@@ -156,7 +156,7 @@ print(novo_doc['url'])  # Link do Google Docs
 
 | Erro | Solução |
 |------|---------|
-| `ModuleNotFoundError: google` | `pip install -r requirements.txt` |
+| `ModuleNotFoundError: google` | `pip install -r backend/requirements.txt` |
 | `GOOGLE_DOCS_TEMPLATE_ID not found` | Configure no `.env` |
 | `credentials.json not found` | Copie o arquivo para raiz do projeto |
 | `Permission denied` | Verifique roles na Google Cloud |

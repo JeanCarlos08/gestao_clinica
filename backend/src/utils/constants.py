@@ -11,7 +11,7 @@ Evita magic strings espalhadas pelo código.
 # ─────────────────────────────────────────────────────────────
 
 APP_NAME: str = "mvpdepsicologia"
-APP_VERSION: str = "2.0.0"
+APP_VERSION: str = "3.0.0"
 APP_TITLE: str = "Gestão Clínica Ocupacional"
 APP_SUBTITLE: str = "Sistema de Gestão de Atendimentos"
 APP_ICON: str = "🧠"

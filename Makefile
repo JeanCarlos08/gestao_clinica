@@ -1,13 +1,6 @@
-# Makefile para Gerador de Laudos
-# 
-# Uso:
-#   make streamlit    - Rodar Streamlit
-#   make flask        - Rodar Flask
-#   make test         - Testar conexão
-#   make install      - Instalar dependências
-#   make help         - Ver ajuda
+# Makefile — Gestão Clínica v3.0
 
-.PHONY: help install streamlit flask test clean activate
+.PHONY: help install test lint clean dev dev-backend dev-frontend
 
 PROJECT_DIR := /home/jean/gestao_clinica
 VENV := $(PROJECT_DIR)/venv
@@ -17,94 +10,74 @@ PIP := $(VENV)/bin/pip
 help:
 	@echo ""
 	@echo "╔═══════════════════════════════════════════════════════════════╗"
-	@echo "║           Gerador de Laudos - Makefile                        ║"
+	@echo "║           Gestão Clínica — Makefile v3.0                     ║"
 	@echo "╚═══════════════════════════════════════════════════════════════╝"
 	@echo ""
 	@echo "Comandos disponíveis:"
 	@echo ""
-	@echo "  make streamlit      - Rodar app Streamlit (http://localhost:8501)"
-	@echo "  make flask          - Rodar app Flask (http://localhost:5000)"
-	@echo "  make test           - Testar conexão Google Docs API"
+	@echo "  make dev            - Rodar backend + frontend"
+	@echo "  make dev-backend    - Rodar backend (FastAPI, port 8000)"
+	@echo "  make dev-frontend   - Rodar frontend (Next.js, port 3000)"
 	@echo "  make install        - Instalar dependências"
-	@echo "  make activate       - Ativar ambiente virtual"
-	@echo "  make freeze         - Congelar dependências"
-	@echo "  make clean          - Limpar arquivos temp"
+	@echo "  make test           - Rodar testes"
 	@echo "  make lint           - Verificar código"
-	@echo "  make tests          - Rodar testes unitários"
-	@echo "  make docs           - Ver documentação"
+	@echo "  make clean          - Limpar arquivos temp"
+	@echo "  make migrate        - Rodar migrações Alembic"
+	@echo "  make migrate-create - Criar nova migração"
 	@echo "  make help           - Esta mensagem"
 	@echo ""
 
 # ─────────────────────────────────────────────────────────────────
 
-activate:
-	@echo "✅ Ativando ambiente virtual..."
-	@bash -c "source $(VENV)/bin/activate && bash"
-
 install:
 	@echo "📦 Instalando dependências..."
 	@$(PIP) install --upgrade pip
-	@$(PIP) install -r requirements.txt
+	@$(PIP) install -r backend/requirements.txt
 	@echo "✅ Dependências instaladas!"
 
-freeze:
-	@echo "📋 Congelando dependências..."
-	@$(PIP) freeze > requirements.txt
-	@echo "✅ requirements.txt atualizado!"
+dev-backend:
+	@echo ""
+	@echo "⚡ Iniciando backend FastAPI..."
+	@echo "✨ Acesse: http://localhost:8000/docs"
+	@echo ""
+	@. $(VENV)/bin/activate && cd $(PROJECT_DIR)/backend && PYTHONPATH=src uvicorn src.infrastructure.api.index:app --reload --host 0.0.0.0 --port 8000
 
-streamlit: activate
+dev-frontend:
 	@echo ""
-	@echo "🌐 Iniciando Streamlit..."
-	@echo "✨ Acesse: http://localhost:8501"
+	@echo "🌐 Iniciando frontend Next.js..."
+	@echo "✨ Acesse: http://localhost:3000"
 	@echo ""
-	@. $(VENV)/bin/activate && cd $(PROJECT_DIR) && streamlit run app_laudos_local.py
+	@. $(VENV)/bin/activate && cd $(PROJECT_DIR)/frontend && npm run dev
 
-flask: activate
-	@echo ""
-	@echo "⚡ Iniciando Flask..."
-	@echo "✨ Acesse: http://localhost:5000"
-	@echo ""
-	@. $(VENV)/bin/activate && cd $(PROJECT_DIR) && python api_laudos_local.py
+dev: dev-backend
 
 test:
 	@echo ""
-	@echo "🧪 Testando conexão Google Docs API..."
-	@echo ""
-	@. $(VENV)/bin/activate && cd $(PROJECT_DIR) && \
-		$(PYTHON) -c "from services.google_docs_api import get_google_docs_api; api = get_google_docs_api(); print('✅ Conexão estabelecida!'); print('✅ Google Docs API: OK')"
-
-tests:
-	@echo ""
-	@echo "🧪 Rodando testes unitários..."
-	@echo ""
-	@. $(VENV)/bin/activate && cd $(PROJECT_DIR)/backend && pytest tests/test_google_docs.py -v
+	@echo "🧪 Rodando testes..."
+	@. $(VENV)/bin/activate && cd $(PROJECT_DIR)/backend && python -m pytest tests/ -v
 
 lint:
 	@echo ""
 	@echo "🔍 Verificando código..."
+	@. $(VENV)/bin/activate && cd $(PROJECT_DIR)/backend && python -m py_compile src/utils/helpers.py && python -m py_compile src/services/security.py && echo "✅ Syntax OK"
+
+migrate:
 	@echo ""
-	@. $(VENV)/bin/activate && cd $(PROJECT_DIR) && \
-		python -m pylint services/google_docs_api.py services/laudo_service.py --disable=all --enable=E,F
+	@echo "🔄 Rodando migrações Alembic..."
+	@. $(VENV)/bin/activate && cd $(PROJECT_DIR)/backend && alembic upgrade head
+
+migrate-create:
+	@echo ""
+	@echo "📝 Criando nova migração..."
+	@. $(VENV)/bin/activate && cd $(PROJECT_DIR)/backend && alembic revision --autogenerate -m "$(msg)"
 
 clean:
 	@echo "🧹 Limpando arquivos temporários..."
 	@find $(PROJECT_DIR) -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 	@find $(PROJECT_DIR) -type f -name "*.pyc" -delete
 	@rm -rf $(PROJECT_DIR)/.pytest_cache
-	@rm -rf $(PROJECT_DIR)/.streamlit
 	@echo "✅ Limpeza concluída!"
-
-docs:
-	@echo ""
-	@echo "📚 Documentação disponível:"
-	@echo ""
-	@echo "  • QUICK_START.md              - Início rápido"
-	@echo "  • START_LOCAL.txt             - Sumário visual"
-	@echo "  • LOCALHOST_README.md         - Guia completo"
-	@echo "  • GOOGLE_DOCS_SETUP.md        - Setup Google Cloud"
-	@echo "  • examples/exemplo_laudos.py  - Exemplos de código"
-	@echo ""
 
 # ─────────────────────────────────────────────────────────────────
 
-.SILENT: help docs
+.SILENT: help

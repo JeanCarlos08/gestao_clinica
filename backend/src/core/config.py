@@ -55,7 +55,7 @@ class Settings:
     
     # ── Sistema ──────────────────────────────────────────────
     app_name: str = field(default_factory=lambda: _get_secret("APP_NAME", "mvpdepsicologia"))
-    app_version: str = field(default_factory=lambda: _get_secret("APP_VERSION", "2.0.0"))
+    app_version: str = field(default_factory=lambda: _get_secret("APP_VERSION", "3.0.0"))
     app_env: str = field(default_factory=lambda: _get_secret("APP_ENV", "development"))
     app_secret_key: str = field(default_factory=lambda: _get_secret("APP_SECRET_KEY", "change-me"))
     log_level: str = field(default_factory=lambda: _get_secret("LOG_LEVEL", "INFO"))

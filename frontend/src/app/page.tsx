@@ -493,7 +493,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div className="auth-bottom">Clínica IA v2.0 &nbsp;·&nbsp; © 2025 Todos os direitos reservados</div>
+          <div className="auth-bottom">Clínica IA v3.0.0 &nbsp;·&nbsp; © 2025 Todos os direitos reservados</div>
         </div>
       </div>
 

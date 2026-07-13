@@ -9,7 +9,7 @@ Endpoints:
 Run locally (no container):
 
 ```bash
-python -m pip install -r requirements.txt
+python -m pip install -r ../../../../backend/requirements.txt
 uvicorn auth_api.main:app --reload --port 8001
 ```
 

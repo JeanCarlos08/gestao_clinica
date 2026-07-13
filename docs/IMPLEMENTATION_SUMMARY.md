@@ -58,7 +58,7 @@ Foi implementado um **framework completo de segurança e conformidade LGPD** par
 | [app_laudos_local.py](app_laudos_local.py) | Checagem e correção de permissões local |
 | [services/google_docs_api.py](services/google_docs_api.py) | Integrado com credentials_loader |
 | [services/laudo_service.py](services/laudo_service.py) | Audit logging em criação/export/compartilhamento |
-| [requirements.txt](requirements.txt) | Adicionado `google-cloud-secret-manager` |
+| [backend/requirements.txt](backend/requirements.txt) | Adicionado `google-cloud-secret-manager` |
 | [.env.example](.env.example) | Novo: `CREDENTIALS_SOURCE`, `GOOGLE_CLOUD_PROJECT`, `GOOGLE_SECRET_NAME` |
 | [.gitignore](.gitignore) | Adicionado: `credentials.json`, `logs/` |
 

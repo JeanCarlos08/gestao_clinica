@@ -50,3 +50,7 @@ backend/laudos/
 logs/
 *.log
 backend/logs/
+
+# ── Accidental artifacts ────────────────────────────────
+=0.7.0
+Qual
