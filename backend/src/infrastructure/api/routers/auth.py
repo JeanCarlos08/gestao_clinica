@@ -6,6 +6,8 @@ needed for token responses.
 """
 
 import os
+import secrets
+import time
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -29,6 +31,25 @@ from infrastructure.api.routers.deps import (
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api")
+
+# ─────────────────────────────────────────────────────────────
+# OAuth CSRF state store (in-memory, TTL 10 min)
+# ─────────────────────────────────────────────────────────────
+_oauth_state_store: dict[str, float] = {}
+_STATE_TTL_SECONDS = 600
+
+
+def _generate_state() -> str:
+    state = secrets.token_urlsafe(32)
+    _oauth_state_store[state] = time.time()
+    return state
+
+
+def _validate_state(state: str) -> bool:
+    if not state or state not in _oauth_state_store:
+        return False
+    created = _oauth_state_store.pop(state)
+    return (time.time() - created) < _STATE_TTL_SECONDS
 
 
 class TokenResponse(BaseModel):
@@ -118,6 +139,7 @@ async def google_oauth_redirect():
         )
     import urllib.parse
 
+    state = _generate_state()
     redirect_uri = f"{settings.frontend_url.rstrip('/')}/api/auth/google/callback"
     params = urllib.parse.urlencode({
         "client_id": client_id,
@@ -126,16 +148,20 @@ async def google_oauth_redirect():
         "scope": "openid email profile",
         "access_type": "offline",
         "prompt": "select_account",
+        "state": state,
     })
     return RedirectResponse(url=f"https://accounts.google.com/o/oauth2/v2/auth?{params}")
 
 
 @router.get("/auth/google/callback", tags=["Auth"])
-async def google_oauth_callback(code: str = None, error: str = None):
+async def google_oauth_callback(code: str = None, error: str = None, state: str = None):
     """Recebe o callback do Google, troca o code por token e gera JWT interno."""
     import urllib.parse
 
     frontend_base = settings.frontend_url.rstrip("/")
+
+    if not _validate_state(state):
+        return RedirectResponse(url=f"{frontend_base}/auth/callback?error=csrf_invalido")
 
     if error or not code:
         return RedirectResponse(url=f"{frontend_base}/auth/callback?error=acesso_negado")

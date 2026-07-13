@@ -10,7 +10,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from core.repositories.repositories import atendimento_repo, preferences_repo
-from infrastructure.api.routers.deps import _slug_name, get_current_user
+from infrastructure.api.routers.deps import _slug_name, require_permission
+from utils.constants import (
+    PERM_VIEW_ATENDIMENTOS, PERM_CREATE_ATENDIMENTO,
+    PERM_EDIT_ATENDIMENTO, PERM_DELETE_ATENDIMENTO,
+)
 
 router = APIRouter(prefix="/api")
 
@@ -55,7 +59,7 @@ class PacienteResponse(BaseModel):
     response_model=list[AtendimentoResponse],
     tags=["Atendimentos"],
 )
-async def list_atendimentos(current_user: dict = Depends(get_current_user)):
+async def list_atendimentos(current_user: dict = Depends(require_permission(PERM_VIEW_ATENDIMENTOS))):
     """Lista atendimentos (requer autenticação)."""
     from core.entities.models import AtendimentoFilter
 
@@ -81,7 +85,7 @@ async def list_pacientes(
     q: Optional[str] = None,
     limit: int = 1000,
     offset: int = 0,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission(PERM_VIEW_ATENDIMENTOS)),
 ):
     pacientes = atendimento_repo.list_pacientes_resumo(q=q, limit=limit, offset=offset)
     fotos: dict = preferences_repo.get_many("patient_photo:")
@@ -103,7 +107,7 @@ async def list_pacientes(
 @router.post("/atendimentos", tags=["Atendimentos"])
 async def create_atendimento(
     payload: AtendimentoPayload,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission(PERM_CREATE_ATENDIMENTO)),
 ):
     from datetime import date, time
     from core.entities.models import AtendimentoCreate
@@ -128,7 +132,7 @@ async def create_atendimento(
 async def update_atendimento(
     atendimento_id: int,
     payload: AtendimentoPayload,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission(PERM_EDIT_ATENDIMENTO)),
 ):
     from datetime import date, time
     from core.entities.models import AtendimentoUpdate
@@ -152,7 +156,7 @@ async def update_atendimento(
 @router.delete("/atendimentos/{atendimento_id}", tags=["Atendimentos"])
 async def delete_atendimento(
     atendimento_id: int,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission(PERM_DELETE_ATENDIMENTO)),
 ):
     success = atendimento_repo.delete(atendimento_id)
     if not success:

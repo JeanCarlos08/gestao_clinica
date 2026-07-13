@@ -9,7 +9,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends
 
 from core.repositories.repositories import atendimento_repo
-from infrastructure.api.routers.deps import get_current_user
+from infrastructure.api.routers.deps import require_permission
+from utils.constants import PERM_VIEW_ATENDIMENTOS
 
 router = APIRouter(prefix="/api")
 
@@ -18,7 +19,7 @@ router = APIRouter(prefix="/api")
 async def get_relatorios_stats(
     data_inicio: Optional[str] = None,
     data_fim: Optional[str] = None,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission(PERM_VIEW_ATENDIMENTOS)),
 ):
     """
     Estatísticas detalhadas para relatórios, com filtro opcional por período.
@@ -78,7 +79,7 @@ async def get_relatorios_atendimentos(
     data_fim: Optional[str] = None,
     status: Optional[str] = None,
     modalidade: Optional[str] = None,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission(PERM_VIEW_ATENDIMENTOS)),
 ):
     """Lista de atendimentos filtrada para geração de relatórios."""
     from datetime import date

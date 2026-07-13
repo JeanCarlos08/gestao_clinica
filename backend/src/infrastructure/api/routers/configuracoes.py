@@ -12,8 +12,9 @@ from pydantic import BaseModel
 
 from core.repositories.repositories import auditoria_repo
 from core.repositories.user_repositories import user_repo, clinic_config_repo
-from infrastructure.api.routers.deps import get_current_user
+from infrastructure.api.routers.deps import get_current_user, require_permission
 from utils.constants import CLINIC_PREF_USER_PHOTO, CLINIC_PREF_LOGO
+from utils.constants import PERM_VIEW_CONFIGURACOES, PERM_MANAGE_CONFIGURACOES, PERM_VIEW_LOGS
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -42,7 +43,7 @@ async def get_config_options():
 
 
 @router.get("/configuracoes", tags=["Configurações"])
-async def get_configuracoes(current_user: dict = Depends(get_current_user)):
+async def get_configuracoes(current_user: dict = Depends(require_permission(PERM_VIEW_CONFIGURACOES))):
     """Retorna todas as configurações da clínica."""
     config = clinic_config_repo.get_all_clinic_data()
     username = current_user.get("sub", "")
@@ -64,7 +65,7 @@ async def get_configuracoes(current_user: dict = Depends(get_current_user)):
 @router.put("/configuracoes", tags=["Configurações"])
 async def update_configuracoes(
     body: ConfigClinicaUpdate,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission(PERM_MANAGE_CONFIGURACOES)),
 ):
     """Salva configurações da clínica."""
     data = {k: v for k, v in body.model_dump().items() if v is not None}
@@ -80,7 +81,7 @@ async def update_configuracoes(
 async def upload_config_photo(
     field: str = Form(...),
     file: UploadFile = File(...),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission(PERM_MANAGE_CONFIGURACOES)),
 ):
     """Faz upload de imagem (logo ou foto do usuário) e salva como data-uri na configuração."""
     if field not in ("user_photo", "clinic_logo"):
@@ -106,7 +107,7 @@ async def upload_config_photo(
 @router.get("/auditoria", tags=["Configurações"])
 async def get_auditoria(
     limit: int = 50,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission(PERM_VIEW_LOGS)),
 ):
     """Retorna o log de auditoria do sistema."""
     entradas = auditoria_repo.listar(limit=min(limit, 200))

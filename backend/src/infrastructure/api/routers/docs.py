@@ -12,7 +12,8 @@ from pydantic import BaseModel
 from core.repositories.repositories import temporary_permission_repo
 from utils.logger import get_logger
 
-from infrastructure.api.routers.deps import get_current_user
+from infrastructure.api.routers.deps import require_permission
+from utils.constants import PERM_MANAGE_DOCUMENTOS
 
 logger = get_logger(__name__)
 
@@ -34,7 +35,7 @@ class DocsRevokeRequest(BaseModel):
 @router.post("/docs/embed", tags=["Docs"])
 async def create_doc_embed_link(
     payload: DocsEmbedRequest,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission(PERM_MANAGE_DOCUMENTOS)),
 ):
     """Retorna uma URL de edição/incorporação para um Google Doc.
 
@@ -107,7 +108,7 @@ async def create_doc_embed_link(
 @router.post("/docs/revoke", tags=["Docs"])
 async def revoke_doc_permission(
     payload: DocsRevokeRequest,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission(PERM_MANAGE_DOCUMENTOS)),
 ):
     """Revoga uma permissão criada anteriormente no Drive."""
     try:

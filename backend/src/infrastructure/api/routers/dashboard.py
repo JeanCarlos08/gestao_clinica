@@ -8,13 +8,14 @@ endpoint.
 from fastapi import APIRouter, Depends
 
 from core.repositories.repositories import atendimento_repo, preferences_repo
-from infrastructure.api.routers.deps import _slug_name, get_current_user
+from infrastructure.api.routers.deps import _slug_name, require_permission
+from utils.constants import PERM_VIEW_DASHBOARD
 
 router = APIRouter(prefix="/api")
 
 
 @router.get("/dashboard", tags=["Dashboard"])
-async def get_dashboard(current_user: dict = Depends(get_current_user)):
+async def get_dashboard(current_user: dict = Depends(require_permission(PERM_VIEW_DASHBOARD))):
     """Retorna stats + atendimentos em uma única chamada (menos round-trips)."""
     from core.entities.models import AtendimentoFilter
 
@@ -52,6 +53,6 @@ async def get_dashboard(current_user: dict = Depends(get_current_user)):
 
 
 @router.get("/stats", tags=["Dashboard"])
-async def get_stats(current_user: dict = Depends(get_current_user)):
+async def get_stats(current_user: dict = Depends(require_permission(PERM_VIEW_DASHBOARD))):
     """Estatísticas do dashboard (requer autenticação)."""
     return atendimento_repo.get_stats()

@@ -14,7 +14,8 @@ from core.entities.models import DocumentoCreate
 from core.repositories.repositories import documento_repo
 from utils.logger import get_logger
 
-from infrastructure.api.routers.deps import get_current_user
+from infrastructure.api.routers.deps import require_permission
+from utils.constants import PERM_VIEW_DOCUMENTOS, PERM_MANAGE_DOCUMENTOS
 
 logger = get_logger(__name__)
 
@@ -60,7 +61,7 @@ class LaudoResponse(BaseModel):
 
 
 @router.get("/laudos", tags=["Laudos"])
-async def list_laudos(current_user: dict = Depends(get_current_user)):
+async def list_laudos(current_user: dict = Depends(require_permission(PERM_VIEW_DOCUMENTOS))):
     """Lista todos os laudos gerados e persistidos no banco."""
     from services.google_docs_service import google_docs_service
 
@@ -85,7 +86,7 @@ async def list_laudos(current_user: dict = Depends(get_current_user)):
 @router.post("/laudos/gerar", response_model=LaudoResponse, tags=["Laudos"])
 async def gerar_laudo(
     payload: LaudoPayload,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission(PERM_MANAGE_DOCUMENTOS)),
 ):
     """Copia o template Google Docs, preenche os campos e persiste no banco."""
     from services.laudo_service import DadosLaudo, get_laudo_service
@@ -139,7 +140,7 @@ async def gerar_laudo(
 @router.get("/laudos/{doc_id}/pdf", tags=["Laudos"])
 async def exportar_laudo_pdf(
     doc_id: str,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission(PERM_VIEW_DOCUMENTOS)),
 ):
     """Exporta um laudo Google Docs como PDF."""
     import io
@@ -165,7 +166,7 @@ async def exportar_laudo_pdf(
 
 
 @router.get("/laudos/template-status", tags=["Laudos"])
-async def laudo_template_status(current_user: dict = Depends(get_current_user)):
+async def laudo_template_status(current_user: dict = Depends(require_permission(PERM_VIEW_DOCUMENTOS))):
     """Verifica se o template Google Docs está configurado."""
     from services.laudo_service import resolve_template_id
     from services.google_docs_service import google_docs_service

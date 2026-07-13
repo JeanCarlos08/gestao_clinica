@@ -7,13 +7,14 @@ in the database.
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from core.repositories.repositories import arquivo_repo
-from infrastructure.api.routers.deps import get_current_user
+from infrastructure.api.routers.deps import require_permission
+from utils.constants import PERM_VIEW_DOCUMENTOS, PERM_MANAGE_DOCUMENTOS
 
 router = APIRouter(prefix="/api")
 
 
 @router.get("/arquivos", tags=["Upload"])
-async def list_arquivos(current_user: dict = Depends(get_current_user)):
+async def list_arquivos(current_user: dict = Depends(require_permission(PERM_VIEW_DOCUMENTOS))):
     """Lista todos os arquivos (PDFs) armazenados no banco."""
     arquivos = arquivo_repo.list_all()
     return [
@@ -32,7 +33,7 @@ async def list_arquivos(current_user: dict = Depends(get_current_user)):
 @router.post("/arquivos", tags=["Upload"])
 async def upload_arquivo(
     file: UploadFile = File(...),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission(PERM_MANAGE_DOCUMENTOS)),
 ):
     """Faz upload de um PDF para o banco de dados."""
     if not file.filename:
@@ -57,7 +58,7 @@ async def upload_arquivo(
 @router.delete("/arquivos/{file_id}", tags=["Upload"])
 async def delete_arquivo(
     file_id: int,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_permission(PERM_MANAGE_DOCUMENTOS)),
 ):
     """Remove um arquivo do banco."""
     success = arquivo_repo.delete(file_id)

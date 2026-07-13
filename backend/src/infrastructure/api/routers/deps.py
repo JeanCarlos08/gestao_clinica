@@ -1,16 +1,18 @@
 """Shared dependencies for API routers.
 
 Provides the OAuth2PasswordBearer scheme, the ``get_current_user`` dependency,
-the ``_get_client_ip`` helper, and the ``_slug_name`` utility used across
-multiple routers.
+the ``require_permission`` RBAC dependency, the ``_get_client_ip`` helper,
+and the ``_slug_name`` utility used across multiple routers.
 """
 
 import re as _re
+from functools import partial
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 
 from services.security import verify_access_token
+from utils.constants import ROLE_PERMISSIONS
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/token")
 
@@ -25,6 +27,22 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
             headers={"WWW-Authenticate": "Bearer"},
         )
     return payload
+
+
+def require_permission(permission: str):
+    """Factory que retorna uma dependency que verifica se o role do usuário tem a permissão."""
+
+    async def _check(current_user: dict = Depends(get_current_user)) -> dict:
+        user_role = current_user.get("role", "")
+        allowed = ROLE_PERMISSIONS.get(user_role, [])
+        if permission not in allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Permissão negada: {permission}.",
+            )
+        return current_user
+
+    return _check
 
 
 def _get_client_ip(request: Request) -> str:

@@ -13,7 +13,8 @@ from core.config import settings
 from core.repositories.repositories import atendimento_repo
 from utils.logger import get_logger
 
-from infrastructure.api.routers.deps import get_current_user
+from infrastructure.api.routers.deps import require_permission
+from utils.constants import PERM_VIEW_DASHBOARD, PERM_VIEW_AUTOMACOES, PERM_TRIGGER_AUTOMACOES
 
 logger = get_logger(__name__)
 
@@ -30,7 +31,7 @@ class IAChatPayload(BaseModel):
 
 
 @router.post("/ia/gerar-parecer", tags=["IA"])
-async def gerar_parecer(payload: IAPayload, current_user: dict = Depends(get_current_user)):
+async def gerar_parecer(payload: IAPayload, current_user: dict = Depends(require_permission(PERM_TRIGGER_AUTOMACOES))):
     """Gera um parecer clínico formal usando Google Gemini."""
     has_api_key = bool(settings.gemini_api_key)
     has_adc = bool(os.getenv("GOOGLE_APPLICATION_CREDENTIALS"))
@@ -75,7 +76,7 @@ async def gerar_parecer(payload: IAPayload, current_user: dict = Depends(get_cur
 
 
 @router.get("/ia/diagnostics", tags=["IA"])
-async def ia_diagnostics(current_user: dict = Depends(get_current_user)):
+async def ia_diagnostics(current_user: dict = Depends(require_permission(PERM_VIEW_AUTOMACOES))):
     """Endpoint seguro de diagnóstico para checar se IA/Google Docs estão configurados.
 
     Retorna apenas flags booleanas e metadados não sensíveis — NÃO expõe chaves ou JSONs.
@@ -105,7 +106,7 @@ async def ia_diagnostics(current_user: dict = Depends(get_current_user)):
 
 
 @router.post("/ia/chat", tags=["IA"])
-async def ia_chat(payload: IAChatPayload, current_user: dict = Depends(get_current_user)):
+async def ia_chat(payload: IAChatPayload, current_user: dict = Depends(require_permission(PERM_VIEW_DASHBOARD))):
     """Chat da barra lateral: responde perguntas com base nos dados da clínica."""
     from services.ai_service import AIService
     from core.entities.models import AtendimentoFilter

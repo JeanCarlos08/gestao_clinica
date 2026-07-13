@@ -102,3 +102,20 @@ class Settings:
 
 # Singleton global
 settings = Settings()
+
+
+# ─────────────────────────────────────────────────────────────
+# Fail-fast: recusa iniciar com secrets padrão
+# ─────────────────────────────────────────────────────────────
+
+_INSECURE_DEFAULTS = {
+    "jwt_secret_key": ("change-me-securely", "JWT_SECRET_KEY"),
+    "app_secret_key": ("change-me", "APP_SECRET_KEY"),
+}
+
+for _attr, (_insecure, _env_var) in _INSECURE_DEFAULTS.items():
+    if getattr(settings, _attr) == _insecure and settings.app_env == "production":
+        raise RuntimeError(
+            f"SEGURANÇA: { _attr } ainda usa o valor padrão. "
+            f"Defina a variável de ambiente {_env_var} com um valor seguro."
+        )
