@@ -80,6 +80,19 @@ class Settings:
     # ── Google OAuth (login social) ───────────────────────────
     google_oauth_client_id: Optional[str] = field(default_factory=lambda: _get_secret("GOOGLE_OAUTH_CLIENT_ID"))
     google_oauth_client_secret: Optional[str] = field(default_factory=lambda: _get_secret("GOOGLE_OAUTH_CLIENT_SECRET"))
+
+    # ── Microsoft OAuth (login social) ────────────────────────
+    microsoft_oauth_client_id: Optional[str] = field(default_factory=lambda: _get_secret("MICROSOFT_OAUTH_CLIENT_ID"))
+    microsoft_oauth_client_secret: Optional[str] = field(default_factory=lambda: _get_secret("MICROSOFT_OAUTH_CLIENT_SECRET"))
+    microsoft_oauth_tenant_id: str = field(default_factory=lambda: _get_secret("MICROSOFT_OAUTH_TENANT_ID", "common"))
+
+    # ── Apple OAuth (login social) ────────────────────────────
+    apple_oauth_client_id: Optional[str] = field(default_factory=lambda: _get_secret("APPLE_OAUTH_CLIENT_ID"))
+    apple_oauth_team_id: Optional[str] = field(default_factory=lambda: _get_secret("APPLE_OAUTH_TEAM_ID"))
+    apple_oauth_key_id: Optional[str] = field(default_factory=lambda: _get_secret("APPLE_OAUTH_KEY_ID"))
+    apple_oauth_private_key: Optional[str] = field(default_factory=lambda: _get_secret("APPLE_OAUTH_PRIVATE_KEY"))
+
+    # ── Frontend URL ──────────────────────────────────────────
     frontend_url: str = field(default_factory=lambda: _get_secret("FRONTEND_URL", "https://gestao-clinica.vercel.app"))
 
     # ── Autenticação ──────────────────────────────────────────

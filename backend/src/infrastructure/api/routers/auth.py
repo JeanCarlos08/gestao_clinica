@@ -1,8 +1,8 @@
-"""Auth router — token endpoint + Google OAuth.
+"""Auth router — token endpoint + Google/Microsoft/Apple OAuth.
 
 Includes the password-based login, brute-force protection,
-Google OAuth2 redirect/callback flow and the Pydantic models
-needed for token responses.
+OAuth2 redirect/callback flows for Google, Microsoft and Apple,
+and the Pydantic models needed for token responses.
 """
 
 import os
@@ -220,4 +220,224 @@ async def google_oauth_callback(code: str = None, error: str = None, state: str 
         return RedirectResponse(url=f"{frontend_base}/auth/callback?error=httpx_nao_instalado")
     except Exception as exc:
         logger.error(f"Google OAuth callback error: {exc}")
+        return RedirectResponse(url=f"{frontend_base}/auth/callback?error=erro_interno")
+
+
+# ─────────────────────────────────────────────────────────────
+# Microsoft OAuth 2.0 — Login Social
+# ─────────────────────────────────────────────────────────────
+
+
+@router.get("/auth/microsoft", tags=["Auth"])
+async def microsoft_oauth_redirect():
+    """Inicia o fluxo OAuth com Microsoft. Redireciona para a tela de consentimento."""
+    client_id = settings.microsoft_oauth_client_id
+    tenant_id = settings.microsoft_oauth_tenant_id
+    if not client_id:
+        raise HTTPException(
+            status_code=503,
+            detail="Login com Microsoft não configurado. Configure MICROSOFT_OAUTH_CLIENT_ID.",
+        )
+    import urllib.parse
+
+    state = _generate_state()
+    redirect_uri = f"{settings.frontend_url.rstrip('/')}/api/auth/microsoft/callback"
+    params = urllib.parse.urlencode({
+        "client_id": client_id,
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "scope": "openid email profile",
+        "state": state,
+    })
+    return RedirectResponse(
+        url=f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/authorize?{params}"
+    )
+
+
+@router.get("/auth/microsoft/callback", tags=["Auth"])
+async def microsoft_oauth_callback(code: str = None, error: str = None, state: str = None):
+    """Recebe o callback do Microsoft, troca o code por token e gera JWT interno."""
+    import urllib.parse
+
+    frontend_base = settings.frontend_url.rstrip("/")
+
+    if not _validate_state(state):
+        return RedirectResponse(url=f"{frontend_base}/auth/callback?error=csrf_invalido")
+
+    if error or not code:
+        return RedirectResponse(url=f"{frontend_base}/auth/callback?error=acesso_negado")
+
+    client_id = settings.microsoft_oauth_client_id
+    client_secret = settings.microsoft_oauth_client_secret
+    tenant_id = settings.microsoft_oauth_tenant_id
+    if not client_id or not client_secret:
+        return RedirectResponse(url=f"{frontend_base}/auth/callback?error=nao_configurado")
+
+    try:
+        import httpx
+
+        redirect_uri = f"{frontend_base}/api/auth/microsoft/callback"
+        async with httpx.AsyncClient() as client:
+            token_res = await client.post(
+                f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token",
+                data={
+                    "code": code,
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "redirect_uri": redirect_uri,
+                    "grant_type": "authorization_code",
+                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                timeout=10,
+            )
+        token_data = token_res.json()
+        if "error" in token_data:
+            return RedirectResponse(url=f"{frontend_base}/auth/callback?error=token_invalido")
+
+        access_token = token_data.get("access_token")
+        async with httpx.AsyncClient() as client:
+            user_res = await client.get(
+                "https://graph.microsoft.com/v1.0/me",
+                headers={"Authorization": f"Bearer {access_token}"},
+                timeout=10,
+            )
+        user_info = user_res.json()
+
+        email: str = user_info.get("mail") or user_info.get("userPrincipalName", "")
+        name: str = user_info.get("displayName", email.split("@")[0] if email else "Usuário")
+
+        if not email:
+            return RedirectResponse(url=f"{frontend_base}/auth/callback?error=email_nao_obtido")
+
+        jwt_token = create_access_token(
+            data={"sub": email, "name": name, "provider": "microsoft"},
+            expires_delta=timedelta(minutes=settings.jwt_expiration_minutes),
+        )
+        params = urllib.parse.urlencode({"token": jwt_token, "name": name})
+        return RedirectResponse(url=f"{frontend_base}/auth/callback?{params}")
+
+    except ImportError:
+        return RedirectResponse(url=f"{frontend_base}/auth/callback?error=httpx_nao_instalado")
+    except Exception as exc:
+        logger.error(f"Microsoft OAuth callback error: {exc}")
+        return RedirectResponse(url=f"{frontend_base}/auth/callback?error=erro_interno")
+
+
+# ─────────────────────────────────────────────────────────────
+# Apple OAuth 2.0 — Login Social
+# ─────────────────────────────────────────────────────────────
+
+
+@router.get("/auth/apple", tags=["Auth"])
+async def apple_oauth_redirect():
+    """Inicia o fluxo OAuth com Apple. Redireciona para a tela de consentimento."""
+    client_id = settings.apple_oauth_client_id
+    if not client_id:
+        raise HTTPException(
+            status_code=503,
+            detail="Login com Apple não configurado. Configure APPLE_OAUTH_CLIENT_ID.",
+        )
+    import urllib.parse
+
+    state = _generate_state()
+    redirect_uri = f"{settings.frontend_url.rstrip('/')}/api/auth/apple/callback"
+    params = urllib.parse.urlencode({
+        "client_id": client_id,
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "scope": "name email",
+        "response_mode": "query",
+        "state": state,
+    })
+    return RedirectResponse(url=f"https://appleid.apple.com/auth/authorize?{params}")
+
+
+@router.get("/auth/apple/callback", tags=["Auth"])
+async def apple_oauth_callback(code: str = None, error: str = None, state: str = None):
+    """Recebe o callback do Apple, troca o code por token e gera JWT interno."""
+    import urllib.parse
+
+    frontend_base = settings.frontend_url.rstrip("/")
+
+    if not _validate_state(state):
+        return RedirectResponse(url=f"{frontend_base}/auth/callback?error=csrf_invalido")
+
+    if error or not code:
+        return RedirectResponse(url=f"{frontend_base}/auth/callback?error=acesso_negado")
+
+    client_id = settings.apple_oauth_client_id
+    team_id = settings.apple_oauth_team_id
+    key_id = settings.apple_oauth_key_id
+    if not client_id or not team_id or not key_id:
+        return RedirectResponse(url=f"{frontend_base}/auth/callback?error=nao_configurado")
+
+    try:
+        import httpx
+        import jwt as pyjwt
+        import time
+
+        now = int(time.time())
+        client_secret = pyjwt.encode(
+            {
+                "iss": team_id,
+                "iat": now,
+                "exp": now + 15777000,
+                "aud": "https://appleid.apple.com",
+                "sub": client_id,
+            },
+            settings.apple_oauth_private_key,
+            algorithm="ES256",
+            headers={"kid": key_id},
+        )
+
+        redirect_uri = f"{frontend_base}/api/auth/apple/callback"
+        async with httpx.AsyncClient() as client:
+            token_res = await client.post(
+                "https://appleid.apple.com/auth/token",
+                data={
+                    "code": code,
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "redirect_uri": redirect_uri,
+                    "grant_type": "authorization_code",
+                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                timeout=10,
+            )
+        token_data = token_res.json()
+        if "error" in token_data:
+            return RedirectResponse(url=f"{frontend_base}/auth/callback?error=token_invalido")
+
+        id_token = token_data.get("id_token")
+        if not id_token:
+            return RedirectResponse(url=f"{frontend_base}/auth/callback?error=token_invalido")
+
+        # Decodifica o ID token (Apple não requer verificação de assinatura para login)
+        payload = pyjwt.decode(id_token, options={"verify_signature": False})
+        email: str = payload.get("email", "")
+        sub: str = payload.get("sub", "")
+
+        if not email:
+            return RedirectResponse(url=f"{frontend_base}/auth/callback?error=email_nao_obtido")
+
+        name = payload.get("name", {})
+        full_name = ""
+        if isinstance(name, dict):
+            given = name.get("givenName", "")
+            family = name.get("familyName", "")
+            full_name = f"{given} {family}".strip()
+        if not full_name:
+            full_name = email.split("@")[0]
+
+        jwt_token = create_access_token(
+            data={"sub": email, "name": full_name, "provider": "apple"},
+            expires_delta=timedelta(minutes=settings.jwt_expiration_minutes),
+        )
+        params = urllib.parse.urlencode({"token": jwt_token, "name": full_name})
+        return RedirectResponse(url=f"{frontend_base}/auth/callback?{params}")
+
+    except ImportError:
+        return RedirectResponse(url=f"{frontend_base}/auth/callback?error=httpx_nao_instalado")
+    except Exception as exc:
+        logger.error(f"Apple OAuth callback error: {exc}")
         return RedirectResponse(url=f"{frontend_base}/auth/callback?error=erro_interno")

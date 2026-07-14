@@ -64,10 +64,10 @@ export default function LoginPage() {
 
     if (provider === "google") {
       window.location.href = `${API()}/auth/google`;
-    } else {
-      // Microsoft e Apple: em desenvolvimento
-      setError(`Login com ${provider === "microsoft" ? "Microsoft" : "Apple"} em breve.`);
-      setConsentModal(null);
+    } else if (provider === "microsoft") {
+      window.location.href = `${API()}/auth/microsoft`;
+    } else if (provider === "apple") {
+      window.location.href = `${API()}/auth/apple`;
     }
   };
 
