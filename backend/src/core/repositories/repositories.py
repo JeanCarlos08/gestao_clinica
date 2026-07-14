@@ -620,6 +620,22 @@ class PreferencesRepository:
         except Exception:
             return {}
 
+    def get_many_keys(self, keys: List[str]) -> Dict[str, str]:
+        """Recupera preferências para uma lista específica de chaves em uma única query."""
+        if not keys:
+            return {}
+        try:
+            with connection_scope(commit=False) as conn:
+                cur = conn.cursor()
+                placeholders = ", ".join(["%s"] * len(keys))
+                cur.execute(
+                    f"SELECT pref_key, pref_value FROM {TABLE_PREFERENCES} WHERE pref_key IN ({placeholders})",
+                    tuple(keys),
+                )
+                return {row["pref_key"]: row["pref_value"] for row in cur.fetchall() if row["pref_value"]}
+        except Exception:
+            return {}
+
     def delete(self, key: str) -> bool:
         """Remove uma preferência."""
         try:

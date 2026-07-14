@@ -11,6 +11,9 @@ from fastapi import APIRouter, Depends
 from core.repositories.repositories import atendimento_repo
 from infrastructure.api.routers.deps import require_permission
 from utils.constants import PERM_VIEW_ATENDIMENTOS
+from utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api")
 
@@ -23,54 +26,104 @@ async def get_relatorios_stats(
 ):
     """
     Estatísticas detalhadas para relatórios, com filtro opcional por período.
-    Retorna contagens por status, modalidade e empresa.
+    Usa SQL aggregation em vez de buscar todos os registros.
     """
     from datetime import date
-    from core.entities.models import AtendimentoFilter
+    from infrastructure.connection import connection_scope
+    from utils.constants import TABLE_ATENDIMENTOS
 
-    filters = AtendimentoFilter(limit=5000)
+    conditions = []
+    params = []
+
     if data_inicio:
         try:
-            filters.data_inicio = date.fromisoformat(data_inicio)
+            conditions.append("data >= %s")
+            params.append(date.fromisoformat(data_inicio))
         except ValueError:
             pass
     if data_fim:
         try:
-            filters.data_fim = date.fromisoformat(data_fim)
+            conditions.append("data <= %s")
+            params.append(date.fromisoformat(data_fim))
         except ValueError:
             pass
 
-    atendimentos = atendimento_repo.list_all(filters=filters)
+    where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
-    por_status: dict = {}
-    por_modalidade: dict = {}
-    por_empresa: dict = {}
-    por_mes: dict = {}
+    try:
+        with connection_scope(commit=False) as conn:
+            cur = conn.cursor()
 
-    for a in atendimentos:
-        por_status[a.status] = por_status.get(a.status, 0) + 1
-        por_modalidade[a.modalidade] = por_modalidade.get(a.modalidade, 0) + 1
-        por_empresa[a.empresa] = por_empresa.get(a.empresa, 0) + 1
-        if a.data:
-            mes_key = a.data.strftime("%Y-%m")
-            por_mes[mes_key] = por_mes.get(mes_key, 0) + 1
+            # Query principal com todas as agregações
+            cur.execute(f"""
+                SELECT
+                    COUNT(*) AS total,
+                    COUNT(*) FILTER (WHERE status = 'Agendado') AS agendados,
+                    COUNT(*) FILTER (WHERE status = 'Atendido') AS atendidos,
+                    COUNT(*) FILTER (WHERE status = 'Concluído') AS concluidos,
+                    COUNT(*) FILTER (WHERE status = 'Cancelado') AS cancelados
+                FROM {TABLE_ATENDIMENTOS}
+                {where_clause}
+            """, params)
+            totals = dict(cur.fetchone() or {})
 
-    top_empresas = dict(
-        sorted(por_empresa.items(), key=lambda x: x[1], reverse=True)[:10]
-    )
-    por_mes_sorted = dict(sorted(por_mes.items()))
+            # Por status
+            cur.execute(f"""
+                SELECT status, COUNT(*) AS total
+                FROM {TABLE_ATENDIMENTOS}
+                {where_clause}
+                GROUP BY status ORDER BY total DESC
+            """, params)
+            por_status = {r["status"]: r["total"] for r in cur.fetchall()}
 
-    return {
-        "total": len(atendimentos),
-        "por_status": por_status,
-        "por_modalidade": por_modalidade,
-        "por_empresa": top_empresas,
-        "por_mes": por_mes_sorted,
-        "periodo": {
-            "data_inicio": data_inicio,
-            "data_fim": data_fim,
-        },
-    }
+            # Por modalidade
+            cur.execute(f"""
+                SELECT modalidade, COUNT(*) AS total
+                FROM {TABLE_ATENDIMENTOS}
+                {where_clause}
+                GROUP BY modalidade ORDER BY total DESC
+            """, params)
+            por_modalidade = {r["modalidade"]: r["total"] for r in cur.fetchall()}
+
+            # Por empresa (top 10)
+            cur.execute(f"""
+                SELECT empresa, COUNT(*) AS total
+                FROM {TABLE_ATENDIMENTOS}
+                {where_clause}
+                GROUP BY empresa ORDER BY total DESC LIMIT 10
+            """, params)
+            por_empresa = {r["empresa"]: r["total"] for r in cur.fetchall()}
+
+            # Por mês
+            cur.execute(f"""
+                SELECT TO_CHAR(data, 'YYYY-MM') AS mes, COUNT(*) AS total
+                FROM {TABLE_ATENDIMENTOS}
+                {where_clause}
+                GROUP BY mes ORDER BY mes
+            """, params)
+            por_mes = {r["mes"]: r["total"] for r in cur.fetchall()}
+
+        return {
+            "total": totals.get("total", 0),
+            "por_status": por_status,
+            "por_modalidade": por_modalidade,
+            "por_empresa": por_empresa,
+            "por_mes": por_mes,
+            "periodo": {
+                "data_inicio": data_inicio,
+                "data_fim": data_fim,
+            },
+        }
+    except Exception as e:
+        logger.error(f"Erro ao calcular stats de relatórios: {e}")
+        return {
+            "total": 0,
+            "por_status": {},
+            "por_modalidade": {},
+            "por_empresa": {},
+            "por_mes": {},
+            "periodo": {"data_inicio": data_inicio, "data_fim": data_fim},
+        }
 
 
 @router.get("/relatorios/atendimentos", tags=["Relatórios"])

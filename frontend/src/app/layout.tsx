@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import Sidebar from "@/components/Sidebar";
-import AISidebar from "@/components/AISidebar";
+import dynamic from "next/dynamic";
 import "./globals.css";
+
+const AISidebar = dynamic(() => import("@/components/AISidebar"), { ssr: false });
 
 const manrope = Manrope({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"] });
 

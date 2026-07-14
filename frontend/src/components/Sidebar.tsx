@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { memo, useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -9,6 +9,17 @@ import {
   Menu, X, Sparkles, ChevronRight,
 } from "lucide-react";
 import { buildDisplayName, getLoggedUserProfile, getUserInitials } from "@/lib/auth";
+
+const Clock = memo(function Clock() {
+  const [time, setTime] = useState("");
+  useEffect(() => {
+    const update = () => setTime(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }));
+    update();
+    const id = setInterval(update, 30000);
+    return () => clearInterval(id);
+  }, []);
+  return <div className="text-[11px] font-semibold text-[var(--primary)]">{time}</div>;
+});
 
 const NAV_ITEMS = [
   { href: "/dashboard",     label: "Dashboard",    icon: Home,          color: "text-emerald-400" },
@@ -26,7 +37,6 @@ export default function Sidebar() {
   const [open, setOpen] = useState(false);
   const [profile, setProfile] = useState({ displayName: "Usuário", role: "" });
   const [photoSrc, setPhotoSrc] = useState<string | null>(null);
-  const [currentTime, setCurrentTime] = useState("");
 
   useEffect(() => { setOpen(false); }, [pathname]);
 
@@ -40,6 +50,16 @@ export default function Sidebar() {
     const token = localStorage.getItem("token");
     const user = getLoggedUserProfile(token);
     setProfile({ displayName: user.displayName, role: user.role });
+
+    // Tenta carregar foto do cache local primeiro (evita request a cada navegação)
+    const cached = localStorage.getItem("sidebar_photo_cache");
+    const cachedTime = localStorage.getItem("sidebar_photo_time");
+    const now = Date.now();
+    if (cached && cachedTime && now - parseInt(cachedTime) < 300000) {
+      setPhotoSrc(cached);
+      return;
+    }
+
     (async () => {
       try {
         if (!token) return;
@@ -49,18 +69,13 @@ export default function Sidebar() {
         if (!res.ok) return;
         const data = await res.json();
         const photo = data.clinica.user_photo_base64 || data.clinica.clinic_logo_base64 || null;
-        if (photo) setPhotoSrc(photo);
+        if (photo) {
+          setPhotoSrc(photo);
+          localStorage.setItem("sidebar_photo_cache", photo);
+          localStorage.setItem("sidebar_photo_time", now.toString());
+        }
       } catch { /* ignore */ }
     })();
-  }, []);
-
-  useEffect(() => {
-    const update = () => {
-      setCurrentTime(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }));
-    };
-    update();
-    const id = setInterval(update, 30000);
-    return () => clearInterval(id);
   }, []);
 
   const isActive = (href: string) =>
@@ -90,7 +105,7 @@ export default function Sidebar() {
               <div className="text-[10px] text-[var(--text-muted)] tracking-wide">Portal Administrativo</div>
             </div>
             <div className="ml-auto flex flex-col items-end">
-              <div className="text-[11px] font-semibold text-[var(--primary)]">{currentTime}</div>
+              <Clock />
               <div className="flex items-center gap-1 mt-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] pulse-green" />
                 <span className="text-[9px] text-[var(--text-muted)]">online</span>

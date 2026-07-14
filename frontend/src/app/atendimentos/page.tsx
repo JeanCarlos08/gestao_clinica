@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState, useEffect } from "react";
+import useSWR from "swr";
 import {
   CalendarDays, Clock, PlayCircle, Plus, Search,
   XCircle, RefreshCw, Filter, Sparkles, Building2, User
@@ -10,9 +11,16 @@ interface Atendimento {
   id: number; empresa: string; nome: string; modalidade: string; data: string; hora: string; status: string;
 }
 
+const API = process.env.NEXT_PUBLIC_API_URL || "/api";
+const fetcher = async (url: string) => {
+  const token = localStorage.getItem("token");
+  if (!token) { window.location.href = "/"; return []; }
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (res.status === 401) { localStorage.removeItem("token"); window.location.href = "/"; return []; }
+  return res.json();
+};
+
 export default function AtendimentosPage() {
-  const [atendimentos, setAtendimentos] = useState<Atendimento[]>([]);
-  const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -33,33 +41,13 @@ export default function AtendimentosPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResult, setAiResult] = useState<string | null>(null);
 
-  const API = process.env.NEXT_PUBLIC_API_URL || "/api";
-  const getToken = () => localStorage.getItem("token");
-
-  const fetchAtendimentos = useCallback(async () => {
-    const tk = getToken(); if (!tk) { window.location.href = "/"; return; }
-    if (!debouncedQ) {
-      try {
-        const cached = localStorage.getItem("atend_cache");
-        if (cached) {
-          const { data, ts } = JSON.parse(cached);
-          if (Date.now() - ts < 30000) { setAtendimentos(data); setLoading(false); }
-        }
-      } catch { /* ignore */ }
-    }
-    setLoading(true);
-    try {
-      const res = await fetch(`${API}/atendimentos?q=${encodeURIComponent(debouncedQ)}`, { headers: { Authorization: `Bearer ${tk}` } });
-      if (res.status === 401) { localStorage.removeItem("token"); window.location.href = "/"; return; }
-      const data = await res.json();
-      setAtendimentos(data);
-      if (!debouncedQ) localStorage.setItem("atend_cache", JSON.stringify({ data, ts: Date.now() }));
-    } catch { console.error("Error"); }
-    finally { setLoading(false); }
-  }, [API, debouncedQ]);
-
   useEffect(() => { const t = setTimeout(() => setDebouncedQ(q), 300); return () => clearTimeout(t); }, [q]);
-  useEffect(() => { fetchAtendimentos(); }, [fetchAtendimentos]);
+
+  const { data: atendimentos = [], isLoading: loading, mutate } = useSWR<Atendimento[]>(
+    `${API}/atendimentos?q=${encodeURIComponent(debouncedQ)}`,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 5000 }
+  );
 
   const openNew = () => {
     setEditingId(null); setEmpresa(""); setNome(""); setModalidade("");
@@ -67,18 +55,21 @@ export default function AtendimentosPage() {
   };
 
   const saveAtendimento = async (e: React.FormEvent) => {
-    e.preventDefault(); const tk = getToken(); if (!tk) return;
+    e.preventDefault();
+    const tk = localStorage.getItem("token");
+    if (!tk) return;
     const body = { empresa, nome, modalidade, data, hora, status };
     try {
       const url = editingId ? `${API}/atendimentos/${editingId}` : `${API}/atendimentos`;
       const res = await fetch(url, { method: editingId ? "PUT" : "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${tk}` }, body: JSON.stringify(body) });
-      if (res.ok) { setShowModal(false); fetchAtendimentos(); }
+      if (res.ok) { setShowModal(false); mutate(); }
     } catch { alert("Erro ao salvar."); }
   };
 
   const handleAI = async () => {
     if (!aiPrompt.trim()) return;
-    const tk = getToken(); if (!tk) return;
+    const tk = localStorage.getItem("token");
+    if (!tk) return;
     setAiLoading(true); setAiResult(null);
     try {
       const res = await fetch(`${API}/atendimentos/${aiId}/generate-parecer`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${tk}` }, body: JSON.stringify({ prompt: aiPrompt }) });
@@ -89,7 +80,8 @@ export default function AtendimentosPage() {
   };
 
   const saveAIParecer = async () => {
-    const tk = getToken(); if (!tk || !aiResult) return;
+    const tk = localStorage.getItem("token");
+    if (!tk || !aiResult) return;
     try {
       await fetch(`${API}/atendimentos/${aiId}/generate-parecer/save`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${tk}` }, body: JSON.stringify({ parecer: aiResult }) });
       alert("Salvo!"); setShowAI(false);

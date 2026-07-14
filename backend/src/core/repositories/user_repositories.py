@@ -247,7 +247,7 @@ class ClinicConfigRepository:
         return self._prefs.save(key, value)
 
     def get_all_clinic_data(self) -> dict:
-        """Retorna todas as configurações da clínica de uma vez."""
+        """Retorna todas as configurações da clínica de uma vez (1 query em vez de 11)."""
         keys = [
             CLINIC_PREF_NAME, CLINIC_PREF_PHONE, CLINIC_PREF_ADDRESS,
             CLINIC_PREF_EMAIL, CLINIC_PREF_THEME, CLINIC_PREF_LAYOUT,
@@ -255,7 +255,8 @@ class ClinicConfigRepository:
             CLINIC_PREF_LOGO, CLINIC_PREF_USER_NAME,
             CLINIC_PREF_USER_EMAIL, CLINIC_PREF_USER_PHOTO,
         ]
-        return {k: self.get(k, "") for k in keys}
+        result = self._prefs.get_many_keys(keys)
+        return {k: result.get(k, "") for k in keys}
 
     def save_clinic_data(self, data: dict) -> bool:
         """Salva múltiplas configurações de uma vez."""

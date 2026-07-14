@@ -59,12 +59,29 @@ class PacienteResponse(BaseModel):
     response_model=list[AtendimentoResponse],
     tags=["Atendimentos"],
 )
-async def list_atendimentos(current_user: dict = Depends(require_permission(PERM_VIEW_ATENDIMENTOS))):
-    """Lista atendimentos (requer autenticação)."""
+async def list_atendimentos(
+    q: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+    current_user: dict = Depends(require_permission(PERM_VIEW_ATENDIMENTOS)),
+):
+    """Lista atendimentos com busca server-side (requer autenticação)."""
     from core.entities.models import AtendimentoFilter
 
-    atendimentos = atendimento_repo.list_all(filters=AtendimentoFilter(limit=1000))
-    fotos: dict = preferences_repo.get_many("patient_photo:")
+    filters = AtendimentoFilter(limit=min(limit, 500), offset=offset)
+    if q:
+        filters.nome = q
+        filters.empresa = q
+
+    atendimentos = atendimento_repo.list_all(filters=filters)
+
+    # Busca fotos apenas para os atendimentos exibidos
+    nomes = {_slug_name(a.nome) for a in atendimentos}
+    fotos: dict = {}
+    if nomes:
+        all_fotos = preferences_repo.get_many("patient_photo:")
+        fotos = {k: v for k, v in all_fotos.items() if any(n in k for n in nomes)}
+
     return [
         {
             "id": a.id,

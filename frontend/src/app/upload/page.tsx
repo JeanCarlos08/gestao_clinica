@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import useSWR from "swr";
 import {
   Upload, FileText, Trash2, AlertCircle, CheckCircle2,
   Loader2, RefreshCw, HardDrive, Clock, File, ChevronRight
@@ -26,32 +27,28 @@ function formatSize(kb: number) {
   return `${kb.toFixed(0)} KB`;
 }
 
+const API = () => process.env.NEXT_PUBLIC_API_URL || "/api";
+const fetcher = async (url: string) => {
+  const token = localStorage.getItem("token");
+  if (!token) { window.location.href = "/"; return []; }
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (res.status === 401) { localStorage.removeItem("token"); window.location.href = "/"; return []; }
+  return res.json();
+};
+
 export default function UploadPage() {
   const router = useRouter();
-  const [arquivos, setArquivos] = useState<Arquivo[]>([]);
-  const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const getToken = () => localStorage.getItem("token");
-  const API = () => process.env.NEXT_PUBLIC_API_URL || "/api";
-
-  const fetchArquivos = useCallback(async () => {
-    const token = getToken();
-    if (!token) { router.push("/"); return; }
-    setLoading(true);
-    try {
-      const res = await fetch(`${API()}/arquivos`, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.status === 401) { localStorage.removeItem("token"); router.push("/"); return; }
-      setArquivos(await res.json());
-    } catch { setMsg({ type: "error", text: "Erro ao carregar arquivos." }); }
-    finally { setLoading(false); }
-  }, [router]);
-
-  useEffect(() => { fetchArquivos(); }, [fetchArquivos]);
+  const { data: arquivos = [], isLoading: loading, mutate } = useSWR<Arquivo[]>(
+    `${API()}/arquivos`,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 5000 }
+  );
 
   const showMsg = (type: "success" | "error", text: string) => {
     setMsg({ type, text });
@@ -59,7 +56,7 @@ export default function UploadPage() {
   }
 
   const uploadFile = async (file: File) => {
-    const token = getToken();
+    const token = localStorage.getItem("token");
     if (!token) { router.push("/"); return; }
     setUploading(true);
     try {
@@ -75,7 +72,7 @@ export default function UploadPage() {
         showMsg("error", err.detail || "Erro no upload.");
       } else {
         showMsg("success", `"${file.name}" enviado com sucesso!`);
-        await fetchArquivos();
+        mutate();
       }
     } catch { showMsg("error", "Falha ao fazer upload."); }
     finally { setUploading(false); }
@@ -88,7 +85,7 @@ export default function UploadPage() {
 
   const handleDelete = async (id: number, name: string) => {
     if (!confirm(`Remover "${name}" do banco de dados?`)) return;
-    const token = getToken();
+    const token = localStorage.getItem("token");
     setDeletingId(id);
     try {
       const res = await fetch(`${API()}/arquivos/${id}`, {
@@ -96,7 +93,7 @@ export default function UploadPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) showMsg("error", "Erro ao remover arquivo.");
-      else { showMsg("success", `"${name}" removido.`); await fetchArquivos(); }
+      else { showMsg("success", `"${name}" removido.`); mutate(); }
     } catch { showMsg("error", "Falha ao remover."); }
     finally { setDeletingId(null); }
   };
@@ -117,7 +114,7 @@ export default function UploadPage() {
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Gerenciador de Arquivos</h1>
           <p className="text-[var(--text-muted)] text-sm mt-1">Armazene PDFs e documentos de forma segura no sistema.</p>
         </div>
-        <button onClick={fetchArquivos} disabled={loading}
+        <button onClick={() => mutate()} disabled={loading}
           className="flex items-center gap-2 bg-[var(--card)] border border-[var(--border)] hover:border-[var(--primary)]/40 text-white px-4 py-2 rounded-xl text-sm transition-all disabled:opacity-50 hover:bg-[var(--card-hover)]">
           <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
           <span className="hidden sm:inline">Atualizar</span>

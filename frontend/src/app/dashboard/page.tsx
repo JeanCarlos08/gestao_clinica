@@ -1,14 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
+import useSWR from "swr";
 import {
   Users, CalendarCheck, TrendingUp, Activity, Bell, Calendar as CalendarIcon,
   Clock, ChevronRight, ArrowUpRight, Sparkles, type LucideIcon,
 } from "lucide-react";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { getLoggedUserProfile } from "@/lib/auth";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 interface DashboardStats {
   total_atendimentos: number;
@@ -54,8 +55,14 @@ type BadgeTone = "neutral" | "positive" | "warning";
 const weekdayOrder = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const AttendanceChart = dynamic<AttendanceChartProps>(() => Promise.resolve(AttendanceChartInner), { ssr: false });
 
-const CACHE_KEY = "dashboard_cache";
-const CACHE_TTL = 60_000;
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api";
+const fetcher = async (url: string) => {
+  const token = localStorage.getItem("token");
+  if (!token) { window.location.href = "/"; return null; }
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (res.status === 401) { localStorage.removeItem("token"); window.location.href = "/"; return null; }
+  return res.json();
+};
 
 // ── Counter animation hook ─────────────────────────────────
 function useCountUp(target: number, duration = 1200): number {
@@ -76,44 +83,18 @@ function useCountUp(target: number, duration = 1200): number {
 }
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [atendimentos, setAtendimentos] = useState<AtendimentoResumo[]>([]);
-  const [loading, setLoading] = useState(true);
   const [displayName, setDisplayName] = useState("Usuário");
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api";
+  const { data, isLoading: loading } = useSWR<{ stats: DashboardStats; atendimentos: AtendimentoResumo[] }>(
+    `${API_BASE}/dashboard`,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 10000 }
+  );
 
-  const fetchDashboardData = useCallback(async () => {
-    const token = localStorage.getItem("token");
-    if (!token) { window.location.href = "/"; return; }
+  const stats = data?.stats ?? null;
+  const atendimentos = data?.atendimentos ?? [];
+  const loadingState = loading && !data;
 
-    try {
-      const cached = localStorage.getItem(CACHE_KEY);
-      if (cached) {
-        const { data, ts } = JSON.parse(cached) as { data: { stats: DashboardStats; atendimentos: AtendimentoResumo[] }; ts: number };
-        if (Date.now() - ts < CACHE_TTL) {
-          setStats(data.stats);
-          setAtendimentos(data.atendimentos);
-          setLoading(false);
-        }
-      }
-    } catch { /* ignore */ }
-
-    try {
-      const res = await fetch(`${API_BASE}/dashboard`, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.status === 401) { localStorage.removeItem("token"); window.location.href = "/"; return; }
-      const data = await res.json() as { stats: DashboardStats; atendimentos: AtendimentoResumo[] };
-      setStats(data.stats);
-      setAtendimentos(data.atendimentos);
-      localStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
-    } catch (error) {
-      console.error("Erro ao carregar dashboard:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [API_BASE]);
-
-  useEffect(() => { fetchDashboardData(); }, [fetchDashboardData]);
   useEffect(() => {
     const token = localStorage.getItem("token");
     const user = getLoggedUserProfile(token);
@@ -127,7 +108,7 @@ export default function DashboardPage() {
   const consultasHoje = stats?.atendimentos_hoje ?? countTodayAppointments(atendimentos);
   const concluidos = stats?.concluidos ?? atendimentos.filter(a => a.status === "Concluído").length;
   const taxaConclusao = totalAtendimentos > 0 ? Math.round((concluidos / totalAtendimentos) * 100) : 0;
-  const isFirstLoad = loading && !stats && atendimentos.length === 0;
+  const isFirstLoad = loadingState && !stats && atendimentos.length === 0;
   const insightPatient = upcomingConsultas[0]?.nome || "seus pacientes";
 
   const greeting = () => {
@@ -234,7 +215,7 @@ export default function DashboardPage() {
               Ver detalhes <ArrowUpRight size={12} />
             </button>
           </div>
-          {loading && atendimentos.length === 0 ? (
+          {loadingState && atendimentos.length === 0 ? (
             <div className="h-[280px] w-full flex items-center justify-center">
               <div className="text-sm text-[var(--text-muted)]">Carregando dados...</div>
             </div>

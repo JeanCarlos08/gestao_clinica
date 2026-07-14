@@ -26,6 +26,7 @@ logger = get_logger(__name__)
 try:
     import psycopg2
     import psycopg2.extras
+    import psycopg2.pool
     POSTGRES_AVAILABLE = True
 except ImportError:  # pragma: no cover
     POSTGRES_AVAILABLE = False
@@ -142,24 +143,35 @@ def _load_db_config() -> Dict[str, str]:
 
 
 # ─────────────────────────────────────────────────────────────
-# Conexão
+# Connection Pool (singleton)
 # ─────────────────────────────────────────────────────────────
 
-def get_connection():
-    """
-    Cria e retorna uma nova conexão PostgreSQL.
+_pool: Optional[Any] = None
+_pool_config_hash: Optional[str] = None
 
-    Returns:
-        psycopg2.connection com RealDictCursor configurado.
 
-    Raises:
-        RuntimeError: Se a configuração estiver ausente ou a conexão falhar.
-        ImportError: Se psycopg2 não estiver instalado.
+def _get_pool():
     """
+    Retorna ou cria um ThreadedConnectionPool singleton.
+    Recria o pool apenas se a configuração mudar.
+    """
+    global _pool, _pool_config_hash
+
     if not POSTGRES_AVAILABLE:
         raise ImportError("psycopg2 não instalado. Execute: pip install psycopg2-binary")
 
     cfg = _load_db_config()
+    config_hash = f"{cfg.get('db_host')}:{cfg.get('db_port')}:{cfg.get('db_name')}:{cfg.get('db_user')}"
+
+    if _pool is not None and _pool_config_hash == config_hash:
+        return _pool
+
+    # Fecha pool antigo se existir
+    if _pool is not None:
+        try:
+            _pool.closeall()
+        except Exception:
+            pass
 
     try:
         conn_kwargs: Dict[str, Any] = {
@@ -171,30 +183,85 @@ def get_connection():
             "cursor_factory": psycopg2.extras.RealDictCursor,
             "connect_timeout": 10,
         }
-        # SSL mode (obrigatório na maioria dos clouds: Neon, Supabase, etc.)
         sslmode = cfg.get("db_sslmode")
         if sslmode:
             conn_kwargs["sslmode"] = sslmode
 
-        conn = psycopg2.connect(**conn_kwargs)
-
-        # Garante encoding UTF-8 consistente
-        try:
-            conn.set_client_encoding("UTF8")
-        except Exception:
-            pass
-
-        return conn
+        _pool = psycopg2.pool.ThreadedConnectionPool(
+            minconn=2,
+            maxconn=10,
+            **conn_kwargs,
+        )
+        _pool_config_hash = config_hash
+        logger.info("Connection pool PostgreSQL criado (min=2, max=10).")
+        return _pool
 
     except psycopg2.OperationalError as e:
-        # Log interno sem expor credenciais
-        logger.error(f"Falha de conexão PostgreSQL: {type(e).__name__}")
+        logger.error(f"Falha ao criar connection pool: {type(e).__name__}")
         raise RuntimeError(
             "Falha ao conectar ao banco de dados. Verifique as credenciais e a conectividade."
         ) from None
     except Exception as e:
-        logger.error(f"Erro inesperado ao conectar: {type(e).__name__}")
+        logger.error(f"Erro inesperado ao criar pool: {type(e).__name__}")
         raise RuntimeError("Erro inesperado ao conectar ao banco de dados.") from None
+
+
+# ─────────────────────────────────────────────────────────────
+# Conexão
+# ─────────────────────────────────────────────────────────────
+
+def get_connection():
+    """
+    Obtém uma conexão do pool (ou cria direta como fallback).
+
+    Returns:
+        psycopg2.connection com RealDictCursor configurado.
+
+    Raises:
+        RuntimeError: Se a configuração estiver ausente ou a conexão falhar.
+        ImportError: Se psycopg2 não estiver instalado.
+    """
+    if not POSTGRES_AVAILABLE:
+        raise ImportError("psycopg2 não instalado. Execute: pip install psycopg2-binary")
+
+    try:
+        pool = _get_pool()
+        conn = pool.getconn()
+        try:
+            conn.set_client_encoding("UTF8")
+        except Exception:
+            pass
+        return conn
+    except Exception:
+        # Fallback: cria conexão direta se o pool falhar
+        cfg = _load_db_config()
+        try:
+            conn_kwargs: Dict[str, Any] = {
+                "host":           cfg["db_host"],
+                "port":           cfg["db_port"],
+                "dbname":         cfg["db_name"],
+                "user":           cfg["db_user"],
+                "password":       cfg["db_password"],
+                "cursor_factory": psycopg2.extras.RealDictCursor,
+                "connect_timeout": 10,
+            }
+            sslmode = cfg.get("db_sslmode")
+            if sslmode:
+                conn_kwargs["sslmode"] = sslmode
+            conn = psycopg2.connect(**conn_kwargs)
+            try:
+                conn.set_client_encoding("UTF8")
+            except Exception:
+                pass
+            return conn
+        except psycopg2.OperationalError as e:
+            logger.error(f"Falha de conexão PostgreSQL: {type(e).__name__}")
+            raise RuntimeError(
+                "Falha ao conectar ao banco de dados. Verifique as credenciais e a conectividade."
+            ) from None
+        except Exception as e:
+            logger.error(f"Erro inesperado ao conectar: {type(e).__name__}")
+            raise RuntimeError("Erro inesperado ao conectar ao banco de dados.") from None
 
 
 @contextmanager
@@ -205,7 +272,7 @@ def connection_scope(commit: bool = True) -> Generator:
     Garante:
     - Commit automático ao final (se commit=True)
     - Rollback automático em caso de exceção
-    - Fechamento da conexão sempre (finally)
+    - Retorno da conexão ao pool (ou fechamento se fallback)
 
     Uso:
         with connection_scope() as conn:
@@ -213,6 +280,7 @@ def connection_scope(commit: bool = True) -> Generator:
             cur.execute(...)
     """
     conn = get_connection()
+    returned_to_pool = False
     try:
         yield conn
         if commit:
@@ -223,7 +291,14 @@ def connection_scope(commit: bool = True) -> Generator:
         raise
     finally:
         try:
-            conn.close()
+            if _pool is not None:
+                try:
+                    _pool.putconn(conn)
+                    returned_to_pool = True
+                except Exception:
+                    pass
+            if not returned_to_pool:
+                conn.close()
         except Exception:
             pass
 

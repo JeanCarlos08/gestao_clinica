@@ -10,7 +10,7 @@ import {
 
 interface Clinica { id: number; name: string; document: string; }
 interface ClinicaConfig { clinic_name: string; clinic_logo_base64: string | null; user_photo_base64: string | null; }
-interface AuditLog { id: number; user_id: number; action: string; details: string; timestamp: string; }
+interface AuditLog { id: number; acao: string; entidade: string; entidade_id: number | null; detalhes: string; usuario: string; criado_em: string; }
 
 export default function ConfigPage() {
   const router = useRouter();
@@ -37,7 +37,7 @@ export default function ConfigPage() {
       try {
         const [cRes, logsRes] = await Promise.all([
           fetch(`${API()}/configuracoes`, { headers: { Authorization: `Bearer ${tk}` } }),
-          fetch(`${API()}/audit/logs`, { headers: { Authorization: `Bearer ${tk}` } }),
+          fetch(`${API()}/auditoria`, { headers: { Authorization: `Bearer ${tk}` } }),
         ]);
         if (cRes.status === 401) { localStorage.removeItem("token"); router.push("/"); return; }
         if (cRes.ok) {
@@ -46,7 +46,7 @@ export default function ConfigPage() {
           setConfig(d.config || { clinic_name: "", clinic_logo_base64: null, user_photo_base64: null });
         }
         if (logsRes.ok) setLogs(await logsRes.json());
-      } catch (e) { console.error(e); }
+      } catch { /* ignore */ }
       finally { setLoading(false); }
     };
     fetchData();
@@ -255,14 +255,14 @@ export default function ConfigPage() {
                             </div>
                             <div className="flex-1 pb-2">
                               <div className="flex items-start justify-between mb-1">
-                                <div className="text-sm font-bold text-white">{log.action}</div>
+                                <div className="text-sm font-bold text-white">{log.acao} — {log.entidade}</div>
                                 <div className="text-[10px] text-[var(--text-muted)] bg-[var(--background)] px-2 py-1 rounded-md font-mono border border-[var(--border)]">
-                                  {new Date(log.timestamp).toLocaleString("pt-BR")}
+                                  {new Date(log.criado_em).toLocaleString("pt-BR")}
                                 </div>
                               </div>
-                              <div className="text-xs text-[var(--text-muted)] leading-relaxed">{log.details}</div>
+                              <div className="text-xs text-[var(--text-muted)] leading-relaxed">{log.detalhes}</div>
                               <div className="mt-2 text-[10px] font-semibold text-[var(--text-label)] uppercase tracking-wider">
-                                Usuário ID: {log.user_id}
+                                Usuário: {log.usuario}
                               </div>
                             </div>
                           </div>

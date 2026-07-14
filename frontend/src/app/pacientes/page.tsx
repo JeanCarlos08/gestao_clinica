@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import useSWR from "swr";
 import { Search, Users, CalendarClock, Activity, RefreshCw, Loader2, ChevronRight, UserPlus } from "lucide-react";
 
 interface PacienteResumo {
@@ -16,51 +17,30 @@ interface PacienteResumo {
   foto: string | null;
 }
 
-const PAC_CACHE_KEY = "pacientes_cache";
-const PAC_CACHE_TTL = 30_000;
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api";
+const fetcher = async (url: string) => {
+  const token = localStorage.getItem("token");
+  if (!token) { window.location.href = "/"; return []; }
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (res.status === 401) { localStorage.removeItem("token"); window.location.href = "/"; return []; }
+  return res.json();
+};
 
 export default function PacientesPage() {
   const router = useRouter();
-  const [pacientes, setPacientes] = useState<PacienteResumo[]>([]);
-  const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
-
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api";
-
-  const fetchPacientes = useCallback(async () => {
-    const token = localStorage.getItem("token");
-    if (!token) { router.push("/"); return; }
-
-    if (!debouncedQ) {
-      try {
-        const cached = localStorage.getItem(PAC_CACHE_KEY);
-        if (cached) {
-          const { data, ts } = JSON.parse(cached) as { data: PacienteResumo[]; ts: number };
-          if (Date.now() - ts < PAC_CACHE_TTL) { setPacientes(data); setLoading(false); }
-        }
-      } catch { /* ignore */ }
-    }
-
-    try {
-      const res = await fetch(`${API_BASE}/pacientes?q=${encodeURIComponent(debouncedQ)}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.status === 401) { localStorage.removeItem("token"); router.push("/"); return; }
-      const data = await res.json() as PacienteResumo[];
-      setPacientes(data);
-      if (!debouncedQ) localStorage.setItem(PAC_CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
-    } catch (error) {
-      console.error("Erro ao carregar pacientes:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [API_BASE, debouncedQ, router]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(q), 280);
     return () => clearTimeout(t);
   }, [q]);
+
+  const { data: pacientes = [], isLoading: loading, mutate } = useSWR<PacienteResumo[]>(
+    `${API_BASE}/pacientes?q=${encodeURIComponent(debouncedQ)}`,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 5000 }
+  );
 
   const uploadPacientePhoto = async (paciente: PacienteResumo, file?: File | null) => {
     if (!file) return;
@@ -77,13 +57,11 @@ export default function PacientesPage() {
         const get = await fetch(`${API_BASE}/pacientes/${slug}/photo`, { headers: { Authorization: `Bearer ${token}` } });
         if (get.ok) {
           const j = await get.json();
-          if (j.photo) setPacientes(curr => curr.map(c => c.id === paciente.id ? { ...c, foto: j.photo } : c));
+          if (j.photo) mutate(curr => curr?.map(c => c.id === paciente.id ? { ...c, foto: j.photo } : c), { revalidate: false });
         }
       }
     } catch { /* ignore */ }
   };
-
-  useEffect(() => { fetchPacientes(); }, [fetchPacientes]);
 
   const totalPacientes = pacientes.length;
   const totalAtendimentos = pacientes.reduce((s, p) => s + p.total_atendimentos, 0);
@@ -107,7 +85,7 @@ export default function PacientesPage() {
           <p className="text-[var(--text-muted)] text-sm mt-1">Lista derivada dos atendimentos registrados</p>
         </div>
         <button
-          onClick={fetchPacientes}
+          onClick={() => mutate()}
           disabled={loading}
           className="flex items-center gap-2 bg-[var(--card)] border border-[var(--border)] hover:border-[var(--primary)]/40 text-white px-4 py-2 rounded-xl text-sm transition-all disabled:opacity-50 hover:bg-[var(--card-hover)]"
         >
@@ -140,7 +118,7 @@ export default function PacientesPage() {
           type="text"
           value={q}
           onChange={e => setQ(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && fetchPacientes()}
+          onKeyDown={e => e.key === "Enter" && mutate()}
           placeholder="Buscar por nome ou empresa..."
           className="w-full bg-transparent outline-none text-sm text-white placeholder:text-[var(--text-muted)]"
         />

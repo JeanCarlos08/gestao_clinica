@@ -68,7 +68,7 @@ export default function RelatoriosPage() {
       if (sr.status === 401) { localStorage.removeItem("token"); router.push("/"); return; }
       setStats(await sr.json());
       setAtendimentos(await lr.json());
-    } catch (e) { console.error(e); }
+    } catch { /* ignore */ }
     finally { setLoading(false); }
   }, [dataInicio, dataFim, router]);
 

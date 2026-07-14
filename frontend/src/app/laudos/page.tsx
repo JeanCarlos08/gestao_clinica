@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState, useEffect } from "react";
+import useSWR from "swr";
 import {
   FileText, CheckCircle2, Clock, AlertCircle, RefreshCw, XCircle, Search, FileDown, Plus
 } from "lucide-react";
@@ -17,46 +18,33 @@ interface Laudo {
   criado_em: string;
 }
 
+const API = process.env.NEXT_PUBLIC_API_URL || "/api";
+const fetcher = async (url: string) => {
+  const token = localStorage.getItem("token");
+  if (!token) { window.location.href = "/"; return []; }
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (res.status === 401) { localStorage.removeItem("token"); window.location.href = "/"; return []; }
+  return res.json();
+};
+
 export default function LaudosPage() {
-  const [laudos, setLaudos] = useState<Laudo[]>([]);
-  const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
 
-  const API = process.env.NEXT_PUBLIC_API_URL || "/api";
-  const getToken = () => localStorage.getItem("token");
-
-  const fetchLaudos = useCallback(async () => {
-    const tk = getToken();
-    if (!tk) { window.location.href = "/"; return; }
-    if (!debouncedQ) {
-      try {
-        const cached = localStorage.getItem("laudos_cache");
-        if (cached) {
-          const { data, ts } = JSON.parse(cached);
-          if (Date.now() - ts < 30000) { setLaudos(data); setLoading(false); }
-        }
-      } catch { /* ignore */ }
-    }
-    setLoading(true);
-    try {
-      const res = await fetch(`${API}/laudos?q=${encodeURIComponent(debouncedQ)}`, { headers: { Authorization: `Bearer ${tk}` } });
-      if (res.status === 401) { localStorage.removeItem("token"); window.location.href = "/"; return; }
-      const data = await res.json();
-      setLaudos(data);
-      if (!debouncedQ) localStorage.setItem("laudos_cache", JSON.stringify({ data, ts: Date.now() }));
-    } catch { console.error("Error fetching laudos"); }
-    finally { setLoading(false); }
-  }, [API, debouncedQ]);
-
   useEffect(() => { const t = setTimeout(() => setDebouncedQ(q), 300); return () => clearTimeout(t); }, [q]);
-  useEffect(() => { fetchLaudos(); }, [fetchLaudos]);
+
+  const { data: laudos = [], isLoading: loading, mutate } = useSWR<Laudo[]>(
+    `${API}/laudos?q=${encodeURIComponent(debouncedQ)}`,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 5000 }
+  );
 
   const gerarLaudo = async (id: number) => {
-    const tk = getToken(); if (!tk) return;
+    const tk = localStorage.getItem("token");
+    if (!tk) return;
     try {
       const res = await fetch(`${API}/laudos/gerar/${id}`, { method: "POST", headers: { Authorization: `Bearer ${tk}` } });
-      if (res.ok) fetchLaudos();
+      if (res.ok) mutate();
       else alert("Erro ao gerar laudo.");
     } catch { alert("Erro de comunicação."); }
   };
@@ -132,7 +120,7 @@ export default function LaudosPage() {
           <span className="font-semibold text-sm flex items-center gap-2">
             <FileText size={16} className="text-[var(--primary)]" /> Base de Laudos
           </span>
-          <button onClick={fetchLaudos} className="text-[var(--primary)] hover:text-[var(--primary-bright)] flex items-center gap-1 text-xs">
+          <button onClick={() => mutate()} className="text-[var(--primary)] hover:text-[var(--primary-bright)] flex items-center gap-1 text-xs">
             <RefreshCw size={12} className={loading ? "animate-spin" : ""} /> Atualizar
           </button>
         </div>
