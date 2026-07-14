@@ -62,6 +62,7 @@ class AIService:
             return False, "Ocorreu um erro inesperado ao inicializar o serviço de IA."
 
         candidates = settings.gemini_fallback_models
+        last_error: str = ""
 
         # Tenta inicializar modelos com o cliente obtido (adapter `google.genai`)
         for model_name in candidates:
@@ -72,7 +73,17 @@ class AIService:
                     test_resp = None
                     try:
                         test_resp = model.generate_content('Teste rápido: diga OK em uma palavra')
-                    except Exception:
+                    except Exception as e:
+                        err_str = str(e)
+                        if 'RESOURCE_EXHAUSTED' in err_str or '429' in err_str:
+                            last_error = f"Quota da API Gemini esgotada. Verifique seu plano em https://ai.dev/rate-limit"
+                            logger.warning(f"AI: Quota esgotada para modelo '{model_name}'")
+                        elif 'NOT_FOUND' in err_str:
+                            last_error = f"Modelo '{model_name}' não encontrado ou descontinuado."
+                            logger.warning(f"AI: Modelo '{model_name}' não encontrado")
+                        else:
+                            last_error = f"Erro ao chamar modelo '{model_name}': {type(e).__name__}"
+                            logger.warning(f"AI: Erro ao testar modelo '{model_name}': {type(e).__name__}")
                         test_resp = None
 
                     text = getattr(test_resp, 'text', None) if test_resp is not None else None
@@ -81,20 +92,24 @@ class AIService:
                         logger.info(f"AI: Modelo '{model_name}' inicializado com sucesso.")
                         return True, "OK"
                     else:
+                        if not last_error:
+                            last_error = f"Modelo '{model_name}' não retornou texto válido."
                         logger.warning(f"AI: Modelo '{model_name}' não retornou texto válido. Tentando próximo.")
                         continue
                 except Exception as e:
+                    last_error = f"Erro ao testar modelo '{model_name}': {type(e).__name__}"
                     logger.warning(f"AI: Erro ao testar modelo '{model_name}': {type(e).__name__}")
                     continue
             except Exception as e:
+                last_error = f"Modelo '{model_name}' indisponível: {type(e).__name__}"
                 logger.warning(f"AI: Modelo '{model_name}' indisponível: {type(e).__name__}")
                 continue
 
         # Não há fallback legado — se nenhum modelo funcionou, falhamos explicitamente
 
-        msg = "AI: Nenhum modelo Gemini disponível para esta API Key ou os modelos configurados falharam."
+        msg = f"AI: Nenhum modelo Gemini disponível. Último erro: {last_error}"
         logger.error(msg)
-        return False, "Nenhum modelo de IA está disponível ou funcionando. Verifique a chave de API e os logs do servidor."
+        return False, last_error or "Nenhum modelo de IA está disponível ou funcionando."
 
     @classmethod
     def analyze_pdf_content(cls, file_content: bytes, filename: str) -> str:

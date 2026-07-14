@@ -36,10 +36,10 @@ def _gemini_fallback_models() -> list[str]:
 
     # Ordem: modelo principal configurado + fallback explícito + defaults seguros.
     candidates = [
-        _get_secret("GEMINI_MODEL", "gemini-2.5-flash") or "gemini-2.5-flash",
+        _get_secret("GEMINI_MODEL", "gemini-2.0-flash") or "gemini-2.0-flash",
         *custom_models,
-        "gemini-1.5-flash",
-        "gemini-1.5-pro",
+        "gemini-2.5-flash",
+        "gemini-2.0-flash-lite",
     ]
 
     # Remove duplicados preservando ordem.
@@ -71,7 +71,7 @@ class Settings:
 
     # ── Google Gemini AI ──────────────────────────────────────
     gemini_api_key: Optional[str] = field(default_factory=lambda: _get_secret("GOOGLE_API_KEY") or _get_secret("GEMINI_API_KEY"))
-    gemini_model: str = field(default_factory=lambda: _get_secret("GEMINI_MODEL", "gemini-2.5-flash"))
+    gemini_model: str = field(default_factory=lambda: _get_secret("GEMINI_MODEL", "gemini-2.0-flash"))
     gemini_fallback_models: list[str] = field(default_factory=_gemini_fallback_models)
 
     # ── Google Docs ───────────────────────────────────────────
