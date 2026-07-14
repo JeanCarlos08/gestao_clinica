@@ -14,7 +14,7 @@ export interface CalendarAppointment {
 }
 
 const STATUS_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  "Concluído": { bg: "rgba(34,197,94,0.2)", border: "#22c55e", text: "#86efac" },
+  "Concluído": { bg: "rgba(20,184,166,0.2)", border: "#14b8a6", text: "#86efac" },
   "Atendido": { bg: "rgba(59,130,246,0.2)", border: "#3b82f6", text: "#93c5fd" },
   "Agendado": { bg: "rgba(245,158,11,0.2)", border: "#f59e0b", text: "#fcd34d" },
   "Em andamento": { bg: "rgba(245,158,11,0.2)", border: "#f59e0b", text: "#fcd34d" },

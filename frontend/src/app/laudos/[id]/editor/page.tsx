@@ -139,7 +139,7 @@ export default function LaudoEditorPage() {
 
         {/* Doc info */}
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-[var(--primary-dim)] border border-[rgba(34,197,94,0.15)] flex items-center justify-center flex-shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-[var(--primary-dim)] border border-[rgba(20,184,166,0.15)] flex items-center justify-center flex-shrink-0">
             <FileText size={15} className="text-[var(--primary)]" />
           </div>
           <div className="min-w-0">
@@ -151,7 +151,7 @@ export default function LaudoEditorPage() {
         </div>
 
         {/* Status badge */}
-        <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[var(--primary-dim)] text-[var(--primary)] border border-[rgba(34,197,94,0.15)] flex-shrink-0">
+        <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[var(--primary-dim)] text-[var(--primary)] border border-[rgba(20,184,166,0.15)] flex-shrink-0">
           <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary)]" />
           {laudo.status}
         </span>
@@ -170,7 +170,7 @@ export default function LaudoEditorPage() {
             onClick={downloadPdf}
             disabled={downloading}
             title="Exportar PDF"
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[var(--primary-dim)] text-[var(--primary)] border border-[rgba(34,197,94,0.2)] hover:bg-[rgba(34,197,94,0.18)] transition-colors disabled:opacity-50"
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[var(--primary-dim)] text-[var(--primary)] border border-[rgba(20,184,166,0.2)] hover:bg-[rgba(20,184,166,0.18)] transition-colors disabled:opacity-50"
           >
             {downloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
             {downloading ? "Exportando…" : "Exportar PDF"}
@@ -237,7 +237,7 @@ export default function LaudoEditorPage() {
         <button
           onClick={downloadPdf}
           disabled={downloading}
-          className="flex-1 py-2.5 rounded-xl text-xs font-bold bg-[var(--primary-dim)] text-[var(--primary)] border border-[rgba(34,197,94,0.2)] disabled:opacity-50 flex items-center justify-center gap-1.5"
+          className="flex-1 py-2.5 rounded-xl text-xs font-bold bg-[var(--primary-dim)] text-[var(--primary)] border border-[rgba(20,184,166,0.2)] disabled:opacity-50 flex items-center justify-center gap-1.5"
         >
           {downloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
           {downloading ? "Exportando…" : "Exportar PDF"}

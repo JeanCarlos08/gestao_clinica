@@ -9,10 +9,11 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from core.repositories.repositories import temporary_permission_repo
+from core.repositories.repositories import TemporaryPermissionRepository
 from utils.logger import get_logger
 
-from infrastructure.api.routers.deps import require_permission
+from infrastructure.api.routers.deps import require_permission, run_sync
+from infrastructure.api.routers.repo_deps import get_temporary_permission_repo
 from utils.constants import PERM_MANAGE_DOCUMENTOS
 
 logger = get_logger(__name__)
@@ -36,6 +37,7 @@ class DocsRevokeRequest(BaseModel):
 async def create_doc_embed_link(
     payload: DocsEmbedRequest,
     current_user: dict = Depends(require_permission(PERM_MANAGE_DOCUMENTOS)),
+    temporary_permission_repo: TemporaryPermissionRepository = Depends(get_temporary_permission_repo),
 ):
     """Retorna uma URL de edição/incorporação para um Google Doc.
 
@@ -94,7 +96,7 @@ async def create_doc_embed_link(
                 # registra no banco para revogação automática posterior
                 try:
                     created_by = current_user.get("sub")
-                    temporary_permission_repo.create(payload.doc_id, perm.get("id"), created_by, expires_at)
+                    await run_sync(temporary_permission_repo.create, payload.doc_id, perm.get("id"), created_by, expires_at)
                 except Exception as e:
                     logger.warning(f"Falha ao registrar permissão temporária no banco: {e}")
             except Exception as e:
@@ -109,6 +111,7 @@ async def create_doc_embed_link(
 async def revoke_doc_permission(
     payload: DocsRevokeRequest,
     current_user: dict = Depends(require_permission(PERM_MANAGE_DOCUMENTOS)),
+    temporary_permission_repo: TemporaryPermissionRepository = Depends(get_temporary_permission_repo),
 ):
     """Revoga uma permissão criada anteriormente no Drive."""
     try:
@@ -122,7 +125,7 @@ async def revoke_doc_permission(
         drive.permissions().delete(fileId=payload.doc_id, permissionId=payload.permission_id).execute()
         # marca como revogada no banco se existir
         try:
-            temporary_permission_repo.mark_revoked(payload.db_id) if payload.db_id else None
+            await run_sync(temporary_permission_repo.mark_revoked, payload.db_id) if payload.db_id else None
         except Exception:
             pass
         return {"revoked": True}

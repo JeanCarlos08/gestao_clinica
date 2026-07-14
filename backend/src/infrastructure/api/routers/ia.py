@@ -10,10 +10,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from core.config import settings
-from core.repositories.repositories import atendimento_repo
+from core.repositories.repositories import AtendimentoRepository
 from utils.logger import get_logger
 
-from infrastructure.api.routers.deps import require_permission
+from infrastructure.api.routers.deps import require_permission, run_sync
+from infrastructure.api.routers.repo_deps import get_atendimento_repo
 from utils.constants import PERM_VIEW_DASHBOARD, PERM_VIEW_AUTOMACOES, PERM_TRIGGER_AUTOMACOES
 
 logger = get_logger(__name__)
@@ -106,14 +107,18 @@ async def ia_diagnostics(current_user: dict = Depends(require_permission(PERM_VI
 
 
 @router.post("/ia/chat", tags=["IA"])
-async def ia_chat(payload: IAChatPayload, current_user: dict = Depends(require_permission(PERM_VIEW_DASHBOARD))):
+async def ia_chat(
+    payload: IAChatPayload,
+    current_user: dict = Depends(require_permission(PERM_VIEW_DASHBOARD)),
+    atendimento_repo: AtendimentoRepository = Depends(get_atendimento_repo),
+):
     """Chat da barra lateral: responde perguntas com base nos dados da clínica."""
     from services.ai_service import AIService
     from core.entities.models import AtendimentoFilter
     import json as _json
 
-    stats = atendimento_repo.get_stats()
-    atendimentos = atendimento_repo.list_all(filters=AtendimentoFilter(limit=200))
+    stats = await run_sync(atendimento_repo.get_stats)
+    atendimentos = await run_sync(atendimento_repo.list_all, filters=AtendimentoFilter(limit=200))
     context = {
         "stats": {
             "total_atendimentos": stats.total_atendimentos,
@@ -143,3 +148,60 @@ async def ia_chat(payload: IAChatPayload, current_user: dict = Depends(require_p
     if resposta.startswith("❌ IA indisponível"):
         raise HTTPException(status_code=503, detail=resposta)
     return {"resposta": resposta}
+
+
+@router.post("/ia/chat/stream", tags=["IA"])
+async def ia_chat_stream(
+    payload: IAChatPayload,
+    current_user: dict = Depends(require_permission(PERM_VIEW_DASHBOARD)),
+    atendimento_repo: AtendimentoRepository = Depends(get_atendimento_repo),
+):
+    """Chat com streaming via Server-Sent Events (SSE)."""
+    from fastapi.responses import StreamingResponse
+    from services.ai_service import AIService
+    from core.entities.models import AtendimentoFilter
+    import json as _json
+
+    stats = await run_sync(atendimento_repo.get_stats)
+    atendimentos = await run_sync(atendimento_repo.list_all, filters=AtendimentoFilter(limit=200))
+    context = {
+        "stats": {
+            "total_atendimentos": stats.total_atendimentos,
+            "total_pacientes": stats.total_pacientes,
+            "agendados": stats.agendados,
+            "atendidos": stats.atendidos,
+            "concluidos": stats.concluidos,
+            "cancelados": stats.cancelados,
+            "atendimentos_hoje": stats.atendimentos_hoje,
+            "atendimentos_mes": stats.atendimentos_mes,
+            "por_modalidade": stats.por_modalidade,
+            "por_empresa": stats.por_empresa,
+        },
+        "atendimentos": [
+            {
+                "nome": a.nome,
+                "empresa": a.empresa,
+                "modalidade": a.modalidade,
+                "data": a.data.strftime("%Y-%m-%d") if a.data else "",
+                "status": a.status,
+            }
+            for a in atendimentos
+        ],
+    }
+
+    async def event_generator():
+        for chunk in AIService.chat_with_data_stream(
+            payload.pergunta, _json.dumps(context, ensure_ascii=False)
+        ):
+            yield f"data: {_json.dumps({'text': chunk})}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )

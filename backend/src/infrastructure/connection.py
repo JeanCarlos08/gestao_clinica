@@ -16,6 +16,7 @@ from typing import Any, Dict, Generator, Optional, Tuple
 from urllib.parse import parse_qs, unquote, urlparse
 
 from utils.logger import get_logger
+from utils.constants import TABLE_AUDITORIA
 
 logger = get_logger(__name__)
 
@@ -90,8 +91,8 @@ def _parse_database_url(url: str) -> Dict[str, str]:
         qs = parse_qs(parsed.query or "")
         if "sslmode" in qs and qs["sslmode"]:
             config["db_sslmode"] = qs["sslmode"][0]
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"SSL mode parse error (ignoring): {e}")
 
     return config
 
@@ -170,8 +171,8 @@ def _get_pool():
     if _pool is not None:
         try:
             _pool.closeall()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Erro ao fechar pool anterior: {e}")
 
     try:
         conn_kwargs: Dict[str, Any] = {
@@ -188,12 +189,14 @@ def _get_pool():
             conn_kwargs["sslmode"] = sslmode
 
         _pool = psycopg2.pool.ThreadedConnectionPool(
-            minconn=2,
-            maxconn=10,
+            minconn=int(os.getenv("DB_POOL_MIN", "2")),
+            maxconn=int(os.getenv("DB_POOL_MAX", "10")),
             **conn_kwargs,
         )
         _pool_config_hash = config_hash
-        logger.info("Connection pool PostgreSQL criado (min=2, max=10).")
+        min_c = os.getenv("DB_POOL_MIN", "2")
+        max_c = os.getenv("DB_POOL_MAX", "10")
+        logger.info(f"Connection pool PostgreSQL criado (min={min_c}, max={max_c}).")
         return _pool
 
     except psycopg2.OperationalError as e:
@@ -229,8 +232,8 @@ def get_connection():
         conn = pool.getconn()
         try:
             conn.set_client_encoding("UTF8")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Erro ao setar encoding UTF8: {e}")
         return conn
     except Exception:
         # Fallback: cria conexão direta se o pool falhar
@@ -251,8 +254,8 @@ def get_connection():
             conn = psycopg2.connect(**conn_kwargs)
             try:
                 conn.set_client_encoding("UTF8")
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Erro ao setar encoding UTF8 (fallback): {e}")
             return conn
         except psycopg2.OperationalError as e:
             logger.error(f"Falha de conexão PostgreSQL: {type(e).__name__}")
@@ -555,3 +558,60 @@ def get_diagnostics() -> Dict[str, str]:
         }
     except Exception as e:
         return {"backend": "PostgreSQL", "status": f"Erro ❌: {str(e)[:100]}"}
+
+
+# ─────────────────────────────────────────────────────────────
+# Data Retention (LGPD / Auditoria)
+# ─────────────────────────────────────────────────────────────
+
+def cleanup_old_audit_logs(retention_days: int = 365) -> int:
+    """Remove registros de auditoria mais antigos que retention_days."""
+    try:
+        with connection_scope() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                f"DELETE FROM {TABLE_AUDITORIA} WHERE criado_em < NOW() - INTERVAL '{retention_days} days'"
+            )
+            count = cur.rowcount
+            if count:
+                logger.info(f"Retention: {count} registros de auditoria removidos (>{retention_days} dias).")
+            return count
+    except Exception as e:
+        logger.warning(f"Erro na limpeza de auditoria: {e}")
+        return 0
+
+
+def cleanup_old_login_attempts(retention_days: int = 90) -> int:
+    """Remove registros de login_attempts antigos (LGPD minimização)."""
+    try:
+        with connection_scope() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                f"DELETE FROM login_attempts WHERE tentado_em < NOW() - INTERVAL '{retention_days} days'"
+            )
+            count = cur.rowcount
+            if count:
+                logger.info(f"Retention: {count} login_attempts removidos (>{retention_days} dias).")
+            return count
+    except Exception as e:
+        logger.warning(f"Erro na limpeza de login_attempts: {e}")
+        return 0
+
+
+def get_table_counts() -> Dict[str, int]:
+    """Retorna contagem de registros de cada tabela principal."""
+    tables = ["atendimentos", "users", "auditoria", "login_attempts",
+              "consentimentos", "lgpd_esquecimentos", "documentos"]
+    counts = {}
+    try:
+        with connection_scope(commit=False) as conn:
+            cur = conn.cursor()
+            for t in tables:
+                try:
+                    cur.execute(f"SELECT COUNT(*) AS n FROM {t}")
+                    counts[t] = cur.fetchone()["n"]
+                except Exception:
+                    counts[t] = -1
+    except Exception:
+        pass
+    return counts

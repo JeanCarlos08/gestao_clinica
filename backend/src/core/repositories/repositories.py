@@ -199,6 +199,41 @@ class AtendimentoRepository:
             logger.error(f"Erro ao listar atendimentos: {e}")
             return []
 
+    def count(self, filters: Optional[AtendimentoFilter] = None) -> int:
+        """Conta atendimentos com filtros opcionais."""
+        filters = filters or AtendimentoFilter()
+        conditions: List[str] = []
+        params: List[Any] = []
+        if filters.empresa:
+            conditions.append("LOWER(empresa) LIKE LOWER(%s)")
+            params.append(f"%{filters.empresa}%")
+        if filters.nome:
+            conditions.append("LOWER(nome) LIKE LOWER(%s)")
+            params.append(f"%{filters.nome}%")
+        if filters.modalidade:
+            conditions.append("modalidade = %s")
+            params.append(filters.modalidade)
+        if filters.status:
+            conditions.append("status = %s")
+            params.append(filters.status)
+        if filters.data_inicio:
+            conditions.append("data >= %s")
+            params.append(filters.data_inicio)
+        if filters.data_fim:
+            conditions.append("data <= %s")
+            params.append(filters.data_fim)
+        where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+        query = f"SELECT COUNT(*) FROM {TABLE_ATENDIMENTOS} {where_clause}"
+        try:
+            with connection_scope(commit=False) as conn:
+                cur = conn.cursor()
+                cur.execute(query, params)
+                row = cur.fetchone()
+                return row[0] if row else 0
+        except Exception as e:
+            logger.error(f"Erro ao contar atendimentos: {e}")
+            return 0
+
     def find_by_id(self, atendimento_id: int) -> Optional[Atendimento]:
         """Busca um atendimento pelo ID. Retorna None se não encontrado."""
         try:

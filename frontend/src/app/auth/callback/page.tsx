@@ -37,6 +37,8 @@ function CallbackContent() {
     }
 
     localStorage.setItem("token", token);
+    const refresh = params.get("refresh");
+    if (refresh) localStorage.setItem("refresh_token", refresh);
     if (name) localStorage.setItem("user_name", decodeURIComponent(name));
 
     setStatus("success");

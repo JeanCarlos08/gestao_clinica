@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import useSWR from "swr";
 import { Search, Users, CalendarClock, Activity, RefreshCw, Loader2, ChevronRight, UserPlus } from "lucide-react";
+import EmptyIllustration from "@/components/EmptyIllustration";
 
 interface PacienteResumo {
   id: number;
@@ -150,8 +151,8 @@ export default function PacientesPage() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="premium-surface rounded-2xl p-16 text-center">
-          <UserPlus size={48} className="mx-auto mb-4 text-[var(--text-muted)]/30" />
-          <p className="text-[var(--text-muted)] font-medium">
+          <EmptyIllustration variant="search" size={110} />
+          <p className="text-[var(--text-muted)] font-medium mt-4">
             {q ? "Nenhum paciente encontrado para a busca." : "Nenhum paciente encontrado no banco."}
           </p>
           <p className="text-[var(--text-muted)] text-sm mt-1">Registre atendimentos para que pacientes apareçam aqui.</p>
@@ -239,7 +240,7 @@ function PatientCard({
       {/* Action */}
       <button
         onClick={onViewDocs}
-        className="w-full py-2 rounded-lg text-xs font-semibold text-[var(--primary)] border border-[var(--primary)]/20 bg-[var(--primary)]/5 hover:bg-[var(--primary)]/10 hover:border-[var(--primary)]/30 transition-all flex items-center justify-center gap-1.5 group-hover:shadow-[0_0_12px_rgba(34,197,94,0.1)]"
+        className="w-full py-2 rounded-lg text-xs font-semibold text-[var(--primary)] border border-[var(--primary)]/20 bg-[var(--primary)]/5 hover:bg-[var(--primary)]/10 hover:border-[var(--primary)]/30 transition-all flex items-center justify-center gap-1.5 group-hover:shadow-[0_0_12px_rgba(20,184,166,0.1)]"
       >
         Editar Documento <ChevronRight size={12} />
       </button>

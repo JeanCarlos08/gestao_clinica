@@ -283,13 +283,6 @@ class AIService:
     def chat_with_data(cls, query: str, context_df_json: str) -> str:
         """
         Chat inteligente com contexto dos dados do sistema.
-
-        Args:
-            query: Pergunta do usuário.
-            context_df_json: JSON string com dados dos atendimentos.
-
-        Returns:
-            Resposta da IA em Markdown.
         """
         is_ready, reason = cls._initialize()
         if not is_ready:
@@ -316,6 +309,41 @@ class AIService:
         except Exception as e:
             logger.error(f"AI: Erro no chat: {type(e).__name__}")
             return "Não foi possível processar sua pergunta no momento. Tente novamente."
+
+    @classmethod
+    def chat_with_data_stream(cls, query: str, context_df_json: str):
+        """Gera resposta do chat com streaming (yield de chunks)."""
+        is_ready, reason = cls._initialize()
+        if not is_ready:
+            yield f"❌ IA indisponível: {reason}"
+            return
+
+        prompt = f"""
+        Você é a 'IA Assistente', assistente de gestão clínica.
+        Com base nos dados abaixo (JSON), responda à pergunta do usuário.
+
+        Dados atuais:
+        {context_df_json}
+
+        Pergunta: {query}
+
+        Seja prestativa, use tabelas Markdown se necessário.
+        Cite nomes ou empresas se presentes nos dados.
+        Responda em Português do Brasil.
+        """
+
+        try:
+            if hasattr(cls._model, 'generate_content_stream'):
+                for chunk in cls._model.generate_content_stream(prompt):
+                    if chunk:
+                        yield chunk
+            else:
+                response = cls._model.generate_content(prompt)
+                text = response.text if response and response.text else "Não obtive resposta da IA."
+                yield text
+        except Exception as e:
+            logger.error(f"AI: Erro no streaming chat: {type(e).__name__}")
+            yield "Não foi possível processar sua pergunta no momento."
 
     @property
     def is_available(self) -> bool:

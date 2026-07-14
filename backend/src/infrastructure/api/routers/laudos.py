@@ -11,10 +11,11 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from core.entities.models import DocumentoCreate
-from core.repositories.repositories import documento_repo
+from core.repositories.repositories import DocumentoRepository
 from utils.logger import get_logger
 
-from infrastructure.api.routers.deps import require_permission
+from infrastructure.api.routers.deps import require_permission, run_sync
+from infrastructure.api.routers.repo_deps import get_documento_repo
 from utils.constants import PERM_VIEW_DOCUMENTOS, PERM_MANAGE_DOCUMENTOS
 
 logger = get_logger(__name__)
@@ -61,11 +62,14 @@ class LaudoResponse(BaseModel):
 
 
 @router.get("/laudos", tags=["Laudos"])
-async def list_laudos(current_user: dict = Depends(require_permission(PERM_VIEW_DOCUMENTOS))):
+async def list_laudos(
+    current_user: dict = Depends(require_permission(PERM_VIEW_DOCUMENTOS)),
+    documento_repo: DocumentoRepository = Depends(get_documento_repo),
+):
     """Lista todos os laudos gerados e persistidos no banco."""
     from services.google_docs_service import google_docs_service
 
-    documentos = documento_repo.list_all()
+    documentos = await run_sync(documento_repo.list_all)
     return [
         {
             "id": d.google_doc_id,
@@ -87,6 +91,7 @@ async def list_laudos(current_user: dict = Depends(require_permission(PERM_VIEW_
 async def gerar_laudo(
     payload: LaudoPayload,
     current_user: dict = Depends(require_permission(PERM_MANAGE_DOCUMENTOS)),
+    documento_repo: DocumentoRepository = Depends(get_documento_repo),
 ):
     """Copia o template Google Docs, preenche os campos e persiste no banco."""
     from services.laudo_service import DadosLaudo, get_laudo_service
@@ -115,7 +120,7 @@ async def gerar_laudo(
         doc_id = novo_doc["id"]
         titulo = novo_doc.get("title", f"Laudo - {payload.nome_paciente}")
 
-        documento_repo.create(DocumentoCreate(
+        await run_sync(documento_repo.create, DocumentoCreate(
             titulo=titulo,
             google_doc_id=doc_id,
             tipo="laudo",

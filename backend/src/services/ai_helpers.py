@@ -29,50 +29,18 @@ def get_genai_or_none(api_key: Optional[str]):
         class _GenaiModel:
             def __init__(self, model_name: str, api_key: Optional[str] = None):
                 self.model = model_name
-                # A API do cliente pode variar entre versões; usamos o cliente global quando possível
                 try:
-                    # Algumas versões expõem um cliente de alto nível
                     self.client = new_genai.Client(api_key=api_key) if hasattr(new_genai, 'Client') else new_genai
                 except Exception:
                     self.client = new_genai
 
             def generate_content(self, prompt):
-                # Normaliza prompt para string
-                if isinstance(prompt, list):
-                    texts = []
-                    for p in prompt:
-                        if isinstance(p, dict):
-                            continue
-                        texts.append(str(p))
-                    input_text = "\n\n".join(texts)
-                else:
-                    input_text = str(prompt)
-
-                # Tentativas de chamadas suportadas pela nova SDK
-                # Prefer generate_text(model=..., input=...)
+                input_text = self._normalize_prompt(prompt)
                 try:
-                    # Nova SDK: use client.models.generate_content(model=..., contents=...)
                     if hasattr(self.client, 'models') and hasattr(self.client.models, 'generate_content'):
                         resp = self.client.models.generate_content(model=self.model, contents=input_text)
-                        text = getattr(resp, 'text', None)
-                        if not text and hasattr(resp, 'candidates'):
-                            c = getattr(resp, 'candidates')
-                            if c and len(c) > 0:
-                                text = getattr(c[0], 'text', None) or getattr(c[0], 'content', None)
-                        if not text and hasattr(resp, 'output'):
-                            out = getattr(resp, 'output')
-                            if out and len(out) > 0:
-                                text = getattr(out[0], 'text', None) or getattr(out[0], 'content', None)
-                        if not text and hasattr(resp, 'content'):
-                            text = getattr(resp, 'content')
-                        if text is not None and not isinstance(text, str):
-                            try:
-                                text = str(text)
-                            except Exception:
-                                text = None
+                        text = self._extract_text(resp)
                         return type('R', (), {'text': text})
-
-                    # Fallbacks for other shapes (kept for compatibility)
                     if hasattr(self.client, 'generate_text'):
                         resp = self.client.generate_text(model=self.model, input=input_text)
                         text = getattr(resp, 'text', None)
@@ -89,9 +57,48 @@ def get_genai_or_none(api_key: Optional[str]):
                     else:
                         logger.warning(f"AI: erro na chamada Gemini ({self.model}): {type(e).__name__}: {e}")
                     return type('R', (), {'text': None})
-
-                # Se nada funcionar, retorna None-text para sinalizar falha
                 return type('R', (), {'text': None})
+
+            def generate_content_stream(self, prompt):
+                input_text = self._normalize_prompt(prompt)
+                try:
+                    if hasattr(self.client, 'models') and hasattr(self.client.models, 'generate_content_stream'):
+                        for chunk in self.client.models.generate_content_stream(model=self.model, contents=input_text):
+                            text = self._extract_text(chunk)
+                            if text:
+                                yield text
+                        return
+                except Exception as e:
+                    logger.warning(f"AI: streaming fallback para non-streaming ({self.model}): {type(e).__name__}")
+                    resp = self.generate_content(prompt)
+                    if resp.text:
+                        yield resp.text
+
+            @staticmethod
+            def _normalize_prompt(prompt):
+                if isinstance(prompt, list):
+                    return "\n\n".join(str(p) for p in prompt if not isinstance(p, dict))
+                return str(prompt)
+
+            @staticmethod
+            def _extract_text(resp):
+                for attr in ('text', 'content'):
+                    val = getattr(resp, attr, None)
+                    if val is not None and isinstance(val, str):
+                        return val
+                if hasattr(resp, 'candidates') and resp.candidates:
+                    c = resp.candidates[0]
+                    for attr in ('text', 'content'):
+                        val = getattr(c, attr, None)
+                        if val is not None and isinstance(val, str):
+                            return val
+                if hasattr(resp, 'output') and resp.output:
+                    out = resp.output[0]
+                    for attr in ('text', 'content'):
+                        val = getattr(out, attr, None)
+                        if val is not None and isinstance(val, str):
+                            return val
+                return None
 
         class _GenaiAdapter:
             def __init__(self, api_key: Optional[str] = None):

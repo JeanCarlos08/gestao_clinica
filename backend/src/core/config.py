@@ -135,3 +135,9 @@ for _attr, (_insecure, _env_var) in _INSECURE_DEFAULTS.items():
             f"SEGURANÇA: { _attr } ainda usa o valor padrão. "
             f"Defina a variável de ambiente {_env_var} com um valor seguro."
         )
+    if getattr(settings, _attr) == _insecure and settings.app_env != "production":
+        import logging
+        logging.warning(
+            f"SEGURANÇA: { _attr } usa valor padrão em ambiente '{settings.app_env}'. "
+            f"Defina {_env_var} para produção."
+        )

@@ -103,7 +103,7 @@ export default function AISidebar() {
           <div className="flex flex-col items-center justify-center h-full gap-5 py-6 px-2">
             <div className="relative">
               <div className="absolute inset-0 rounded-2xl bg-[var(--primary)] blur-xl opacity-20" />
-              <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-[#0f3d22] to-[#020c05] border border-[rgba(74,222,128,0.15)] flex items-center justify-center shadow-[0_0_32px_rgba(34,197,94,0.12)]">
+              <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-[#0f3d3a] to-[#020c0a] border border-[rgba(45,212,191,0.15)] flex items-center justify-center shadow-[0_0_32px_rgba(20,184,166,0.12)]">
                 <Bot size={28} className="text-[var(--primary)]" />
               </div>
             </div>
@@ -119,7 +119,7 @@ export default function AISidebar() {
                 key={s}
                 type="button"
                 onClick={() => sendMessage(s)}
-                className="group text-left text-xs px-3 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--card)] text-[var(--text-label)] hover:border-[rgba(34,197,94,0.25)] hover:bg-[var(--primary-dim)] hover:text-white transition-all duration-150 flex items-center gap-2"
+                className="group text-left text-xs px-3 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--card)] text-[var(--text-label)] hover:border-[rgba(20,184,166,0.25)] hover:bg-[var(--primary-dim)] hover:text-white transition-all duration-150 flex items-center gap-2"
               >
                 <Zap size={11} className="text-[var(--primary)] flex-shrink-0 opacity-70 group-hover:opacity-100" />
                 {s}
@@ -127,19 +127,20 @@ export default function AISidebar() {
             ))}
           </div>
         </div>
+        )
       ) : (
         <>
           {messages.map((msg, i) => (
             <div key={i} className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
               {msg.role === "assistant" && (
-                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#16a34a] to-[#052e16] border border-[rgba(74,222,128,0.2)] flex items-center justify-center flex-shrink-0 mt-0.5 shadow-[0_0_8px_rgba(34,197,94,0.15)]">
-                  <Bot size={12} className="text-[#4ade80]" />
+                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#0d9488] to-[#134e4a] border border-[rgba(45,212,191,0.2)] flex items-center justify-center flex-shrink-0 mt-0.5 shadow-[0_0_8px_rgba(20,184,166,0.15)]">
+                  <Bot size={12} className="text-[#2dd4bf]" />
                 </div>
               )}
               <div
                 className={`max-w-[85%] px-3 py-2 rounded-2xl text-xs leading-relaxed whitespace-pre-wrap ${
                   msg.role === "user"
-                    ? "bg-gradient-to-br from-[#16a34a] to-[#052e16] text-white rounded-br-sm font-medium shadow-[0_4px_12px_rgba(22,163,74,0.2)]"
+                    ? "bg-gradient-to-br from-[#0d9488] to-[#134e4a] text-white rounded-br-sm font-medium shadow-[0_4px_12px_rgba(20,184,166,0.2)]"
                     : "bg-[var(--card)] text-[var(--text-label)] border border-[var(--border)] rounded-bl-sm"
                 }`}
               >
@@ -149,8 +150,8 @@ export default function AISidebar() {
           ))}
           {loading && (
             <div className="flex gap-2 justify-start items-end">
-              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#16a34a] to-[#052e16] border border-[rgba(74,222,128,0.2)] flex items-center justify-center flex-shrink-0">
-                <Bot size={12} className="text-[#4ade80]" />
+              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#0d9488] to-[#134e4a] border border-[rgba(45,212,191,0.2)] flex items-center justify-center flex-shrink-0">
+                <Bot size={12} className="text-[#2dd4bf]" />
               </div>
               <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl rounded-bl-sm px-3 py-2.5 flex gap-1 items-center">
                 <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] animate-bounce [animation-delay:0ms]" />
@@ -167,7 +168,7 @@ export default function AISidebar() {
 
   const renderInput = (textareaRef: React.RefObject<HTMLTextAreaElement>) => (
     <div className="flex-shrink-0 border-t border-[var(--border)] p-3">
-      <div className="flex items-end gap-2 bg-[var(--card)] border border-[var(--border)] rounded-xl px-3 py-2 focus-within:border-[rgba(34,197,94,0.35)] focus-within:shadow-[0_0_0_3px_rgba(34,197,94,0.06)] transition-all duration-200">
+      <div className="flex items-end gap-2 bg-[var(--card)] border border-[var(--border)] rounded-xl px-3 py-2 focus-within:border-[rgba(20,184,166,0.35)] focus-within:shadow-[0_0_0_3px_rgba(20,184,166,0.06)] transition-all duration-200">
         <textarea
           ref={textareaRef}
           value={query}
@@ -189,7 +190,7 @@ export default function AISidebar() {
           type="button"
           onClick={() => sendMessage()}
           disabled={loading || !query.trim() || aiAvailable === false}
-          className="w-7 h-7 rounded-full bg-gradient-to-br from-[#16a34a] to-[#052e16] border border-[rgba(74,222,128,0.2)] flex items-center justify-center text-white flex-shrink-0 disabled:opacity-30 hover:shadow-[0_0_12px_rgba(34,197,94,0.35)] transition-all mb-0.5"
+          className="w-7 h-7 rounded-full bg-gradient-to-br from-[#0d9488] to-[#134e4a] border border-[rgba(45,212,191,0.2)] flex items-center justify-center text-white flex-shrink-0 disabled:opacity-30 hover:shadow-[0_0_12px_rgba(20,184,166,0.35)] transition-all mb-0.5"
         >
           <Send size={12} />
         </button>
@@ -202,10 +203,10 @@ export default function AISidebar() {
 
   const panelHeader = (onClose: () => void, showClose = false) => (
     <div className="relative flex items-center justify-between px-4 py-3.5 border-b border-[var(--border)] flex-shrink-0 overflow-hidden">
-      <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(34,197,94,0.06)_0%,transparent_55%)] pointer-events-none" />
+      <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(20,184,166,0.06)_0%,transparent_55%)] pointer-events-none" />
       <div className="relative flex items-center gap-2.5">
-        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#16a34a] to-[#052e16] border border-[rgba(74,222,128,0.2)] flex items-center justify-center shadow-[0_0_12px_rgba(34,197,94,0.2)]">
-          <Sparkles size={13} className="text-[#4ade80]" />
+        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#0d9488] to-[#134e4a] border border-[rgba(45,212,191,0.2)] flex items-center justify-center shadow-[0_0_12px_rgba(20,184,166,0.2)]">
+          <Sparkles size={13} className="text-[#2dd4bf]" />
         </div>
         <div>
           <div className="text-sm font-bold text-white leading-none">IA Assistente</div>
@@ -252,7 +253,7 @@ export default function AISidebar() {
         type="button"
         onClick={() => setMobileOpen(true)}
         aria-label="Abrir IA Assistente"
-        className="md:hidden fixed bottom-5 right-5 z-40 w-14 h-14 rounded-full bg-gradient-to-br from-[#16a34a] to-[#052e16] border border-[rgba(74,222,128,0.3)] shadow-[0_0_28px_rgba(34,197,94,0.45),0_8px_24px_rgba(0,0,0,0.5)] flex items-center justify-center text-white active:scale-95 transition-transform"
+        className="md:hidden fixed bottom-5 right-5 z-40 w-14 h-14 rounded-full bg-gradient-to-br from-[#0d9488] to-[#134e4a] border border-[rgba(45,212,191,0.3)] shadow-[0_0_28px_rgba(20,184,166,0.45),0_8px_24px_rgba(0,0,0,0.5)] flex items-center justify-center text-white active:scale-95 transition-transform"
       >
         <Sparkles size={22} />
       </button>

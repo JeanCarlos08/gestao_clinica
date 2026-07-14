@@ -82,7 +82,7 @@ export default function LoginPage() {
           min-height: 100vh;
           display: flex;
           font-family: 'Inter', system-ui, sans-serif;
-          background: #020804;
+          background: #020d0d;
           overflow: hidden;
           position: relative;
         }
@@ -100,7 +100,7 @@ export default function LoginPage() {
           position: absolute;
           inset: 0;
           background:
-            linear-gradient(180deg, rgba(2,8,4,0.15) 0%, rgba(2,8,4,0.75) 100%),
+            linear-gradient(180deg, rgba(2,13,13,0.15) 0%, rgba(2,13,13,0.75) 100%),
             url('https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=1200&q=85');
           background-size: cover;
           background-position: center;
@@ -111,8 +111,8 @@ export default function LoginPage() {
         }
         .auth-left-tag {
           display: inline-flex; align-items: center; gap: 6px;
-          background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.25);
-          color: #4ade80; font-size: 11px; font-weight: 600; letter-spacing: 1.5px;
+          background: rgba(20,184,166,0.12); border: 1px solid rgba(20,184,166,0.25);
+          color: #2dd4bf; font-size: 11px; font-weight: 600; letter-spacing: 1.5px;
           text-transform: uppercase; padding: 6px 14px; border-radius: 100px; margin-bottom: 20px;
           backdrop-filter: blur(8px);
         }
@@ -121,7 +121,7 @@ export default function LoginPage() {
           letter-spacing: -1px; margin-bottom: 16px;
           text-shadow: 0 2px 20px rgba(0,0,0,0.5);
         }
-        .auth-left-title span { color: #4ade80; }
+        .auth-left-title span { color: #2dd4bf; }
         .auth-left-desc {
           font-size: 15px; color: rgba(255,255,255,0.6); line-height: 1.65; max-width: 340px; margin-bottom: 36px;
         }
@@ -132,7 +132,7 @@ export default function LoginPage() {
           display: flex; flex-direction: column;
         }
         .auth-stat-num {
-          font-size: 26px; font-weight: 800; color: #4ade80; letter-spacing: -0.5px;
+          font-size: 26px; font-weight: 800; color: #2dd4bf; letter-spacing: -0.5px;
         }
         .auth-stat-label {
           font-size: 11px; color: rgba(255,255,255,0.45); letter-spacing: 0.5px; margin-top: 2px;
@@ -147,15 +147,15 @@ export default function LoginPage() {
           justify-content: center;
           padding: 32px 24px;
           position: relative;
-          background: #030b05;
+          background: #03110f;
           min-height: 100vh;
         }
         .auth-right::before {
           content: '';
           position: absolute; inset: 0;
           background:
-            radial-gradient(ellipse 600px 500px at 50% -10%, rgba(34,197,94,0.07) 0%, transparent 70%),
-            radial-gradient(ellipse 400px 300px at 110% 80%, rgba(34,197,94,0.04) 0%, transparent 60%);
+            radial-gradient(ellipse 600px 500px at 50% -10%, rgba(20,184,166,0.07) 0%, transparent 70%),
+            radial-gradient(ellipse 400px 300px at 110% 80%, rgba(20,184,166,0.04) 0%, transparent 60%);
           pointer-events: none;
         }
 
@@ -185,10 +185,10 @@ export default function LoginPage() {
         }
         .auth-brand-icon {
           width: 56px; height: 56px; border-radius: 16px;
-          background: linear-gradient(135deg, #166534 0%, #052e16 100%);
-          border: 1px solid rgba(74,222,128,0.2);
+          background: linear-gradient(135deg, #0f766e 0%, #134e4a 100%);
+          border: 1px solid rgba(45,212,191,0.2);
           display: flex; align-items: center; justify-content: center;
-          box-shadow: 0 0 32px rgba(34,197,94,0.2), 0 8px 24px rgba(0,0,0,0.4);
+          box-shadow: 0 0 32px rgba(20,184,166,0.2), 0 8px 24px rgba(0,0,0,0.4);
           font-size: 24px;
         }
         .auth-brand-name {
@@ -200,12 +200,12 @@ export default function LoginPage() {
 
         /* Card */
         .auth-card {
-          background: rgba(10,18,11,0.9);
+          background: rgba(10,20,20,0.9);
           border: 1px solid rgba(255,255,255,0.07);
           border-radius: 24px;
           padding: 32px;
           box-shadow:
-            0 0 0 1px rgba(34,197,94,0.06) inset,
+            0 0 0 1px rgba(20,184,166,0.06) inset,
             0 32px 64px rgba(0,0,0,0.5),
             0 8px 24px rgba(0,0,0,0.3);
           backdrop-filter: blur(20px);
@@ -266,9 +266,9 @@ export default function LoginPage() {
           outline: none; transition: all 0.2s; font-family: inherit;
         }
         .auth-input:focus {
-          border-color: rgba(74,222,128,0.4);
+          border-color: rgba(45,212,191,0.4);
           background: rgba(255,255,255,0.06);
-          box-shadow: 0 0 0 3px rgba(34,197,94,0.08);
+          box-shadow: 0 0 0 3px rgba(20,184,166,0.08);
         }
         .auth-input::placeholder { color: rgba(255,255,255,0.2); }
         .auth-input-pr { padding-right: 48px; }
@@ -292,12 +292,12 @@ export default function LoginPage() {
         /* Submit */
         .auth-submit {
           width: 100%; padding: 14px 20px; border-radius: 13px; border: none;
-          background: linear-gradient(135deg, #16a34a 0%, #052e16 100%);
+          background: linear-gradient(135deg, #0d9488 0%, #134e4a 100%);
           color: #fff; font-size: 15px; font-weight: 700; letter-spacing: -0.2px;
           cursor: pointer; font-family: inherit;
           display: flex; align-items: center; justify-content: center; gap: 8px;
           transition: all 0.2s;
-          box-shadow: 0 4px 20px rgba(22,163,74,0.35), 0 1px 0 rgba(255,255,255,0.1) inset;
+          box-shadow: 0 4px 20px rgba(20,184,166,0.35), 0 1px 0 rgba(255,255,255,0.1) inset;
           position: relative; overflow: hidden;
         }
         .auth-submit::before {
@@ -307,7 +307,7 @@ export default function LoginPage() {
         }
         .auth-submit:hover:not(:disabled) {
           transform: translateY(-2px);
-          box-shadow: 0 8px 28px rgba(22,163,74,0.5), 0 1px 0 rgba(255,255,255,0.1) inset;
+          box-shadow: 0 8px 28px rgba(20,184,166,0.5), 0 1px 0 rgba(255,255,255,0.1) inset;
         }
         .auth-submit:active:not(:disabled) { transform: translateY(0); }
         .auth-submit:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
@@ -367,7 +367,7 @@ export default function LoginPage() {
             {/* Brand */}
             <div className="auth-brand">
               <div className="auth-brand-icon">
-                <Sparkles size={26} color="#4ade80" />
+                <Sparkles size={26} color="#2dd4bf" />
               </div>
               <div className="auth-brand-name">Clínica IA</div>
               <div className="auth-brand-tagline">Portal Administrativo Seguro</div>
@@ -493,37 +493,37 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div className="auth-bottom">Clínica IA v3.0.0 &nbsp;·&nbsp; © 2025 Todos os direitos reservados</div>
+          <div className="auth-bottom">Clínica IA v3.0.0 &nbsp;·&nbsp; © 2026 Todos os direitos reservados</div>
         </div>
       </div>
 
       {/* Modal de consentimento LGPD */}
       {consentModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-2xl bg-[#0d1a0e] border border-[rgba(34,197,94,0.2)] shadow-2xl p-6 flex flex-col gap-4">
+          <div className="w-full max-w-md rounded-2xl bg-[#0e1f1d] border border-[rgba(20,184,166,0.2)] shadow-2xl p-6 flex flex-col gap-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-[rgba(34,197,94,0.1)] border border-[rgba(34,197,94,0.2)] flex items-center justify-center flex-shrink-0">
-                  <Shield size={18} className="text-[#22c55e]" />
+                <div className="w-9 h-9 rounded-xl bg-[rgba(20,184,166,0.1)] border border-[rgba(20,184,166,0.2)] flex items-center justify-center flex-shrink-0">
+                  <Shield size={18} className="text-[#14b8a6]" />
                 </div>
                 <div>
                   <h2 className="text-white font-bold text-base leading-tight">Consentimento LGPD</h2>
-                  <p className="text-[11px] text-[#6b7c6b]">Lei nº 13.709/2018 — Art. 8º</p>
+                  <p className="text-[11px] text-[#6b8e8a]">Lei nº 13.709/2018 — Art. 8º</p>
                 </div>
               </div>
-              <button onClick={() => setConsentModal(null)} className="p-1.5 rounded-lg text-[#6b7c6b] hover:text-white transition-colors">
+              <button onClick={() => setConsentModal(null)} className="p-1.5 rounded-lg text-[#6b8e8a] hover:text-white transition-colors">
                 <X size={18} />
               </button>
             </div>
 
-            <div className="text-sm text-[#a3b5a3] leading-relaxed space-y-2">
+            <div className="text-sm text-[#98b8b2] leading-relaxed space-y-2">
               <p>Ao continuar, você <strong className="text-white">autoriza</strong> o tratamento dos seus dados pessoais (nome, e-mail) para:</p>
               <ul className="list-disc list-inside space-y-1 text-[#8fa88f] pl-1">
                 <li>Identificação e autenticação na plataforma</li>
                 <li>Agendamento e gestão de atendimentos clínicos</li>
                 <li>Comunicação sobre consultas e resultados</li>
               </ul>
-              <p className="text-xs text-[#6b7c6b] pt-1">
+              <p className="text-xs text-[#6b8e8a] pt-1">
                 Base legal: <strong>Consentimento</strong> (Art. 7º, I). Você pode revogar a qualquer momento em <em>Configurações &rsaquo; Privacidade</em>.
               </p>
             </div>
@@ -531,13 +531,13 @@ export default function LoginPage() {
             <div className="flex gap-3 pt-1">
               <button
                 onClick={() => setConsentModal(null)}
-                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-white/[0.04] text-[#a3b5a3] border border-[rgba(255,255,255,0.08)] hover:text-white transition-colors"
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-white/[0.04] text-[#98b8b2] border border-[rgba(255,255,255,0.08)] hover:text-white transition-colors"
               >
                 Cancelar
               </button>
               <button
                 onClick={() => handleSocialLogin(consentModal)}
-                className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-[#22c55e] text-black hover:opacity-90 transition-opacity"
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-[#14b8a6] text-black hover:opacity-90 transition-opacity"
               >
                 Aceitar e Continuar
               </button>

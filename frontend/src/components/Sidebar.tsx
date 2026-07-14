@@ -94,11 +94,11 @@ export default function Sidebar() {
         <div className="relative px-5 py-5 border-b border-[var(--border)] mb-3 overflow-hidden">
           {/* Decorative glow */}
           <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-[var(--primary)] opacity-[0.05] blur-3xl pointer-events-none" />
-          <div className="absolute inset-0 bg-gradient-to-br from-[rgba(34,197,94,0.06)] to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-br from-[rgba(20,184,166,0.06)] to-transparent pointer-events-none" />
 
           <div className="relative flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#16a34a] to-[#052e16] border border-[rgba(74,222,128,0.25)] flex items-center justify-center shadow-[0_0_20px_rgba(34,197,94,0.25)] flex-shrink-0">
-              <Sparkles size={16} className="text-[#4ade80]" />
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#0d9488] to-[#134e4a] border border-[rgba(45,212,191,0.25)] flex items-center justify-center shadow-[0_0_20px_rgba(20,184,166,0.25)] flex-shrink-0">
+              <Sparkles size={16} className="text-[#2dd4bf]" />
             </div>
             <div>
               <div className="font-bold text-sm text-white tracking-tight leading-tight">Clínica IA</div>
@@ -116,11 +116,11 @@ export default function Sidebar() {
 
         {/* User profile */}
         <div className="mx-3 mb-4 p-3 rounded-xl bg-gradient-to-br from-[var(--card)] to-[rgba(8,15,9,0.8)] border border-[var(--border)] flex items-center gap-3 group hover:border-[var(--border-light)] transition-colors">
-          <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0 border-2 border-[rgba(74,222,128,0.15)] shadow-[0_0_16px_rgba(34,197,94,0.15)] relative">
+          <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0 border-2 border-[rgba(45,212,191,0.15)] shadow-[0_0_16px_rgba(20,184,166,0.15)] relative">
             {photoSrc ? (
               <Image src={photoSrc} alt="avatar" width={40} height={40} unoptimized className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-[#16a34a] to-[#052e16] flex items-center justify-center">
+              <div className="w-full h-full bg-gradient-to-br from-[#0d9488] to-[#134e4a] flex items-center justify-center">
                 <span className="text-xs font-bold">{getUserInitials(profile.displayName)}</span>
               </div>
             )}
@@ -149,13 +149,13 @@ export default function Sidebar() {
                 href={href}
                 className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative overflow-hidden ${
                   active
-                    ? "bg-gradient-to-r from-[var(--primary-dim)] to-[rgba(34,197,94,0.06)] text-white shadow-[0_0_0_1px_rgba(34,197,94,0.15)_inset]"
+                    ? "bg-gradient-to-r from-[var(--primary-dim)] to-[rgba(20,184,166,0.06)] text-white shadow-[0_0_0_1px_rgba(20,184,166,0.15)_inset]"
                     : "text-[var(--text-label)] hover:text-white hover:bg-white/[0.04]"
                 }`}
               >
                 {/* Active left accent */}
                 {active && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-r-full bg-[var(--primary)] shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-r-full bg-[var(--primary)] shadow-[0_0_8px_rgba(20,184,166,0.6)]" />
                 )}
 
                 <span className={`flex-shrink-0 transition-all duration-200 ${active ? color : "text-[var(--text-muted)] group-hover:text-white"}`}>
@@ -163,7 +163,7 @@ export default function Sidebar() {
                 </span>
                 <span className="flex-1 truncate">{label}</span>
                 {active && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] shadow-[0_0_6px_rgba(34,197,94,0.8)] flex-shrink-0 pulse-green" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] shadow-[0_0_6px_rgba(20,184,166,0.8)] flex-shrink-0 pulse-green" />
                 )}
               </Link>
             );
@@ -183,7 +183,7 @@ export default function Sidebar() {
         </button>
         <div className="px-3 flex items-center gap-2 pt-1">
           <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] opacity-40" />
-          <span className="text-[9px] text-[var(--text-muted)]">Clínica IA v3.0.0 · © 2025</span>
+          <span className="text-[9px] text-[var(--text-muted)]">Clínica IA v3.0.0 · © 2026</span>
           <div className="ml-auto flex items-center gap-2">
             <Link href="/privacy" className="text-[9px] text-[var(--text-muted)] hover:text-white transition-colors">Privacy</Link>
             <Link href="/terms" className="text-[9px] text-[var(--text-muted)] hover:text-white transition-colors">Terms</Link>
@@ -206,8 +206,8 @@ export default function Sidebar() {
           <Menu size={20} />
         </button>
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#16a34a] to-[#052e16] flex items-center justify-center">
-            <Sparkles size={12} className="text-[#4ade80]" />
+          <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#0d9488] to-[#134e4a] flex items-center justify-center">
+            <Sparkles size={12} className="text-[#2dd4bf]" />
           </div>
           <span className="font-bold text-sm tracking-tight gradient-text">Clínica IA</span>
         </div>

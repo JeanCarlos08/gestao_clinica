@@ -7,6 +7,7 @@ import {
   Settings as SettingsIcon, Save, Building2, UserCircle, History, RefreshCw, CheckCircle2,
   AlertCircle, Upload as UploadIcon, ShieldAlert,
 } from "lucide-react";
+import EmptyIllustration from "@/components/EmptyIllustration";
 
 interface Clinica { id: number; name: string; document: string; }
 interface ClinicaConfig { clinic_name: string; clinic_logo_base64: string | null; user_photo_base64: string | null; }
@@ -43,7 +44,7 @@ export default function ConfigPage() {
         if (cRes.ok) {
           const d = await cRes.json();
           setClinica(d.clinica);
-          setConfig(d.config || { clinic_name: "", clinic_logo_base64: null, user_photo_base64: null });
+          setConfig(d.clinica || { clinic_name: "", clinic_logo_base64: null, user_photo_base64: null });
         }
         if (logsRes.ok) setLogs(await logsRes.json());
       } catch { /* ignore */ }
@@ -126,7 +127,7 @@ export default function ConfigPage() {
                   onClick={() => setActiveTab(tab.id as "clinica" | "perfil" | "auditoria")}
                   className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
                     active
-                      ? "bg-[var(--primary)]/10 text-[var(--primary)] shadow-[0_0_15px_rgba(34,197,94,0.1)] border border-[var(--primary)]/20"
+                      ? "bg-[var(--primary)]/10 text-[var(--primary)] shadow-[0_0_15px_rgba(20,184,166,0.1)] border border-[var(--primary)]/20"
                       : "text-[var(--text-muted)] hover:bg-[var(--card-hover)] hover:text-white border border-transparent"
                   }`}
                 >
@@ -177,7 +178,7 @@ export default function ConfigPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       <div>
                         <label className="block text-xs font-semibold text-[var(--text-label)] uppercase tracking-wider mb-2">Nome Fantasia</label>
-                        <input type="text" value={config.clinic_name} onChange={e => setConfig({ ...config, clinic_name: e.target.value })} className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[var(--primary)] focus:shadow-[0_0_0_2px_rgba(34,197,94,0.1)] transition-all" placeholder="Nome da Clínica" />
+                        <input type="text" value={config.clinic_name} onChange={e => setConfig({ ...config, clinic_name: e.target.value })} className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[var(--primary)] focus:shadow-[0_0_0_2px_rgba(20,184,166,0.1)] transition-all" placeholder="Nome da Clínica" />
                       </div>
                       <div>
                         <label className="block text-xs font-semibold text-[var(--text-label)] uppercase tracking-wider mb-2">CNPJ / Documento</label>
@@ -187,7 +188,7 @@ export default function ConfigPage() {
                     </div>
                   </div>
                   <div className="bg-[var(--card)] px-6 py-4 flex justify-end gap-3">
-                    <button type="submit" disabled={saving} className="flex items-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(34,197,94,0.25)] hover:shadow-[0_0_25px_rgba(34,197,94,0.4)] disabled:opacity-50">
+                    <button type="submit" disabled={saving} className="flex items-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(20,184,166,0.25)] hover:shadow-[0_0_25px_rgba(20,184,166,0.4)] disabled:opacity-50">
                       {saving ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />} Salvar Alterações
                     </button>
                   </div>
@@ -221,7 +222,7 @@ export default function ConfigPage() {
                     </div>
                   </div>
                   <div className="bg-[var(--card)] px-6 py-4 flex justify-end gap-3">
-                    <button type="submit" disabled={saving} className="flex items-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(34,197,94,0.25)] hover:shadow-[0_0_25px_rgba(34,197,94,0.4)] disabled:opacity-50">
+                    <button type="submit" disabled={saving} className="flex items-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(20,184,166,0.25)] hover:shadow-[0_0_25px_rgba(20,184,166,0.4)] disabled:opacity-50">
                       {saving ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />} Atualizar Perfil
                     </button>
                   </div>
@@ -244,13 +245,16 @@ export default function ConfigPage() {
                   </div>
                   <div className="p-6">
                     {logs.length === 0 ? (
-                      <div className="text-center text-[var(--text-muted)] py-10 text-sm bg-[var(--card)] rounded-xl border border-[var(--border)]">Nenhum registro encontrado.</div>
+                      <div className="text-center py-10 bg-[var(--card)] rounded-xl border border-[var(--border)]">
+                        <EmptyIllustration variant="document" size={70} />
+                        <p className="text-[var(--text-muted)] text-sm mt-3">Nenhum registro encontrado.</p>
+                      </div>
                     ) : (
                       <div className="space-y-4">
                         {logs.map(log => (
                           <div key={log.id} className="group flex gap-4 p-4 rounded-xl border border-[var(--border)] bg-[var(--card)] hover:bg-[var(--card-hover)] hover:border-[var(--border-light)] transition-colors">
                             <div className="flex flex-col items-center pt-1">
-                              <div className="w-2 h-2 rounded-full bg-[var(--primary)] group-hover:shadow-[0_0_8px_rgba(34,197,94,0.6)] transition-shadow" />
+                              <div className="w-2 h-2 rounded-full bg-[var(--primary)] group-hover:shadow-[0_0_8px_rgba(20,184,166,0.6)] transition-shadow" />
                               <div className="w-px h-full bg-[var(--border)] mt-2" />
                             </div>
                             <div className="flex-1 pb-2">

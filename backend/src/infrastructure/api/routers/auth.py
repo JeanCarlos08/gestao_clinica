@@ -18,7 +18,7 @@ from pydantic import BaseModel
 from core.config import settings
 from core.repositories.user_repositories import user_repo
 from services.lgpd_service import get_lgpd_service
-from services.security import create_access_token
+from services.security import create_access_token, create_refresh_token, verify_refresh_token
 from utils.helpers import verify_password
 from utils.logger import get_logger
 
@@ -33,27 +33,71 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/api")
 
 # ─────────────────────────────────────────────────────────────
-# OAuth CSRF state store (in-memory, TTL 10 min)
+# Rate limiting
 # ─────────────────────────────────────────────────────────────
-_oauth_state_store: dict[str, float] = {}
+from infrastructure.api.index import limiter
+
+# ─────────────────────────────────────────────────────────────
+# Apple OAuth — public key cache
+# ─────────────────────────────────────────────────────────────
+_apple_keys_cache: list = []
+_apple_keys_cache_time: float = 0
+
+
+def _get_apple_signing_keys() -> list:
+    """Busca e cacheia as chaves públicas de assinatura da Apple (JWK → RSA)."""
+    global _apple_keys_cache, _apple_keys_cache_time
+    import time as _time
+    if _apple_keys_cache and (_time.time() - _apple_keys_cache_time) < 3600:
+        return _apple_keys_cache
+    try:
+        import httpx
+        from jwt.algorithms import RSAAlgorithm
+        res = httpx.get("https://appleid.apple.com/auth/keys", timeout=10)
+        jwks = res.json()
+        keys = []
+        for jwk in jwks.get("keys", []):
+            pub = RSAAlgorithm.from_jwk(jwk)
+            keys.append(pub)
+        if keys:
+            _apple_keys_cache = keys
+            _apple_keys_cache_time = _time.time()
+        return keys
+    except Exception:
+        return _apple_keys_cache
+
+# ─────────────────────────────────────────────────────────────
+# OAuth CSRF state (signed cookie, TTL 10 min)
+# ─────────────────────────────────────────────────────────────
 _STATE_TTL_SECONDS = 600
 
 
-def _generate_state() -> str:
+def _generate_state(response, frontend_base: str) -> str:
+    from services.security import create_access_token as _cap
     state = secrets.token_urlsafe(32)
-    _oauth_state_store[state] = time.time()
+    response.set_cookie(
+        key="oauth_state",
+        value=state,
+        max_age=_STATE_TTL_SECONDS,
+        httponly=True,
+        secure=settings.app_env == "production",
+        samesite="lax",
+    )
     return state
 
 
-def _validate_state(state: str) -> bool:
-    if not state or state not in _oauth_state_store:
+def _validate_state(state: str, request) -> bool:
+    if not state:
         return False
-    created = _oauth_state_store.pop(state)
-    return (time.time() - created) < _STATE_TTL_SECONDS
+    cookie_state = request.cookies.get("oauth_state")
+    if not cookie_state or cookie_state != state:
+        return False
+    return True
 
 
 class TokenResponse(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
 
 
@@ -63,6 +107,7 @@ class TokenResponse(BaseModel):
 
 
 @router.post("/token", response_model=TokenResponse, tags=["Auth"])
+@limiter.limit("10/minute")
 async def login_for_access_token(
     request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
@@ -97,11 +142,10 @@ async def login_for_access_token(
             user_role = user.role
             username_canonical = user.username
 
-    # Modo 2: fallback .env (compatibilidade)
+    # Modo 2: fallback .env (compatibilidade — apenas via hash)
     if not authenticated and settings.auth_password:
-        env_valid = (form_data.username == settings.auth_username) and (
-            form_data.password == settings.auth_password
-            or verify_password(form_data.password, settings.auth_password)
+        env_valid = (form_data.username == settings.auth_username) and verify_password(
+            form_data.password, settings.auth_password
         )
         if env_valid:
             authenticated = True
@@ -120,7 +164,34 @@ async def login_for_access_token(
     access_token = create_access_token(
         data={"sub": form_data.username, "role": user_role}
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+    refresh_token = create_refresh_token(
+        data={"sub": form_data.username, "role": user_role}
+    )
+    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+
+
+# ─────────────────────────────────────────────────────────────
+# Refresh Token
+# ─────────────────────────────────────────────────────────────
+
+class RefreshPayload(BaseModel):
+    refresh_token: str
+
+
+@router.post("/token/refresh", response_model=TokenResponse, tags=["Auth"])
+@limiter.limit("20/minute")
+async def refresh_access_token(request: Request, body: RefreshPayload):
+    """Renova o access token usando um refresh token válido."""
+    payload = verify_refresh_token(body.refresh_token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Refresh token inválido ou expirado.")
+
+    username = payload.get("sub")
+    role = payload.get("role", "admin")
+
+    access_token = create_access_token(data={"sub": username, "role": role})
+    new_refresh_token = create_refresh_token(data={"sub": username, "role": role})
+    return {"access_token": access_token, "refresh_token": new_refresh_token, "token_type": "bearer"}
 
 
 # ─────────────────────────────────────────────────────────────
@@ -131,6 +202,7 @@ async def login_for_access_token(
 @router.get("/auth/google", tags=["Auth"])
 async def google_oauth_redirect():
     """Inicia o fluxo OAuth com Google. Redireciona para a tela de consentimento."""
+    from fastapi.responses import RedirectResponse as _RR
     client_id = settings.google_oauth_client_id
     if not client_id:
         raise HTTPException(
@@ -139,8 +211,10 @@ async def google_oauth_redirect():
         )
     import urllib.parse
 
-    state = _generate_state()
-    redirect_uri = f"{settings.frontend_url.rstrip('/')}/api/auth/google/callback"
+    frontend_base = settings.frontend_url.rstrip("/")
+    resp = _RR(status_code=307)
+    state = _generate_state(resp, frontend_base)
+    redirect_uri = f"{frontend_base}/api/auth/google/callback"
     params = urllib.parse.urlencode({
         "client_id": client_id,
         "redirect_uri": redirect_uri,
@@ -150,17 +224,18 @@ async def google_oauth_redirect():
         "prompt": "select_account",
         "state": state,
     })
-    return RedirectResponse(url=f"https://accounts.google.com/o/oauth2/v2/auth?{params}")
+    resp.headers["Location"] = f"https://accounts.google.com/o/oauth2/v2/auth?{params}"
+    return resp
 
 
 @router.get("/auth/google/callback", tags=["Auth"])
-async def google_oauth_callback(code: str = None, error: str = None, state: str = None):
+async def google_oauth_callback(request: Request, code: str = None, error: str = None, state: str = None):
     """Recebe o callback do Google, troca o code por token e gera JWT interno."""
     import urllib.parse
 
     frontend_base = settings.frontend_url.rstrip("/")
 
-    if not _validate_state(state):
+    if not _validate_state(state, request):
         return RedirectResponse(url=f"{frontend_base}/auth/callback?error=csrf_invalido")
 
     if error or not code:
@@ -213,7 +288,10 @@ async def google_oauth_callback(code: str = None, error: str = None, state: str 
             data={"sub": email, "name": name, "picture": picture, "provider": "google"},
             expires_delta=timedelta(minutes=settings.jwt_expiration_minutes),
         )
-        params = urllib.parse.urlencode({"token": jwt_token, "name": name})
+        refresh_jwt = create_refresh_token(
+            data={"sub": email, "name": name, "provider": "google"},
+        )
+        params = urllib.parse.urlencode({"token": jwt_token, "refresh": refresh_jwt, "name": name})
         return RedirectResponse(url=f"{frontend_base}/auth/callback?{params}")
 
     except ImportError:
@@ -231,6 +309,7 @@ async def google_oauth_callback(code: str = None, error: str = None, state: str 
 @router.get("/auth/microsoft", tags=["Auth"])
 async def microsoft_oauth_redirect():
     """Inicia o fluxo OAuth com Microsoft. Redireciona para a tela de consentimento."""
+    from fastapi.responses import RedirectResponse as _RR
     client_id = settings.microsoft_oauth_client_id
     tenant_id = settings.microsoft_oauth_tenant_id
     if not client_id:
@@ -240,8 +319,10 @@ async def microsoft_oauth_redirect():
         )
     import urllib.parse
 
-    state = _generate_state()
-    redirect_uri = f"{settings.frontend_url.rstrip('/')}/api/auth/microsoft/callback"
+    frontend_base = settings.frontend_url.rstrip("/")
+    resp = _RR(status_code=307)
+    state = _generate_state(resp, frontend_base)
+    redirect_uri = f"{frontend_base}/api/auth/microsoft/callback"
     params = urllib.parse.urlencode({
         "client_id": client_id,
         "redirect_uri": redirect_uri,
@@ -249,19 +330,18 @@ async def microsoft_oauth_redirect():
         "scope": "openid email profile",
         "state": state,
     })
-    return RedirectResponse(
-        url=f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/authorize?{params}"
-    )
+    resp.headers["Location"] = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/authorize?{params}"
+    return resp
 
 
 @router.get("/auth/microsoft/callback", tags=["Auth"])
-async def microsoft_oauth_callback(code: str = None, error: str = None, state: str = None):
+async def microsoft_oauth_callback(request: Request, code: str = None, error: str = None, state: str = None):
     """Recebe o callback do Microsoft, troca o code por token e gera JWT interno."""
     import urllib.parse
 
     frontend_base = settings.frontend_url.rstrip("/")
 
-    if not _validate_state(state):
+    if not _validate_state(state, request):
         return RedirectResponse(url=f"{frontend_base}/auth/callback?error=csrf_invalido")
 
     if error or not code:
@@ -313,7 +393,10 @@ async def microsoft_oauth_callback(code: str = None, error: str = None, state: s
             data={"sub": email, "name": name, "provider": "microsoft"},
             expires_delta=timedelta(minutes=settings.jwt_expiration_minutes),
         )
-        params = urllib.parse.urlencode({"token": jwt_token, "name": name})
+        refresh_jwt = create_refresh_token(
+            data={"sub": email, "name": name, "provider": "microsoft"},
+        )
+        params = urllib.parse.urlencode({"token": jwt_token, "refresh": refresh_jwt, "name": name})
         return RedirectResponse(url=f"{frontend_base}/auth/callback?{params}")
 
     except ImportError:
@@ -331,6 +414,7 @@ async def microsoft_oauth_callback(code: str = None, error: str = None, state: s
 @router.get("/auth/apple", tags=["Auth"])
 async def apple_oauth_redirect():
     """Inicia o fluxo OAuth com Apple. Redireciona para a tela de consentimento."""
+    from fastapi.responses import RedirectResponse as _RR
     client_id = settings.apple_oauth_client_id
     if not client_id:
         raise HTTPException(
@@ -339,8 +423,10 @@ async def apple_oauth_redirect():
         )
     import urllib.parse
 
-    state = _generate_state()
-    redirect_uri = f"{settings.frontend_url.rstrip('/')}/api/auth/apple/callback"
+    frontend_base = settings.frontend_url.rstrip("/")
+    resp = _RR(status_code=307)
+    state = _generate_state(resp, frontend_base)
+    redirect_uri = f"{frontend_base}/api/auth/apple/callback"
     params = urllib.parse.urlencode({
         "client_id": client_id,
         "redirect_uri": redirect_uri,
@@ -349,17 +435,18 @@ async def apple_oauth_redirect():
         "response_mode": "query",
         "state": state,
     })
-    return RedirectResponse(url=f"https://appleid.apple.com/auth/authorize?{params}")
+    resp.headers["Location"] = f"https://appleid.apple.com/auth/authorize?{params}"
+    return resp
 
 
 @router.get("/auth/apple/callback", tags=["Auth"])
-async def apple_oauth_callback(code: str = None, error: str = None, state: str = None):
+async def apple_oauth_callback(request: Request, code: str = None, error: str = None, state: str = None):
     """Recebe o callback do Apple, troca o code por token e gera JWT interno."""
     import urllib.parse
 
     frontend_base = settings.frontend_url.rstrip("/")
 
-    if not _validate_state(state):
+    if not _validate_state(state, request):
         return RedirectResponse(url=f"{frontend_base}/auth/callback?error=csrf_invalido")
 
     if error or not code:
@@ -412,8 +499,19 @@ async def apple_oauth_callback(code: str = None, error: str = None, state: str =
         if not id_token:
             return RedirectResponse(url=f"{frontend_base}/auth/callback?error=token_invalido")
 
-        # Decodifica o ID token (Apple não requer verificação de assinatura para login)
-        payload = pyjwt.decode(id_token, options={"verify_signature": False})
+        # Decodifica e verifica o ID token com as chaves públicas da Apple
+        signing_keys = _get_apple_signing_keys()
+        payload = None
+        for key in signing_keys:
+            try:
+                payload = pyjwt.decode(id_token, key, algorithms=["RS256"], audience=client_id, issuer="https://appleid.apple.com")
+                break
+            except pyjwt.InvalidSignatureError:
+                continue
+            except pyjwt.InvalidTokenError:
+                return RedirectResponse(url=f"{frontend_base}/auth/callback?error=token_invalido")
+        if payload is None:
+            return RedirectResponse(url=f"{frontend_base}/auth/callback?error=assinatura_invalida")
         email: str = payload.get("email", "")
         sub: str = payload.get("sub", "")
 
@@ -433,7 +531,10 @@ async def apple_oauth_callback(code: str = None, error: str = None, state: str =
             data={"sub": email, "name": full_name, "provider": "apple"},
             expires_delta=timedelta(minutes=settings.jwt_expiration_minutes),
         )
-        params = urllib.parse.urlencode({"token": jwt_token, "name": full_name})
+        refresh_jwt = create_refresh_token(
+            data={"sub": email, "name": full_name, "provider": "apple"},
+        )
+        params = urllib.parse.urlencode({"token": jwt_token, "refresh": refresh_jwt, "name": full_name})
         return RedirectResponse(url=f"{frontend_base}/auth/callback?{params}")
 
     except ImportError:

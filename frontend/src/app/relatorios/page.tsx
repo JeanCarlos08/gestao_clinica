@@ -7,6 +7,7 @@ import {
   BarChart2, Calendar, RefreshCw, Download, TrendingUp, Users,
   CheckCircle2, Clock, XCircle, AlertCircle, Loader2, FileText, Building2,
 } from "lucide-react";
+import EmptyIllustration from "@/components/EmptyIllustration";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -33,11 +34,11 @@ interface AtendimentoRelatorio {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  "Concluído": "#22c55e", "Atendido": "#3b82f6",
+  "Concluído": "#14b8a6", "Atendido": "#3b82f6",
   "Agendado": "#f59e0b", "Cancelado": "#ef4444",
   "Pendente": "#f97316", "Em andamento": "#a855f7",
 };
-const COLORS = ["#22c55e", "#3b82f6", "#a855f7", "#f59e0b", "#ef4444", "#06b6d4", "#ec4899"];
+const COLORS = ["#14b8a6", "#3b82f6", "#a855f7", "#f59e0b", "#ef4444", "#06b6d4", "#ec4899"];
 
 const Charts = dynamic(() => Promise.resolve(ChartsInner), { ssr: false });
 
@@ -106,7 +107,7 @@ export default function RelatoriosPage() {
         </div>
         <button
           onClick={exportCSV}
-          className="flex items-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-4 py-2.5 rounded-xl text-sm transition-colors shadow-[0_0_20px_rgba(34,197,94,0.3)]"
+          className="flex items-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-4 py-2.5 rounded-xl text-sm transition-colors shadow-[0_0_20px_rgba(20,184,166,0.3)]"
         >
           <Download size={15} /> Exportar CSV
         </button>
@@ -164,11 +165,11 @@ export default function RelatoriosPage() {
               <div key={s} className="premium-surface border border-[var(--border)] rounded-2xl p-5 hover:-translate-y-0.5 transition-transform">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-[11px] text-[var(--text-label)] font-semibold uppercase tracking-wider truncate pr-2">{s}</span>
-                  <span style={{ color: STATUS_COLORS[s] || "#22c55e" }}>
+                  <span style={{ color: STATUS_COLORS[s] || "#14b8a6" }}>
                     {s === "Concluído" ? <CheckCircle2 size={15} /> : s === "Cancelado" ? <XCircle size={15} /> : s === "Agendado" ? <Clock size={15} /> : <AlertCircle size={15} />}
                   </span>
                 </div>
-                <div className="text-3xl font-extrabold" style={{ color: STATUS_COLORS[s] || "#22c55e" }}>{c}</div>
+                <div className="text-3xl font-extrabold" style={{ color: STATUS_COLORS[s] || "#14b8a6" }}>{c}</div>
                 <div className="text-xs text-[var(--text-muted)] mt-1">{total ? `${((c / total) * 100).toFixed(1)}%` : ""}</div>
               </div>
             ))}
@@ -209,7 +210,12 @@ export default function RelatoriosPage() {
                   </thead>
                   <tbody>
                     {atendimentos.length === 0 ? (
-                      <tr><td colSpan={7} className="p-10 text-center text-[var(--text-muted)]">Nenhum registro encontrado.</td></tr>
+                      <tr><td colSpan={7} className="p-10 text-center">
+                        <div className="flex flex-col items-center">
+                          <EmptyIllustration variant="report" size={80} />
+                          <p className="text-sm text-[var(--text-muted)] mt-3">Nenhum registro encontrado.</p>
+                        </div>
+                      </td></tr>
                     ) : atendimentos.map((a, i) => (
                       <tr key={a.id} className="border-b border-[var(--border)] hover:bg-[var(--card-hover)] transition-colors">
                         <td className="p-4 text-xs text-[var(--text-muted)]">{i + 1}</td>
@@ -219,7 +225,7 @@ export default function RelatoriosPage() {
                         <td className="p-4 text-sm text-[var(--text-muted)]">{a.data}</td>
                         <td className="p-4">
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border"
-                            style={{ background: `${STATUS_COLORS[a.status] || "#22c55e"}18`, color: STATUS_COLORS[a.status] || "#22c55e", borderColor: `${STATUS_COLORS[a.status] || "#22c55e"}30` }}>
+                            style={{ background: `${STATUS_COLORS[a.status] || "#14b8a6"}18`, color: STATUS_COLORS[a.status] || "#14b8a6", borderColor: `${STATUS_COLORS[a.status] || "#14b8a6"}30` }}>
                             {a.status}
                           </span>
                         </td>
@@ -260,19 +266,22 @@ function ChartsInner({ stats, total }: { stats: ReportStats; total: number }) {
             <TrendingUp size={16} className="text-[var(--primary)]" /> Atendimentos por Mês
           </div>
           {mesData.length === 0 ? (
-            <div className="text-center text-[var(--text-muted)] py-10 text-sm">Nenhum dado no período.</div>
+            <div className="text-center py-10">
+              <EmptyIllustration variant="report" size={80} />
+              <p className="text-[var(--text-muted)] text-sm mt-3">Nenhum dado no período.</p>
+            </div>
           ) : (
             <div className="h-52">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={mesData} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
-                  <XAxis dataKey="name" stroke="#3d5240" tick={{ fill: "#6b8870", fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <YAxis stroke="#3d5240" tick={{ fill: "#6b8870", fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <XAxis dataKey="name" stroke="#3d5554" tick={{ fill: "#6b8e8a", fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis stroke="#3d5554" tick={{ fill: "#6b8e8a", fontSize: 10 }} axisLine={false} tickLine={false} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: "rgba(8,15,9,0.95)", borderColor: "rgba(34,197,94,0.2)", borderRadius: "10px", color: "#fff" }}
-                    itemStyle={{ color: "#4ade80" }}
+                    contentStyle={{ backgroundColor: "rgba(8,15,9,0.95)", borderColor: "rgba(20,184,166,0.2)", borderRadius: "10px", color: "#fff" }}
+                    itemStyle={{ color: "#2dd4bf" }}
                   />
-                  <Bar dataKey="value" fill="#22c55e" radius={[6, 6, 0, 0]} fillOpacity={0.85} name="Atendimentos" />
+                  <Bar dataKey="value" fill="#14b8a6" radius={[6, 6, 0, 0]} fillOpacity={0.85} name="Atendimentos" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -285,7 +294,10 @@ function ChartsInner({ stats, total }: { stats: ReportStats; total: number }) {
             <Users size={16} className="text-[var(--primary)]" /> Distribuição por Status
           </div>
           {statusData.length === 0 ? (
-            <div className="text-center text-[var(--text-muted)] py-10 text-sm">Sem dados.</div>
+            <div className="text-center py-10">
+              <EmptyIllustration variant="report" size={70} />
+              <p className="text-[var(--text-muted)] text-sm mt-3">Sem dados.</p>
+            </div>
           ) : (
             <div className="h-52">
               <ResponsiveContainer width="100%" height="100%">
@@ -296,9 +308,9 @@ function ChartsInner({ stats, total }: { stats: ReportStats; total: number }) {
                     ))}
                   </Pie>
                   <Tooltip
-                    contentStyle={{ backgroundColor: "rgba(8,15,9,0.95)", borderColor: "rgba(34,197,94,0.2)", borderRadius: "10px", color: "#fff" }}
+                    contentStyle={{ backgroundColor: "rgba(8,15,9,0.95)", borderColor: "rgba(20,184,166,0.2)", borderRadius: "10px", color: "#fff" }}
                   />
-                  <Legend iconType="circle" iconSize={8} formatter={(v) => <span style={{ color: "#98b89e", fontSize: 11 }}>{v}</span>} />
+                  <Legend iconType="circle" iconSize={8} formatter={(v) => <span style={{ color: "#98b8b2", fontSize: 11 }}>{v}</span>} />
                 </PieChart>
               </ResponsiveContainer>
             </div>

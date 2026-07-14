@@ -11,7 +11,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from services.lgpd_service import get_lgpd_service
-from infrastructure.api.routers.deps import _get_client_ip, get_current_user
+from infrastructure.api.routers.deps import _get_client_ip, get_current_user, run_sync
+from infrastructure.api.limiter import limiter
 
 router = APIRouter(prefix="/api")
 
@@ -73,6 +74,7 @@ class DPOUpdatePayload(BaseModel):
     tags=["LGPD"],
     summary="Registrar consentimento do titular (LGPD Art. 8º)",
 )
+@limiter.limit("30/minute")
 async def registrar_consentimento(request: Request, body: ConsentimentoCreate):
     """
     Registra o consentimento do titular para tratamento de dados pessoais.
@@ -82,7 +84,7 @@ async def registrar_consentimento(request: Request, body: ConsentimentoCreate):
     ip = _get_client_ip(request)
     user_agent = request.headers.get("user-agent", "")
 
-    resultado = lgpd.registrar_consentimento(
+    resultado = await run_sync(lgpd.registrar_consentimento,
         titular_nome=body.titular_nome,
         finalidade=body.finalidade,
         titular_email=body.titular_email,
@@ -106,7 +108,7 @@ async def consultar_consentimentos(email: str, current_user: dict = Depends(get_
     Requer autenticação (operador ou o próprio titular via token).
     """
     lgpd = get_lgpd_service()
-    registros = lgpd.buscar_consentimentos(email)
+    registros = await run_sync(lgpd.buscar_consentimentos, email)
     return {"email": email, "total": len(registros), "consentimentos": registros}
 
 
@@ -121,7 +123,7 @@ async def revogar_consentimento(email: str, current_user: dict = Depends(get_cur
     O consentimento pode ser revogado a qualquer momento (LGPD Art. 8º, §5º).
     """
     lgpd = get_lgpd_service()
-    return lgpd.revogar_consentimento(email)
+    return await run_sync(lgpd.revogar_consentimento, email)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -144,7 +146,7 @@ async def exportar_dados_titular(
     Implementa o Direito à Portabilidade (LGPD Art. 18, V).
     """
     lgpd = get_lgpd_service()
-    return lgpd.exportar_dados_titular(email=email, nome=nome)
+    return await run_sync(lgpd.exportar_dados_titular, email=email, nome=nome)
 
 
 @router.post(
@@ -153,7 +155,9 @@ async def exportar_dados_titular(
     tags=["LGPD"],
     summary="Direito ao esquecimento / eliminação (Art. 18, VI)",
 )
+@limiter.limit("5/minute")
 async def executar_esquecimento(
+    request: Request,
     body: EsquecimentoRequest,
     current_user: dict = Depends(get_current_user),
 ):
@@ -169,7 +173,7 @@ async def executar_esquecimento(
             detail="Confirmação inválida. Envie confirmacao='CONFIRMO_EXCLUSAO_PERMANENTE'.",
         )
     lgpd = get_lgpd_service()
-    return lgpd.executar_esquecimento(email=body.email, nome=body.nome)
+    return await run_sync(lgpd.executar_esquecimento, email=body.email, nome=body.nome)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -190,7 +194,7 @@ async def info_lgpd():
     lgpd = get_lgpd_service()
     return {
         "controlador": os.getenv("APP_NAME", "Clínica IA"),
-        "dpo": lgpd.info_dpo(),
+        "dpo": await run_sync(lgpd.info_dpo),
         "bases_legais": lgpd.bases_legais(),
         "direitos_titulares": {
             "acesso": "GET /api/lgpd/titulares/{email}/dados",
@@ -211,7 +215,7 @@ async def info_lgpd():
 async def get_ropa(current_user: dict = Depends(get_current_user)):
     """Gera o Registro de Atividades de Tratamento dinamicamente."""
     lgpd = get_lgpd_service()
-    return lgpd.gerar_ropa()
+    return await run_sync(lgpd.gerar_ropa)
 
 
 @router.get(
@@ -221,7 +225,7 @@ async def get_ropa(current_user: dict = Depends(get_current_user)):
 )
 async def get_dpo_config(current_user: dict = Depends(get_current_user)):
     lgpd = get_lgpd_service()
-    return lgpd.info_dpo()
+    return await run_sync(lgpd.info_dpo)
 
 
 @router.put(
@@ -235,7 +239,7 @@ async def update_dpo_config(body: DPOUpdatePayload, current_user: dict = Depends
     dados = {k: v for k, v in body.model_dump().items() if v is not None}
     if not dados:
         raise HTTPException(status_code=400, detail="Nenhum campo informado.")
-    ok = lgpd.atualizar_dpo(dados)
+    ok = await run_sync(lgpd.atualizar_dpo, dados)
     return {"sucesso": ok, "atualizados": list(dados.keys())}
 
 
@@ -247,4 +251,4 @@ async def update_dpo_config(body: DPOUpdatePayload, current_user: dict = Depends
 async def historico_esquecimentos(limit: int = 100, current_user: dict = Depends(get_current_user)):
     """Lista todos os esquecimentos executados. Não contém PII — apenas hashes."""
     lgpd = get_lgpd_service()
-    return {"total": limit, "registros": lgpd.historico_esquecimentos(limit=limit)}
+    return {"total": limit, "registros": await run_sync(lgpd.historico_esquecimentos, limit=limit)}

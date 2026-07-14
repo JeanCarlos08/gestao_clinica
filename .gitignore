@@ -52,5 +52,9 @@ logs/
 backend/logs/
 
 # ── Accidental artifacts ────────────────────────────────
-=0.7.0
-Qual
+scratch_refactor.py
+backups/
+.pytest_cache/
+.ruff_cache/
+*.cover
+.coverage

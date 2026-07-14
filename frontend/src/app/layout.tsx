@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import Sidebar from "@/components/Sidebar";
+import { ToastProvider } from "@/components/Toast";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import PageTransition from "@/components/PageTransition";
 import dynamic from "next/dynamic";
 import "./globals.css";
 
@@ -22,7 +25,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport = {
-  themeColor: "#0b140c",
+  themeColor: "#041214",
 };
 
 export default function RootLayout({
@@ -35,7 +38,7 @@ export default function RootLayout({
       <body className={`${manrope.className} bg-[var(--background)] text-[var(--foreground)] antialiased flex h-dvh overflow-hidden app-premium-bg`}>
         <Sidebar />
         <main className="flex-1 flex flex-col h-full overflow-hidden bg-[var(--background)] pt-14 md:pt-0">
-          {children}
+          <ToastProvider><ErrorBoundary><PageTransition>{children}</PageTransition></ErrorBoundary></ToastProvider>
         </main>
         <AISidebar />
       </body>

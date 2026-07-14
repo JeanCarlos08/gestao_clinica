@@ -38,7 +38,7 @@ def mock_db(monkeypatch, mock_connection):
     """Monkeypatcha a conexão do banco para os testes."""
     conn, cursor = mock_connection
     monkeypatch.setattr(
-        "database.connection.get_connection",
+        "infrastructure.connection.get_connection",
         lambda: conn,
     )
     return conn, cursor

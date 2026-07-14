@@ -10,9 +10,10 @@ from typing import Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
-from core.repositories.repositories import auditoria_repo
-from core.repositories.user_repositories import user_repo, clinic_config_repo
-from infrastructure.api.routers.deps import get_current_user, require_permission
+from core.repositories.repositories import AuditoriaRepository
+from core.repositories.user_repositories import UserRepository, ClinicConfigRepository
+from infrastructure.api.routers.deps import get_current_user, require_permission, run_sync
+from infrastructure.api.routers.repo_deps import get_auditoria_repo, get_user_repo, get_clinic_config_repo
 from utils.constants import CLINIC_PREF_USER_PHOTO, CLINIC_PREF_LOGO
 from utils.constants import PERM_VIEW_CONFIGURACOES, PERM_MANAGE_CONFIGURACOES, PERM_VIEW_LOGS
 from utils.logger import get_logger
@@ -43,11 +44,15 @@ async def get_config_options():
 
 
 @router.get("/configuracoes", tags=["Configurações"])
-async def get_configuracoes(current_user: dict = Depends(require_permission(PERM_VIEW_CONFIGURACOES))):
+async def get_configuracoes(
+    current_user: dict = Depends(require_permission(PERM_VIEW_CONFIGURACOES)),
+    clinic_config_repo: ClinicConfigRepository = Depends(get_clinic_config_repo),
+    user_repo: UserRepository = Depends(get_user_repo),
+):
     """Retorna todas as configurações da clínica."""
-    config = clinic_config_repo.get_all_clinic_data()
+    config = await run_sync(clinic_config_repo.get_all_clinic_data)
     username = current_user.get("sub", "")
-    user = user_repo.find_by_username(username)
+    user = await run_sync(user_repo.find_by_username, username)
     return {
         "clinica": config,
         "usuario": {
@@ -66,12 +71,13 @@ async def get_configuracoes(current_user: dict = Depends(require_permission(PERM
 async def update_configuracoes(
     body: ConfigClinicaUpdate,
     current_user: dict = Depends(require_permission(PERM_MANAGE_CONFIGURACOES)),
+    clinic_config_repo: ClinicConfigRepository = Depends(get_clinic_config_repo),
 ):
     """Salva configurações da clínica."""
     data = {k: v for k, v in body.model_dump().items() if v is not None}
     if not data:
         return {"mensagem": "Nenhuma configuração para salvar."}
-    success = clinic_config_repo.save_clinic_data(data)
+    success = await run_sync(clinic_config_repo.save_clinic_data, data)
     if not success:
         raise HTTPException(status_code=500, detail="Erro ao salvar configurações.")
     return {"mensagem": "Configurações salvas com sucesso.", "campos_salvos": list(data.keys())}
@@ -82,6 +88,7 @@ async def upload_config_photo(
     field: str = Form(...),
     file: UploadFile = File(...),
     current_user: dict = Depends(require_permission(PERM_MANAGE_CONFIGURACOES)),
+    clinic_config_repo: ClinicConfigRepository = Depends(get_clinic_config_repo),
 ):
     """Faz upload de imagem (logo ou foto do usuário) e salva como data-uri na configuração."""
     if field not in ("user_photo", "clinic_logo"):
@@ -95,7 +102,7 @@ async def upload_config_photo(
         b64 = base64.b64encode(content).decode("utf-8")
         data_uri = f"data:{file.content_type};base64,{b64}"
         key = CLINIC_PREF_USER_PHOTO if field == "user_photo" else CLINIC_PREF_LOGO
-        ok = clinic_config_repo.save_clinic_data({key: data_uri})
+        ok = await run_sync(clinic_config_repo.save_clinic_data, {key: data_uri})
         if not ok:
             raise HTTPException(status_code=500, detail="Falha ao salvar imagem.")
         return {"mensagem": "Imagem salva com sucesso.", "field": field}
@@ -108,9 +115,10 @@ async def upload_config_photo(
 async def get_auditoria(
     limit: int = 50,
     current_user: dict = Depends(require_permission(PERM_VIEW_LOGS)),
+    auditoria_repo: AuditoriaRepository = Depends(get_auditoria_repo),
 ):
     """Retorna o log de auditoria do sistema."""
-    entradas = auditoria_repo.listar(limit=min(limit, 200))
+    entradas = await run_sync(auditoria_repo.listar, limit=min(limit, 200))
     return [
         {
             "id": e.id,
@@ -123,3 +131,23 @@ async def get_auditoria(
         }
         for e in entradas
     ]
+
+
+from utils.constants import ROLE_ADMIN
+
+@router.post("/admin/retention/cleanup", tags=["Admin"])
+async def retention_cleanup(
+    audit_days: int = 365,
+    login_days: int = 90,
+    current_user: dict = Depends(require_permission(PERM_MANAGE_CONFIGURACOES)),
+):
+    """Executa limpeza de dados antigos (LGPD minimização / auditoria)."""
+    from infrastructure.connection import cleanup_old_audit_logs, cleanup_old_login_attempts
+    audit_removed = await run_sync(cleanup_old_audit_logs, audit_days)
+    login_removed = await run_sync(cleanup_old_login_attempts, login_days)
+    return {
+        "audit_logs_removed": audit_removed,
+        "login_attempts_removed": login_removed,
+        "audit_retention_days": audit_days,
+        "login_retention_days": login_days,
+    }

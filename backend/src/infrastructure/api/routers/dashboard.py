@@ -7,26 +7,31 @@ endpoint.
 
 from fastapi import APIRouter, Depends
 
-from core.repositories.repositories import atendimento_repo, preferences_repo
-from infrastructure.api.routers.deps import _slug_name, require_permission
+from core.repositories.repositories import AtendimentoRepository, PreferencesRepository
+from infrastructure.api.routers.deps import _slug_name, require_permission, run_sync
+from infrastructure.api.routers.repo_deps import get_atendimento_repo, get_preferences_repo
 from utils.constants import PERM_VIEW_DASHBOARD
 
 router = APIRouter(prefix="/api")
 
 
 @router.get("/dashboard", tags=["Dashboard"])
-async def get_dashboard(current_user: dict = Depends(require_permission(PERM_VIEW_DASHBOARD))):
+async def get_dashboard(
+    current_user: dict = Depends(require_permission(PERM_VIEW_DASHBOARD)),
+    atendimento_repo: AtendimentoRepository = Depends(get_atendimento_repo),
+    preferences_repo: PreferencesRepository = Depends(get_preferences_repo),
+):
     """Retorna stats + atendimentos recentes em uma única chamada."""
     from core.entities.models import AtendimentoFilter
 
-    stats = atendimento_repo.get_stats()
-    atendimentos = atendimento_repo.list_all(filters=AtendimentoFilter(limit=50))
+    stats = await run_sync(atendimento_repo.get_stats)
+    atendimentos = await run_sync(atendimento_repo.list_all, filters=AtendimentoFilter(limit=50))
 
     # Busca fotos apenas para os atendimentos exibidos (não todas)
     nomes = {_slug_name(a.nome) for a in atendimentos}
     fotos: dict = {}
     if nomes:
-        all_fotos = preferences_repo.get_many("patient_photo:")
+        all_fotos = await run_sync(preferences_repo.get_many, "patient_photo:")
         fotos = {k: v for k, v in all_fotos.items() if any(n in k for n in nomes)}
 
     return {
@@ -60,6 +65,9 @@ async def get_dashboard(current_user: dict = Depends(require_permission(PERM_VIE
 
 
 @router.get("/stats", tags=["Dashboard"])
-async def get_stats(current_user: dict = Depends(require_permission(PERM_VIEW_DASHBOARD))):
+async def get_stats(
+    current_user: dict = Depends(require_permission(PERM_VIEW_DASHBOARD)),
+    atendimento_repo: AtendimentoRepository = Depends(get_atendimento_repo),
+):
     """Estatísticas do dashboard (requer autenticação)."""
-    return atendimento_repo.get_stats()
+    return await run_sync(atendimento_repo.get_stats)

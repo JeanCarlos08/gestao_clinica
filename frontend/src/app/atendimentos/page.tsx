@@ -6,6 +6,7 @@ import {
   CalendarDays, Clock, PlayCircle, Plus, Search,
   XCircle, RefreshCw, Filter, Sparkles, Building2, User
 } from "lucide-react";
+import EmptyIllustration from "@/components/EmptyIllustration";
 
 interface Atendimento {
   id: number; empresa: string; nome: string; modalidade: string; data: string; hora: string; status: string;
@@ -43,11 +44,13 @@ export default function AtendimentosPage() {
 
   useEffect(() => { const t = setTimeout(() => setDebouncedQ(q), 300); return () => clearTimeout(t); }, [q]);
 
-  const { data: atendimentos = [], isLoading: loading, mutate } = useSWR<Atendimento[]>(
-    `${API}/atendimentos?q=${encodeURIComponent(debouncedQ)}`,
+  const { data: paginated, isLoading: loading, mutate } = useSWR<{ items: Atendimento[]; total: number; has_more: boolean }>(
+    `${API}/atendimentos?q=${encodeURIComponent(debouncedQ)}&limit=50`,
     fetcher,
     { revalidateOnFocus: false, dedupingInterval: 5000 }
   );
+
+  const atendimentos = paginated?.items ?? [];
 
   const openNew = () => {
     setEditingId(null); setEmpresa(""); setNome(""); setModalidade("");
@@ -72,20 +75,18 @@ export default function AtendimentosPage() {
     if (!tk) return;
     setAiLoading(true); setAiResult(null);
     try {
-      const res = await fetch(`${API}/atendimentos/${aiId}/generate-parecer`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${tk}` }, body: JSON.stringify({ prompt: aiPrompt }) });
+      const res = await fetch(`${API}/ia/gerar-parecer`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${tk}` }, body: JSON.stringify({ notas: aiPrompt, modalidade: "Psicologia Clínica" }) });
       if (res.ok) { const d = await res.json(); setAiResult(d.texto); }
       else setAiResult("Erro ao gerar.");
     } catch { setAiResult("Falha na comunicação."); }
     finally { setAiLoading(false); }
   };
 
-  const saveAIParecer = async () => {
-    const tk = localStorage.getItem("token");
-    if (!tk || !aiResult) return;
-    try {
-      await fetch(`${API}/atendimentos/${aiId}/generate-parecer/save`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${tk}` }, body: JSON.stringify({ parecer: aiResult }) });
-      alert("Salvo!"); setShowAI(false);
-    } catch { alert("Erro ao salvar."); }
+  const copyAIParecer = () => {
+    if (!aiResult) return;
+    navigator.clipboard.writeText(aiResult);
+    alert("Parecer copiado para a área de transferência!");
+    setShowAI(false);
   };
 
   const getStatusColor = (s: string) => {
@@ -111,7 +112,7 @@ export default function AtendimentosPage() {
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Atendimentos</h1>
           <p className="text-[var(--text-muted)] text-sm mt-1">Gerencie consultas e avaliações clínicas</p>
         </div>
-        <button onClick={openNew} className="flex items-center justify-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-[0_0_20px_rgba(34,197,94,0.3)] hover:shadow-[0_0_30px_rgba(34,197,94,0.5)]">
+        <button onClick={openNew} className="flex items-center justify-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-[0_0_20px_rgba(20,184,166,0.3)] hover:shadow-[0_0_30px_rgba(20,184,166,0.5)]">
           <Plus size={16} strokeWidth={2.5} /> Novo Agendamento
         </button>
       </div>
@@ -137,7 +138,7 @@ export default function AtendimentosPage() {
           <span className="font-semibold text-sm flex items-center gap-2">
             <CalendarDays size={16} className="text-[var(--primary)]" /> Todos os Agendamentos
           </span>
-          <div className="text-xs font-semibold text-[var(--text-muted)]">{atendimentos.length} registros</div>
+          <div className="text-xs font-semibold text-[var(--text-muted)]">{paginated?.total ?? atendimentos.length} registros</div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[800px]">
@@ -154,7 +155,12 @@ export default function AtendimentosPage() {
               {loading && atendimentos.length === 0 ? (
                 <tr><td colSpan={5} className="p-16 text-center text-[var(--text-muted)]"><RefreshCw size={24} className="animate-spin mx-auto mb-2" /> Carregando...</td></tr>
               ) : atendimentos.length === 0 ? (
-                <tr><td colSpan={5} className="p-16 text-center text-[var(--text-muted)]">Nenhum atendimento encontrado.</td></tr>
+                <tr><td colSpan={5} className="p-16 text-center">
+                  <div className="flex flex-col items-center">
+                    <EmptyIllustration variant="appointment" size={90} />
+                    <p className="text-sm text-[var(--text-muted)] mt-4">Nenhum atendimento encontrado.</p>
+                  </div>
+                </td></tr>
               ) : (
                 atendimentos.map((a) => {
                   const s = getStatusColor(a.status);
@@ -240,7 +246,7 @@ export default function AtendimentosPage() {
               </div>
               <div className="pt-4 flex justify-end gap-3">
                 <button type="button" onClick={() => setShowModal(false)} className="px-5 py-2.5 text-sm font-bold text-[var(--text-muted)] hover:text-white transition-colors">Cancelar</button>
-                <button type="submit" className="bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-colors shadow-[0_0_15px_rgba(34,197,94,0.25)] hover:shadow-[0_0_25px_rgba(34,197,94,0.4)]">
+                <button type="submit" className="bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-colors shadow-[0_0_15px_rgba(20,184,166,0.25)] hover:shadow-[0_0_25px_rgba(20,184,166,0.4)]">
                   Salvar
                 </button>
               </div>
@@ -275,8 +281,8 @@ export default function AtendimentosPage() {
                   <div className="text-[11px] font-bold text-[var(--text-label)] uppercase tracking-wider mb-2">Resultado:</div>
                   <div className="bg-[var(--background)] border border-[var(--border)] p-4 rounded-xl text-sm text-white whitespace-pre-wrap max-h-60 overflow-y-auto mb-4">{aiResult}</div>
                   <div className="flex justify-end">
-                    <button onClick={saveAIParecer} className="bg-[var(--primary)] text-black font-bold px-6 py-2.5 rounded-xl text-sm shadow-[0_0_15px_rgba(34,197,94,0.25)] hover:shadow-[0_0_25px_rgba(34,197,94,0.4)]">
-                      Salvar no Banco
+                    <button onClick={copyAIParecer} className="bg-[var(--primary)] text-black font-bold px-6 py-2.5 rounded-xl text-sm shadow-[0_0_15px_rgba(20,184,166,0.25)] hover:shadow-[0_0_25px_rgba(20,184,166,0.4)]">
+                      Copiar Parecer
                     </button>
                   </div>
                 </div>

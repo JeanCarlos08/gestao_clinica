@@ -9,6 +9,8 @@ import {
   Clock, ChevronRight, ArrowUpRight, Sparkles, type LucideIcon,
 } from "lucide-react";
 import { getLoggedUserProfile } from "@/lib/auth";
+import { swrFetcher, API as API_BASE } from "@/lib/api";
+import EmptyIllustration from "@/components/EmptyIllustration";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 interface DashboardStats {
@@ -55,15 +57,6 @@ type BadgeTone = "neutral" | "positive" | "warning";
 const weekdayOrder = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const AttendanceChart = dynamic<AttendanceChartProps>(() => Promise.resolve(AttendanceChartInner), { ssr: false });
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api";
-const fetcher = async (url: string) => {
-  const token = localStorage.getItem("token");
-  if (!token) { window.location.href = "/"; return null; }
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-  if (res.status === 401) { localStorage.removeItem("token"); window.location.href = "/"; return null; }
-  return res.json();
-};
-
 // ── Counter animation hook ─────────────────────────────────
 function useCountUp(target: number, duration = 1200): number {
   const [value, setValue] = useState(0);
@@ -87,7 +80,7 @@ export default function DashboardPage() {
 
   const { data, isLoading: loading } = useSWR<{ stats: DashboardStats; atendimentos: AtendimentoResumo[] }>(
     `${API_BASE}/dashboard`,
-    fetcher,
+    swrFetcher,
     { revalidateOnFocus: false, dedupingInterval: 10000 }
   );
 
@@ -137,7 +130,7 @@ export default function DashboardPage() {
         </div>
 
         {/* AI Insight */}
-        <div className="bg-gradient-to-br from-[var(--primary)]/10 to-[var(--primary)]/5 border border-[var(--primary)]/20 rounded-2xl p-4 flex items-start gap-3 max-w-sm backdrop-blur-md shadow-[0_0_20px_rgba(34,197,94,0.06)] hover:shadow-[0_0_30px_rgba(34,197,94,0.1)] transition-shadow group">
+        <div className="bg-gradient-to-br from-[var(--primary)]/10 to-[var(--primary)]/5 border border-[var(--primary)]/20 rounded-2xl p-4 flex items-start gap-3 max-w-sm backdrop-blur-md shadow-[0_0_20px_rgba(20,184,166,0.06)] hover:shadow-[0_0_30px_rgba(20,184,166,0.1)] transition-shadow group">
           <div className="bg-[var(--primary)]/20 p-2.5 rounded-xl text-[var(--primary)] mt-0.5 group-hover:bg-[var(--primary)]/30 transition-colors flex-shrink-0">
             <Bell size={16} />
           </div>
@@ -211,7 +204,7 @@ export default function DashboardPage() {
               </h3>
               <p className="text-xs text-[var(--text-muted)] mt-0.5">Distribuição por dia da semana</p>
             </div>
-            <button className="text-xs text-[var(--primary)] hover:text-white transition-colors font-medium flex items-center gap-1">
+            <button onClick={() => window.location.href = "/relatorios"} className="text-xs text-[var(--primary)] hover:text-white transition-colors font-medium flex items-center gap-1">
               Ver detalhes <ArrowUpRight size={12} />
             </button>
           </div>
@@ -228,7 +221,7 @@ export default function DashboardPage() {
         <div className="premium-surface rounded-2xl p-6 flex flex-col fade-up-delay-2">
           <div className="flex items-center justify-between mb-5">
             <h3 className="text-base font-bold text-white">Próximas Consultas</h3>
-            <button className="text-xs text-[var(--primary)] hover:text-white transition-colors font-medium flex items-center gap-0.5">
+            <button onClick={() => window.location.href = "/atendimentos"} className="text-xs text-[var(--primary)] hover:text-white transition-colors font-medium flex items-center gap-0.5">
               Ver todas <ChevronRight size={12} />
             </button>
           </div>
@@ -253,13 +246,13 @@ export default function DashboardPage() {
               </div>
             )) : (
               <div className="flex flex-col items-center justify-center py-8 text-center">
-                <CalendarIcon size={32} className="text-[var(--text-muted)]/30 mb-2" />
-                <p className="text-sm text-[var(--text-muted)]">Nenhum atendimento encontrado.</p>
+                <EmptyIllustration variant="appointment" size={80} />
+                <p className="text-sm text-[var(--text-muted)] mt-3">Nenhum atendimento encontrado.</p>
               </div>
             )}
           </div>
 
-          <button className="mt-4 w-full py-2.5 rounded-xl border border-[var(--border)] text-xs font-semibold text-[var(--text-label)] hover:text-white hover:bg-[var(--card-hover)] hover:border-[var(--primary)]/30 transition-all">
+          <button onClick={() => window.location.href = "/atendimentos"} className="mt-4 w-full py-2.5 rounded-xl border border-[var(--border)] text-xs font-semibold text-[var(--text-label)] hover:text-white hover:bg-[var(--card-hover)] hover:border-[var(--primary)]/30 transition-all">
             + Adicionar Novo Atendimento
           </button>
         </div>
@@ -278,7 +271,7 @@ export default function DashboardPage() {
               .slice(0, 5)
               .map(([mod, count], i) => {
                 const pct = totalAtendimentos > 0 ? Math.round((count / totalAtendimentos) * 100) : 0;
-                const colors = ["#22c55e", "#3b82f6", "#a855f7", "#f59e0b", "#06b6d4"];
+                const colors = ["#14b8a6", "#3b82f6", "#a855f7", "#f59e0b", "#06b6d4"];
                 return (
                   <div key={mod}>
                     <div className="flex items-center justify-between text-xs mb-1.5">
@@ -325,7 +318,7 @@ function MetricCard({ title, value, suffix, change, tone = "neutral", icon: Icon
         </div>
         <div className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
           tone === "positive"
-            ? "bg-[var(--status-concluido-bg)] text-[var(--status-concluido)] border border-[rgba(22,163,74,0.2)]"
+            ? "bg-[var(--status-concluido-bg)] text-[var(--status-concluido)] border border-[rgba(20,184,166,0.2)]"
             : "bg-white/[0.06] text-[var(--text-label)]"
         }`}>
           {change}
@@ -347,33 +340,33 @@ function AttendanceChartInner({ data }: AttendanceChartProps) {
         <AreaChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: -10 }}>
           <defs>
             <linearGradient id="colorAtend" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%"   stopColor="#22c55e" stopOpacity={0.25} />
-              <stop offset="95%"  stopColor="#22c55e" stopOpacity={0} />
+              <stop offset="5%"   stopColor="#14b8a6" stopOpacity={0.25} />
+              <stop offset="95%"  stopColor="#14b8a6" stopOpacity={0} />
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
-          <XAxis dataKey="name" stroke="#3d5240" tick={{ fill: "#6b8870", fontSize: 11 }} axisLine={false} tickLine={false} />
-          <YAxis stroke="#3d5240" tick={{ fill: "#6b8870", fontSize: 11 }} axisLine={false} tickLine={false} />
+          <XAxis dataKey="name" stroke="#3d5554" tick={{ fill: "#6b8e8a", fontSize: 11 }} axisLine={false} tickLine={false} />
+          <YAxis stroke="#3d5554" tick={{ fill: "#6b8e8a", fontSize: 11 }} axisLine={false} tickLine={false} />
           <Tooltip
             contentStyle={{
               backgroundColor: "rgba(8,15,9,0.95)",
-              borderColor: "rgba(34,197,94,0.2)",
+              borderColor: "rgba(20,184,166,0.2)",
               borderRadius: "12px",
               color: "#fff",
               boxShadow: "0 16px 48px rgba(0,0,0,0.6)",
               backdropFilter: "blur(16px)",
             }}
-            itemStyle={{ color: "#4ade80", fontWeight: 700 }}
-            labelStyle={{ color: "#6b8870", fontSize: 11 }}
+            itemStyle={{ color: "#2dd4bf", fontWeight: 700 }}
+            labelStyle={{ color: "#6b8e8a", fontSize: 11 }}
           />
           <Area
             type="monotone"
             dataKey="atendimentos"
-            stroke="#22c55e"
+            stroke="#14b8a6"
             strokeWidth={2.5}
             fill="url(#colorAtend)"
-            dot={{ fill: "#020804", stroke: "#22c55e", strokeWidth: 2, r: 4 }}
-            activeDot={{ r: 6, fill: "#22c55e", stroke: "#fff", strokeWidth: 2 }}
+            dot={{ fill: "#020d0d", stroke: "#14b8a6", strokeWidth: 2, r: 4 }}
+            activeDot={{ r: 6, fill: "#14b8a6", stroke: "#fff", strokeWidth: 2 }}
             animationDuration={1500}
           />
         </AreaChart>

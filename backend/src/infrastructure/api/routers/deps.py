@@ -2,17 +2,31 @@
 
 Provides the OAuth2PasswordBearer scheme, the ``get_current_user`` dependency,
 the ``require_permission`` RBAC dependency, the ``_get_client_ip`` helper,
-and the ``_slug_name`` utility used across multiple routers.
+the ``_slug_name`` utility used across multiple routers, and the ``run_sync``
+helper for running blocking repo calls from async endpoints.
 """
 
+import asyncio
 import re as _re
 from functools import partial
+from typing import Callable, TypeVar
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 
 from services.security import verify_access_token
 from utils.constants import ROLE_PERMISSIONS
+
+T = TypeVar("T")
+
+
+async def run_sync(fn: Callable[..., T], *args, **kwargs) -> T:
+    """Run a synchronous (blocking) callable in the default executor so the
+    event loop is not blocked.  Use this for all repository / DB calls inside
+    ``async def`` endpoints."""
+    return await asyncio.get_event_loop().run_in_executor(
+        None, lambda: fn(*args, **kwargs)
+    )
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/token")
 
