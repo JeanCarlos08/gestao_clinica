@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
-  FileEdit, Search, Loader2, RefreshCw, ExternalLink, FileText,
-  Clock, ChevronRight, AlertCircle,
+  FileEdit, Search, Loader2, RefreshCw, FileText,
+  ChevronRight, AlertCircle,
 } from "lucide-react";
 import EmptyIllustration from "@/components/EmptyIllustration";
 import GoogleDocsModal from "@/components/GoogleDocsModal";
@@ -24,7 +24,6 @@ export default function DocumentosPage() {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [modalDocId, setModalDocId] = useState<string | null>(null);
-  const [modalPatientName, setModalPatientName] = useState("");
   const [docErrors, setDocErrors] = useState<Record<number, string>>({});
 
   const fetchPatients = useCallback(async () => {
@@ -57,7 +56,6 @@ export default function DocumentosPage() {
       const j = await res.json();
       if (j.google_doc_id) {
         setModalDocId(j.google_doc_id);
-        setModalPatientName(patient.nome);
       }
     } catch {
       setDocErrors(prev => ({ ...prev, [patient.id]: "Erro ao buscar documento." }));
@@ -175,7 +173,7 @@ export default function DocumentosPage() {
       {modalDocId && (
         <GoogleDocsModal
           docId={modalDocId}
-          onClose={() => { setModalDocId(null); setModalPatientName(""); }}
+          onClose={() => setModalDocId(null)}
         />
       )}
     </div>

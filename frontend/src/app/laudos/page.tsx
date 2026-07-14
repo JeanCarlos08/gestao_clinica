@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import useSWR from "swr";
 import {
-  FileText, CheckCircle2, Clock, AlertCircle, RefreshCw, XCircle, Search, FileDown, Plus
+  FileText, CheckCircle2, Clock, RefreshCw, XCircle, Search, FileDown, Plus
 } from "lucide-react";
 import EmptyIllustration from "@/components/EmptyIllustration";
 

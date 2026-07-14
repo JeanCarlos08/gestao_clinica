@@ -37,7 +37,6 @@ export default function AtendimentosPage() {
 
   // AI Prompt Modal
   const [showAI, setShowAI] = useState(false);
-  const [aiId, setAiId] = useState<number | null>(null);
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResult, setAiResult] = useState<string | null>(null);
@@ -186,7 +185,7 @@ export default function AtendimentosPage() {
                       </td>
                       <td className="p-4 pr-6 text-right">
                         <button
-                          onClick={() => { setAiId(a.id); setAiPrompt(`Gere um parecer para ${a.nome} da empresa ${a.empresa}.`); setAiResult(null); setShowAI(true); }}
+                          onClick={() => { setAiPrompt(`Gere um parecer para ${a.nome} da empresa ${a.empresa}.`); setAiResult(null); setShowAI(true); }}
                           className="inline-flex items-center gap-1 bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 border border-violet-500/20 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors"
                         >
                           <Sparkles size={12} /> Gerar Parecer

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import {
-  X, ExternalLink, Shield, ShieldOff, Clock, RefreshCw, Maximize2, Minimize2,
+  X, ExternalLink, Shield, ShieldOff, Clock, Maximize2, Minimize2,
 } from "lucide-react";
 import GoogleDocsIframe from "./GoogleDocsIframe";
 
@@ -12,7 +12,6 @@ type Props = {
 };
 
 export default function GoogleDocsModal({ docId, onClose }: Props) {
-  const [embedUrl, setEmbedUrl] = useState<string | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const [tempMinutes, setTempMinutes] = useState(30);
   const [granting, setGranting] = useState(false);
@@ -71,7 +70,7 @@ export default function GoogleDocsModal({ docId, onClose }: Props) {
     }
   };
 
-  const onUrlReady = useCallback((url: string) => setEmbedUrl(url), []);
+  const onUrlReady = useCallback(() => {}, []);
 
   return (
     <div className={`fixed inset-0 z-50 flex flex-col ${fullscreen ? "" : "items-center justify-center p-4"}`}>

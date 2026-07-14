@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import Image from "next/image";
 
 interface AvatarProps {
   name: string;
@@ -32,9 +33,12 @@ export default function Avatar({ name, photo, size = 40 }: AvatarProps) {
 
   if (photo) {
     return (
-      <img
+      <Image
         src={photo}
         alt={name}
+        width={size}
+        height={size}
+        unoptimized
         style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover" }}
       />
     );

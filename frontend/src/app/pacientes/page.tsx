@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import useSWR from "swr";
-import { Search, Users, CalendarClock, Activity, RefreshCw, Loader2, ChevronRight, UserPlus } from "lucide-react";
+import { Search, Users, CalendarClock, Activity, RefreshCw, Loader2, ChevronRight } from "lucide-react";
 import EmptyIllustration from "@/components/EmptyIllustration";
 
 interface PacienteResumo {
