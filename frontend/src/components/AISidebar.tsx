@@ -18,6 +18,7 @@ export default function AISidebar() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
+  const [aiAvailable, setAiAvailable] = useState<boolean | null>(null);
 
   // Desktop refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -30,6 +31,24 @@ export default function AISidebar() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     mobileMessagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  useEffect(() => {
+    const checkAI = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(
+          (process.env.NEXT_PUBLIC_API_URL || "/api") + "/ia/diagnostics",
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!res.ok) { setAiAvailable(false); return; }
+        const data = await res.json();
+        setAiAvailable(data.has_ai && data.gemini_key_set);
+      } catch {
+        setAiAvailable(false);
+      }
+    };
+    checkAI();
+  }, []);
 
   const sendMessage = async (text?: string) => {
     const q = (text ?? query).trim();
@@ -67,19 +86,33 @@ export default function AISidebar() {
   const renderMessages = (endRef: React.RefObject<HTMLDivElement>) => (
     <div className="flex-1 overflow-y-auto scrollbar-thin p-3 flex flex-col gap-3 min-h-0">
       {messages.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-full gap-5 py-6 px-2">
-          <div className="relative">
-            <div className="absolute inset-0 rounded-2xl bg-[var(--primary)] blur-xl opacity-20" />
-            <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-[#0f3d22] to-[#020c05] border border-[rgba(74,222,128,0.15)] flex items-center justify-center shadow-[0_0_32px_rgba(34,197,94,0.12)]">
-              <Bot size={28} className="text-[var(--primary)]" />
+        aiAvailable === false ? (
+          <div className="flex flex-col items-center justify-center h-full gap-4 py-6 px-4 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+              <Bot size={26} className="text-red-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-white mb-1">IA Indisponível</p>
+              <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                Configure uma chave de API válida do Google Gemini<br />
+                (<code className="text-red-400">GOOGLE_API_KEY</code>) no servidor.
+              </p>
             </div>
           </div>
-          <div className="text-center">
-            <p className="text-sm font-semibold text-white mb-1">Olá! Como posso ajudar?</p>
-            <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-              Pergunte sobre pacientes, atendimentos,<br />estatísticas ou qualquer dado da clínica.
-            </p>
-          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full gap-5 py-6 px-2">
+            <div className="relative">
+              <div className="absolute inset-0 rounded-2xl bg-[var(--primary)] blur-xl opacity-20" />
+              <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-[#0f3d22] to-[#020c05] border border-[rgba(74,222,128,0.15)] flex items-center justify-center shadow-[0_0_32px_rgba(34,197,94,0.12)]">
+                <Bot size={28} className="text-[var(--primary)]" />
+              </div>
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-semibold text-white mb-1">Olá! Como posso ajudar?</p>
+              <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                Pergunte sobre pacientes, atendimentos,<br />estatísticas ou qualquer dado da clínica.
+              </p>
+            </div>
           <div className="flex flex-col gap-2 w-full">
             {SUGGESTIONS.map((s) => (
               <button
@@ -148,14 +181,14 @@ export default function AISidebar() {
           }}
           placeholder="Mensagem para a IA..."
           rows={1}
-          disabled={loading}
+          disabled={loading || aiAvailable === false}
           className="flex-1 resize-none bg-transparent text-xs text-white placeholder:text-[var(--text-muted)] focus:outline-none py-0.5 max-h-24 overflow-y-auto scrollbar-hide disabled:opacity-50 leading-relaxed"
           style={{ height: "20px" }}
         />
         <button
           type="button"
           onClick={() => sendMessage()}
-          disabled={loading || !query.trim()}
+          disabled={loading || !query.trim() || aiAvailable === false}
           className="w-7 h-7 rounded-full bg-gradient-to-br from-[#16a34a] to-[#052e16] border border-[rgba(74,222,128,0.2)] flex items-center justify-center text-white flex-shrink-0 disabled:opacity-30 hover:shadow-[0_0_12px_rgba(34,197,94,0.35)] transition-all mb-0.5"
         >
           <Send size={12} />

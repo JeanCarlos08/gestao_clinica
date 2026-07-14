@@ -140,4 +140,6 @@ async def ia_chat(payload: IAChatPayload, current_user: dict = Depends(require_p
     }
 
     resposta = AIService.chat_with_data(payload.pergunta, _json.dumps(context, ensure_ascii=False))
+    if resposta.startswith("❌ IA indisponível"):
+        raise HTTPException(status_code=503, detail=resposta)
     return {"resposta": resposta}

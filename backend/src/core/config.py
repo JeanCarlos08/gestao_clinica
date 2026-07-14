@@ -98,7 +98,10 @@ class Settings:
 
     @property
     def has_ai(self) -> bool:
-        return bool(self.gemini_api_key)
+        if not self.gemini_api_key:
+            return False
+        _PLACEHOLDER_KEYS = {"SUA_CHAVE_COPIADA_AQUI", "your-api-key-here", "CHANGE_ME", "SUA_CHAVE"}
+        return self.gemini_api_key.strip() not in _PLACEHOLDER_KEYS
 
 # Singleton global
 settings = Settings()
