@@ -6,7 +6,7 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Home, ClipboardList, BarChart2, Upload, Settings, LogOut, FileText, Users,
-  Menu, X, Sparkles, ChevronRight,
+  Menu, X, Sparkles, ChevronRight, FileEdit,
 } from "lucide-react";
 import { buildDisplayName, getLoggedUserProfile, getUserInitials } from "@/lib/auth";
 
@@ -26,6 +26,7 @@ const NAV_ITEMS = [
   { href: "/pacientes",     label: "Pacientes",    icon: Users,         color: "text-blue-400" },
   { href: "/atendimentos",  label: "Atendimentos", icon: ClipboardList, color: "text-violet-400" },
   { href: "/laudos",        label: "Laudos",       icon: FileText,      color: "text-amber-400" },
+  { href: "/documentos",    label: "Documento",    icon: FileEdit,      color: "text-teal-400" },
   { href: "/relatorios",    label: "Relatórios",   icon: BarChart2,     color: "text-cyan-400" },
   { href: "/upload",        label: "Upload",       icon: Upload,        color: "text-pink-400" },
   { href: "/configuracoes", label: "Configurações",icon: Settings,      color: "text-slate-400" },
