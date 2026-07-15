@@ -50,6 +50,7 @@ interface DashboardConsultationCard {
   dataLabel: string;
   horario: string;
   status: string;
+  photo?: string | null;
 }
 
 type BadgeTone = "neutral" | "positive" | "warning";
@@ -229,7 +230,7 @@ export default function DashboardPage() {
           <div className="space-y-3 flex-1">
             {upcomingConsultas.length > 0 ? upcomingConsultas.map((consulta) => (
               <div key={consulta.id} className="group p-3 rounded-xl border border-transparent hover:border-[var(--border-light)] hover:bg-[var(--card-hover)] transition-all duration-200 cursor-pointer flex items-center gap-3">
-                <PatientAvatar name={consulta.nome} photo={(consulta as unknown as { photo?: string }).photo || null} />
+                <PatientAvatar name={consulta.nome} photo={consulta.photo || null} />
                 <div className="flex-1 min-w-0">
                   <h4 className="text-sm font-semibold text-white mb-0.5 truncate">{consulta.nome}</h4>
                   <p className="text-xs text-[var(--text-muted)] truncate">{consulta.modalidade}</p>
@@ -398,7 +399,7 @@ function buildUpcomingConsultas(atendimentos: AtendimentoResumo[]): DashboardCon
     .slice(0, 4)
     .map(a => ({
       id: a.id, nome: a.nome, modalidade: a.modalidade,
-      dataLabel: formatDateLabel(a.timestamp), horario: a.hora, status: a.status,
+      dataLabel: formatDateLabel(a.timestamp), horario: a.hora, status: a.status, photo: (a as unknown as { photo?: string }).photo,
     }));
 }
 

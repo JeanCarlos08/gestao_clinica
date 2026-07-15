@@ -282,7 +282,7 @@ export default function LoginPage() {
 
         /* Error */
         .auth-error {
-          display: flex; align-items: center; gap-8px;
+          display: flex; align-items: center; gap: 8px;
           background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2);
           color: #f87171; font-size: 12.5px; font-weight: 500;
           padding: 10px 14px; border-radius: 10px; text-align: center;

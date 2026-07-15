@@ -7,6 +7,8 @@ import {
 } from "lucide-react";
 import GoogleDocsIframe from "@/components/GoogleDocsIframe";
 
+const API = (path: string) => (process.env.NEXT_PUBLIC_API_URL || "/api") + path;
+
 export default function DocEditorPage() {
   const params = useParams();
   const router = useRouter();
@@ -31,7 +33,7 @@ export default function DocEditorPage() {
       setLoading(true);
       try {
         const token = localStorage.getItem("token");
-        const res = await fetch(`/api/pacientes/${id}/document`, {
+        const res = await fetch(API(`/pacientes/${id}/document`), {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.status === 404) throw new Error("Nenhum documento associado a esse paciente.");
@@ -59,7 +61,7 @@ export default function DocEditorPage() {
     setGranting(true);
     setPermMsg(null);
     try {
-      const res = await fetch("/api/docs/embed", {
+      const res = await fetch(API("/docs/embed"), {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
         body: JSON.stringify({ doc_id: docId, temporary_minutes: tempMinutes }),
@@ -80,7 +82,7 @@ export default function DocEditorPage() {
     setRevoking(true);
     setPermMsg(null);
     try {
-      const res = await fetch("/api/docs/revoke", {
+      const res = await fetch(API("/docs/revoke"), {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
         body: JSON.stringify({ doc_id: docId, permission_id: permissionId }),

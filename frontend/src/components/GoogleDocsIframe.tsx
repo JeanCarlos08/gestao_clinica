@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 
+const API = (path: string) => (process.env.NEXT_PUBLIC_API_URL || "/api") + path;
+
 type Props = {
   docId: string;
   makePublic?: boolean;
@@ -26,7 +28,7 @@ export default function GoogleDocsIframe({ docId, makePublic = false, temporaryM
         if (temporaryMinutes) body.temporary_minutes = temporaryMinutes;
 
         const token = localStorage.getItem("token");
-        const res = await fetch("/api/docs/embed", {
+        const res = await fetch(API("/docs/embed"), {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -40,6 +42,7 @@ export default function GoogleDocsIframe({ docId, makePublic = false, temporaryM
         }
         const j = await res.json();
         const embedUrl = j.embed_url || j.edit_url;
+        if (!embedUrl) throw new Error("Servidor não retornou URL do documento.");
         if (mounted) {
           setUrl(embedUrl);
           onUrlReady?.(embedUrl);

@@ -6,6 +6,8 @@ import {
 } from "lucide-react";
 import GoogleDocsIframe from "./GoogleDocsIframe";
 
+const API = (path: string) => (process.env.NEXT_PUBLIC_API_URL || "/api") + path;
+
 type Props = {
   docId: string;
   onClose: () => void;
@@ -33,7 +35,7 @@ export default function GoogleDocsModal({ docId, onClose }: Props) {
     setGranting(true);
     setPermMsg(null);
     try {
-      const res = await fetch("/api/docs/embed", {
+      const res = await fetch(API("/docs/embed"), {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
         body: JSON.stringify({ doc_id: docId, temporary_minutes: tempMinutes }),
@@ -54,7 +56,7 @@ export default function GoogleDocsModal({ docId, onClose }: Props) {
     setRevoking(true);
     setPermMsg(null);
     try {
-      const res = await fetch("/api/docs/revoke", {
+      const res = await fetch(API("/docs/revoke"), {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
         body: JSON.stringify({ doc_id: docId, permission_id: permissionId }),
