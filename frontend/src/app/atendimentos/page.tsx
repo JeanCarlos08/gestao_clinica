@@ -7,19 +7,13 @@ import {
   XCircle, RefreshCw, Filter, Sparkles, Building2, User
 } from "lucide-react";
 import EmptyIllustration from "@/components/EmptyIllustration";
+import { swrFetcher, API as API_BASE } from "@/lib/api";
 
 interface Atendimento {
   id: number; empresa: string; nome: string; modalidade: string; data: string; hora: string; status: string;
 }
 
-const API = process.env.NEXT_PUBLIC_API_URL || "/api";
-const fetcher = async (url: string) => {
-  const token = localStorage.getItem("token");
-  if (!token) { window.location.href = "/"; return []; }
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-  if (res.status === 401) { localStorage.removeItem("token"); window.location.href = "/"; return []; }
-  return res.json();
-};
+const fetcher = swrFetcher;
 
 export default function AtendimentosPage() {
   const [q, setQ] = useState("");
@@ -44,7 +38,7 @@ export default function AtendimentosPage() {
   useEffect(() => { const t = setTimeout(() => setDebouncedQ(q), 300); return () => clearTimeout(t); }, [q]);
 
   const { data: paginated, isLoading: loading, mutate } = useSWR<{ items: Atendimento[]; total: number; has_more: boolean }>(
-    `${API}/atendimentos?q=${encodeURIComponent(debouncedQ)}&limit=50`,
+    `${API_BASE}/atendimentos?q=${encodeURIComponent(debouncedQ)}&limit=50`,
     fetcher,
     { revalidateOnFocus: false, dedupingInterval: 5000 }
   );
@@ -62,7 +56,7 @@ export default function AtendimentosPage() {
     if (!tk) return;
     const body = { empresa, nome, modalidade, data, hora, status };
     try {
-      const url = editingId ? `${API}/atendimentos/${editingId}` : `${API}/atendimentos`;
+      const url = editingId ? `${API_BASE}/atendimentos/${editingId}` : `${API_BASE}/atendimentos`;
       const res = await fetch(url, { method: editingId ? "PUT" : "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${tk}` }, body: JSON.stringify(body) });
       if (res.ok) { setShowModal(false); mutate(); }
     } catch { alert("Erro ao salvar."); }
@@ -74,7 +68,7 @@ export default function AtendimentosPage() {
     if (!tk) return;
     setAiLoading(true); setAiResult(null);
     try {
-      const res = await fetch(`${API}/ia/gerar-parecer`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${tk}` }, body: JSON.stringify({ notas: aiPrompt, modalidade: "Psicologia Clínica" }) });
+      const res = await fetch(`${API_BASE}/ia/gerar-parecer`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${tk}` }, body: JSON.stringify({ notas: aiPrompt, modalidade: "Psicologia Clínica" }) });
       if (res.ok) { const d = await res.json(); setAiResult(d.texto); }
       else setAiResult("Erro ao gerar.");
     } catch { setAiResult("Falha na comunicação."); }

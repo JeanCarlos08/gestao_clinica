@@ -2,11 +2,11 @@ from datetime import datetime, timedelta, UTC
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-import jwt
 
 from core.config import settings
 from core.repositories.user_repositories import user_repo
 from utils.helpers import verify_password
+from services.security import create_access_token
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -26,14 +26,6 @@ class LoginResponse(BaseModel):
     user_id: int | None = None
     display_name: str | None = None
     role: str | None = None
-
-
-def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
-    to_encode = data.copy()
-    expire = datetime.now(UTC) + (expires_delta or timedelta(minutes=settings.jwt_expiration_minutes))
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
-    return encoded_jwt
 
 
 @app.post("/login", response_model=LoginResponse)

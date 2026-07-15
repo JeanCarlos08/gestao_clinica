@@ -1,22 +1,27 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
 
 export function useKeyboardShortcut(
   key: string,
   callback: () => void,
   modifiers: { ctrl?: boolean; shift?: boolean; alt?: boolean } = {}
 ) {
+  const callbackRef = useRef(callback);
+  callbackRef.current = callback;
+
+  const { ctrl = false, shift = false, alt = false } = modifiers;
+
   const handler = useCallback(
     (e: KeyboardEvent) => {
       if (e.key !== key) return;
-      if (modifiers.ctrl && !e.ctrlKey && !e.metaKey) return;
-      if (modifiers.shift && !e.shiftKey) return;
-      if (modifiers.alt && !e.altKey) return;
+      if (ctrl && !e.ctrlKey && !e.metaKey) return;
+      if (shift && !e.shiftKey) return;
+      if (alt && !e.altKey) return;
       e.preventDefault();
-      callback();
+      callbackRef.current();
     },
-    [key, callback, modifiers]
+    [key, ctrl, shift, alt]
   );
 
   useEffect(() => {

@@ -8,6 +8,7 @@ import {
   CheckCircle2, Clock, XCircle, AlertCircle, Loader2, FileText, Building2,
 } from "lucide-react";
 import EmptyIllustration from "@/components/EmptyIllustration";
+import { API as API_BASE } from "@/lib/api";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -54,7 +55,6 @@ export default function RelatoriosPage() {
   const fetchData = useCallback(async () => {
     const token = localStorage.getItem("token");
     if (!token) { router.push("/"); return; }
-    const API = process.env.NEXT_PUBLIC_API_URL || "/api";
     setLoading(true);
     try {
       const p = new URLSearchParams();
@@ -63,8 +63,8 @@ export default function RelatoriosPage() {
       const qs = p.toString() ? `?${p}` : "";
       const hdrs = { Authorization: `Bearer ${token}` };
       const [sr, lr] = await Promise.all([
-        fetch(`${API}/relatorios/stats${qs}`, { headers: hdrs }),
-        fetch(`${API}/relatorios/atendimentos${qs}`, { headers: hdrs }),
+        fetch(`${API_BASE}/relatorios/stats${qs}`, { headers: hdrs }),
+        fetch(`${API_BASE}/relatorios/atendimentos${qs}`, { headers: hdrs }),
       ]);
       if (sr.status === 401) { localStorage.removeItem("token"); router.push("/"); return; }
       setStats(await sr.json());

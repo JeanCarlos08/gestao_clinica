@@ -6,6 +6,7 @@ import Image from "next/image";
 import useSWR from "swr";
 import { Search, Users, CalendarClock, Activity, RefreshCw, Loader2, ChevronRight } from "lucide-react";
 import EmptyIllustration from "@/components/EmptyIllustration";
+import { swrFetcher, API as API_BASE } from "@/lib/api";
 
 interface PacienteResumo {
   id: number;
@@ -18,14 +19,7 @@ interface PacienteResumo {
   foto: string | null;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api";
-const fetcher = async (url: string) => {
-  const token = localStorage.getItem("token");
-  if (!token) { window.location.href = "/"; return []; }
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-  if (res.status === 401) { localStorage.removeItem("token"); window.location.href = "/"; return []; }
-  return res.json();
-};
+const fetcher = swrFetcher;
 
 export default function PacientesPage() {
   const router = useRouter();

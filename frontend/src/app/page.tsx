@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Loader2, Shield, Sparkles, X } from "lucide-react";
+import { API as API_BASE } from "@/lib/api";
 
-const API = () => process.env.NEXT_PUBLIC_API_URL || "/api";
+const API = API_BASE;
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -26,7 +27,7 @@ export default function LoginPage() {
       formData.append("username", username);
       formData.append("password", password);
 
-      const response = await fetch(`${API()}/token`, {
+      const response = await fetch(`${API}/token`, {
         method: "POST",
         body: formData,
       });
@@ -50,7 +51,7 @@ export default function LoginPage() {
   const handleSocialLogin = async (provider: "google" | "microsoft" | "apple") => {
     // Registra consentimento LGPD antes de redirecionar
     try {
-      await fetch(`${API()}/lgpd/consentimentos`, {
+      await fetch(`${API}/lgpd/consentimentos`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -63,11 +64,11 @@ export default function LoginPage() {
     } catch { /* não bloquear o login se o registro de consentimento falhar */ }
 
     if (provider === "google") {
-      window.location.href = `${API()}/auth/google`;
+      window.location.href = `${API}/auth/google`;
     } else if (provider === "microsoft") {
-      window.location.href = `${API()}/auth/microsoft`;
+      window.location.href = `${API}/auth/microsoft`;
     } else if (provider === "apple") {
-      window.location.href = `${API()}/auth/apple`;
+      window.location.href = `${API}/auth/apple`;
     }
   };
 

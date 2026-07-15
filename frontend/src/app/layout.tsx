@@ -38,9 +38,15 @@ export default function RootLayout({
       <body className={`${manrope.className} bg-[var(--background)] text-[var(--foreground)] antialiased flex h-dvh overflow-hidden app-premium-bg`}>
         <Sidebar />
         <main className="flex-1 flex flex-col h-full overflow-hidden bg-[var(--background)] pt-14 md:pt-0">
-          <ToastProvider><ErrorBoundary><PageTransition>{children}</PageTransition></ErrorBoundary></ToastProvider>
+          <ToastProvider>
+            <ErrorBoundary>
+              <PageTransition>{children}</PageTransition>
+            </ErrorBoundary>
+          </ToastProvider>
         </main>
-        <AISidebar />
+        <ErrorBoundary>
+          <AISidebar />
+        </ErrorBoundary>
       </body>
     </html>
   );

@@ -8,6 +8,7 @@ import {
   Loader2, RefreshCw, HardDrive, Clock, File, ChevronRight
 } from "lucide-react";
 import EmptyIllustration from "@/components/EmptyIllustration";
+import { swrFetcher, API as API_BASE } from "@/lib/api";
 
 interface Arquivo {
   id: number;
@@ -28,14 +29,7 @@ function formatSize(kb: number) {
   return `${kb.toFixed(0)} KB`;
 }
 
-const API = () => process.env.NEXT_PUBLIC_API_URL || "/api";
-const fetcher = async (url: string) => {
-  const token = localStorage.getItem("token");
-  if (!token) { window.location.href = "/"; return []; }
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-  if (res.status === 401) { localStorage.removeItem("token"); window.location.href = "/"; return []; }
-  return res.json();
-};
+const fetcher = swrFetcher;
 
 export default function UploadPage() {
   const router = useRouter();
@@ -46,7 +40,7 @@ export default function UploadPage() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { data: arquivos = [], isLoading: loading, mutate } = useSWR<Arquivo[]>(
-    `${API()}/arquivos`,
+    `${API_BASE}/arquivos`,
     fetcher,
     { revalidateOnFocus: false, dedupingInterval: 5000 }
   );
@@ -63,7 +57,7 @@ export default function UploadPage() {
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const res = await fetch(`${API()}/arquivos`, {
+      const res = await fetch(`${API_BASE}/arquivos`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: fd,
@@ -89,7 +83,7 @@ export default function UploadPage() {
     const token = localStorage.getItem("token");
     setDeletingId(id);
     try {
-      const res = await fetch(`${API()}/arquivos/${id}`, {
+      const res = await fetch(`${API_BASE}/arquivos/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });

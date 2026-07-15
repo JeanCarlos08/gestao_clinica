@@ -6,6 +6,7 @@ import {
   FileText, CheckCircle2, Clock, RefreshCw, XCircle, Search, FileDown, Plus
 } from "lucide-react";
 import EmptyIllustration from "@/components/EmptyIllustration";
+import { swrFetcher, API as API_BASE } from "@/lib/api";
 
 interface Laudo {
   id: string;
@@ -37,14 +38,7 @@ interface LaudoForm {
   psicologista_crp: string;
 }
 
-const API = process.env.NEXT_PUBLIC_API_URL || "/api";
-const fetcher = async (url: string) => {
-  const token = localStorage.getItem("token");
-  if (!token) { window.location.href = "/"; return []; }
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-  if (res.status === 401) { localStorage.removeItem("token"); window.location.href = "/"; return []; }
-  return res.json();
-};
+const fetcher = swrFetcher;
 
 const emptyForm: LaudoForm = {
   nome_paciente: "", data_nascimento: "", cpf: "", empresa: "",
@@ -64,7 +58,7 @@ export default function LaudosPage() {
   useEffect(() => { const t = setTimeout(() => setDebouncedQ(q), 300); return () => clearTimeout(t); }, [q]);
 
   const { data: laudos = [], isLoading: loading, mutate } = useSWR<Laudo[]>(
-    `${API}/laudos?q=${encodeURIComponent(debouncedQ)}`,
+    `${API_BASE}/laudos?q=${encodeURIComponent(debouncedQ)}`,
     fetcher,
     { revalidateOnFocus: false, dedupingInterval: 5000 }
   );
@@ -74,7 +68,7 @@ export default function LaudosPage() {
     if (!tk) return;
     setSaving(true);
     try {
-      const res = await fetch(`${API}/laudos/gerar`, {
+      const res = await fetch(`${API_BASE}/laudos/gerar`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${tk}` },
         body: JSON.stringify(form),
@@ -89,7 +83,7 @@ export default function LaudosPage() {
     const tk = localStorage.getItem("token");
     if (!tk) return;
     try {
-      const res = await fetch(`${API}/laudos/${docId}/pdf`, { headers: { Authorization: `Bearer ${tk}` } });
+      const res = await fetch(`${API_BASE}/laudos/${docId}/pdf`, { headers: { Authorization: `Bearer ${tk}` } });
       if (!res.ok) { alert("Erro ao baixar PDF."); return; }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);

@@ -6,6 +6,7 @@ import {
   ArrowLeft, ExternalLink, Download, Loader2, AlertCircle,
   Maximize2, Minimize2, RefreshCw, FileText, CheckCircle2,
 } from "lucide-react";
+import { API as API_BASE } from "@/lib/api";
 
 interface LaudoInfo {
   id: string;
@@ -31,7 +32,7 @@ export default function LaudoEditorPage() {
   const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
   const [iframeKey, setIframeKey] = useState(0);
 
-  const API = () => process.env.NEXT_PUBLIC_API_URL || "/api";
+  const API = API_BASE;
   const getToken = () => localStorage.getItem("token");
 
   const showToast = (type: "success" | "error", msg: string) => {
@@ -45,7 +46,7 @@ export default function LaudoEditorPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API()}/laudos`, {
+      const res = await fetch(`${API}/laudos`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.status === 401) { localStorage.removeItem("token"); router.push("/"); return; }
@@ -58,7 +59,7 @@ export default function LaudoEditorPage() {
     } finally {
       setLoading(false);
     }
-  }, [id, router]);
+  }, [id, router, API]);
 
   useEffect(() => { fetchLaudo(); }, [fetchLaudo]);
 
@@ -68,7 +69,7 @@ export default function LaudoEditorPage() {
     if (!token) return;
     setDownloading(true);
     try {
-      const res = await fetch(`${API()}/laudos/${laudo.id}/pdf`, {
+      const res = await fetch(`${API}/laudos/${laudo.id}/pdf`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error("Erro ao exportar PDF");

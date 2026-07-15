@@ -8,6 +8,7 @@ import {
   AlertCircle, Upload as UploadIcon, ShieldAlert,
 } from "lucide-react";
 import EmptyIllustration from "@/components/EmptyIllustration";
+import { API as API_BASE } from "@/lib/api";
 
 interface Clinica { id: number; name: string; document: string; }
 interface ClinicaConfig { clinic_name: string; clinic_logo_base64: string | null; user_photo_base64: string | null; }
@@ -27,7 +28,6 @@ export default function ConfigPage() {
   const logoRef = useRef<HTMLInputElement>(null);
   const photoRef = useRef<HTMLInputElement>(null);
 
-  const API = () => process.env.NEXT_PUBLIC_API_URL || "/api";
   const getToken = () => localStorage.getItem("token");
 
   useEffect(() => {
@@ -37,8 +37,8 @@ export default function ConfigPage() {
       setLoading(true);
       try {
         const [cRes, logsRes] = await Promise.all([
-          fetch(`${API()}/configuracoes`, { headers: { Authorization: `Bearer ${tk}` } }),
-          fetch(`${API()}/auditoria`, { headers: { Authorization: `Bearer ${tk}` } }),
+          fetch(`${API_BASE}/configuracoes`, { headers: { Authorization: `Bearer ${tk}` } }),
+          fetch(`${API_BASE}/auditoria`, { headers: { Authorization: `Bearer ${tk}` } }),
         ]);
         if (cRes.status === 401) { localStorage.removeItem("token"); router.push("/"); return; }
         if (cRes.ok) {
@@ -64,7 +64,7 @@ export default function ConfigPage() {
     if (!tk) return;
     setSaving(true);
     try {
-      const res = await fetch(`${API()}/configuracoes`, {
+      const res = await fetch(`${API_BASE}/configuracoes`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${tk}` },
         body: JSON.stringify(config),
