@@ -90,7 +90,7 @@ async def create_doc_embed_link(
                 ).execute()
                 import datetime
 
-                expires_at = (datetime.datetime.utcnow() + datetime.timedelta(minutes=int(temp_minutes))).isoformat() + "Z"
+                expires_at = (datetime.datetime.now(datetime.UTC) + datetime.timedelta(minutes=int(temp_minutes))).isoformat()
                 result["permission_id"] = perm.get("id")
                 result["expires_at"] = expires_at
                 # registra no banco para revogação automática posterior

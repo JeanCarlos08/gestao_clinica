@@ -59,7 +59,7 @@ def get_logger(name: str) -> logging.Logger:
     """
     logger = logging.getLogger(name)
 
-    # Evita adicionar handlers duplicados (importante para Streamlit que reexecuta)
+    # Evita adicionar handlers duplicados (importante para processos que reexecutam o módulo)
     if name in _configured_loggers:
         return logger
 

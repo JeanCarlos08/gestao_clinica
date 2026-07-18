@@ -33,6 +33,7 @@ class Atendimento:
     laudo_pdf: Optional[str] = None       # marcador "db:<id>" ou None
     avaliacao_pdf: Optional[str] = None   # marcador "db:<id>" ou None
     criado_em: Optional[datetime] = None
+    paciente_id: Optional[int] = None
 
     @property
     def has_laudo(self) -> bool:
@@ -77,6 +78,7 @@ class AtendimentoCreate:
     observacoes: Optional[str] = None
     laudo_pdf: Optional[str] = None
     avaliacao_pdf: Optional[str] = None
+    paciente_id: Optional[int] = None
 
 
 @dataclass
@@ -91,6 +93,7 @@ class AtendimentoUpdate:
     observacoes: Optional[str] = None
     laudo_pdf: Optional[str] = None
     avaliacao_pdf: Optional[str] = None
+    paciente_id: Optional[int] = None
 
     def to_dict(self) -> dict:
         """Retorna apenas os campos com valor (para UPDATE dinâmico)."""
@@ -227,3 +230,85 @@ class DashboardStats:
     atendimentos_mes: int = 0
     por_modalidade: dict = field(default_factory=dict)
     por_empresa: dict = field(default_factory=dict)
+
+
+# ─────────────────────────────────────────────────────────────
+# Paciente
+# ─────────────────────────────────────────────────────────────
+
+@dataclass
+class Paciente:
+    """Representa um paciente no sistema. Tabela dedicada `pacientes`."""
+    id: int
+    nome: str
+    slug: str
+    cpf: Optional[str] = None
+    telefone: Optional[str] = None
+    email: Optional[str] = None
+    data_nascimento: Optional[date] = None
+    sexo: Optional[str] = None
+    estado_civil: Optional[str] = None
+    profissao: Optional[str] = None
+    convenio: Optional[str] = None
+    numero_convenio: Optional[str] = None
+    empresa: Optional[str] = None
+    endereco: Optional[str] = None
+    contato_emergencia: Optional[str] = None
+    telefone_emergencia: Optional[str] = None
+    observacoes: Optional[str] = None
+    foto: Optional[str] = None
+    criado_em: Optional[datetime] = None
+    atualizado_em: Optional[datetime] = None
+
+
+@dataclass
+class PacienteCreate:
+    """DTO para criação de paciente."""
+    nome: str
+    cpf: Optional[str] = None
+    telefone: Optional[str] = None
+    email: Optional[str] = None
+    data_nascimento: Optional[date] = None
+    sexo: Optional[str] = None
+    estado_civil: Optional[str] = None
+    profissao: Optional[str] = None
+    convenio: Optional[str] = None
+    numero_convenio: Optional[str] = None
+    empresa: Optional[str] = None
+    endereco: Optional[str] = None
+    contato_emergencia: Optional[str] = None
+    telefone_emergencia: Optional[str] = None
+    observacoes: Optional[str] = None
+
+
+@dataclass
+class PacienteUpdate:
+    """DTO para atualização parcial de paciente."""
+    nome: Optional[str] = None
+    cpf: Optional[str] = None
+    telefone: Optional[str] = None
+    email: Optional[str] = None
+    data_nascimento: Optional[date] = None
+    sexo: Optional[str] = None
+    estado_civil: Optional[str] = None
+    profissao: Optional[str] = None
+    convenio: Optional[str] = None
+    numero_convenio: Optional[str] = None
+    empresa: Optional[str] = None
+    endereco: Optional[str] = None
+    contato_emergencia: Optional[str] = None
+    telefone_emergencia: Optional[str] = None
+    observacoes: Optional[str] = None
+    foto: Optional[str] = None
+
+    def to_dict(self) -> dict:
+        return {k: v for k, v in self.__dict__.items() if v is not None}
+
+
+@dataclass
+class PacienteFilter:
+    """Filtros para listagem de pacientes."""
+    q: Optional[str] = None
+    empresa: Optional[str] = None
+    limit: int = 1000
+    offset: int = 0

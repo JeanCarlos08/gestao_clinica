@@ -66,6 +66,7 @@ STATUS_EMOJIS: dict[str, str] = {
 # ─────────────────────────────────────────────────────────────
 
 TABLE_ATENDIMENTOS: str = "atendimentos"
+TABLE_PACIENTES: str = "pacientes"
 TABLE_NOTAS: str = "notas"
 TABLE_ARQUIVOS: str = "arquivos"
 TABLE_AUDITORIA: str = "auditoria"
@@ -99,33 +100,6 @@ AUDIT_ATTACH: str = "ATTACH"
 AUDIT_DETACH: str = "DETACH"
 AUDIT_LOGIN: str = "LOGIN"
 AUDIT_LOGOUT: str = "LOGOUT"
-
-# ─────────────────────────────────────────────────────────────
-# Session State Keys
-# ─────────────────────────────────────────────────────────────
-
-SESSION_AUTHENTICATED: str = "authenticated"
-SESSION_USER_NAME: str = "user_name"
-SESSION_CURRENT_PAGE: str = "current_page"
-SESSION_THEME: str = "theme"
-
-# ─────────────────────────────────────────────────────────────
-# Navegação — Páginas
-# ─────────────────────────────────────────────────────────────
-
-PAGE_DASHBOARD: str = "dashboard"
-PAGE_ATENDIMENTOS: str = "atendimentos"
-PAGE_DOCUMENTOS: str = "documentos"
-PAGE_AUTOMACOES: str = "automacoes"
-PAGE_CONFIGURACOES: str = "configuracoes"
-
-PAGES_CONFIG: dict[str, dict] = {
-    PAGE_DASHBOARD:     {"icon": "📊", "label": "Dashboard",     "protected": True},
-    PAGE_ATENDIMENTOS:  {"icon": "📋", "label": "Atendimentos",  "protected": True},
-    PAGE_DOCUMENTOS:    {"icon": "📄", "label": "Documentos",    "protected": True},
-    PAGE_AUTOMACOES:    {"icon": "⚡", "label": "Automações",    "protected": True},
-    PAGE_CONFIGURACOES: {"icon": "⚙️", "label": "Configurações", "protected": True},
-}
 
 # ─────────────────────────────────────────────────────────────
 # Logs

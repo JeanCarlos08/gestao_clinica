@@ -49,7 +49,7 @@ _DB_CONFIG_CACHE: Optional[Dict[str, str]] = None
 # ─────────────────────────────────────────────────────────────
 
 def _normalize_mapping(source: Any) -> Dict[str, str]:
-    """Normaliza qualquer mapeamento (dict, st.secrets, etc.) para dict com chaves lowercase."""
+    """Normaliza qualquer mapeamento (dict, etc.) para dict com chaves lowercase."""
     normalized: Dict[str, str] = {}
     try:
         items = source.items()
@@ -463,6 +463,39 @@ _SCHEMA_STATEMENTS = (
     """
     ALTER TABLE consentimentos ADD COLUMN IF NOT EXISTS provider VARCHAR(50);
     """,
+    # ── Pacientes: tabela dedicada ──
+    """
+    CREATE TABLE IF NOT EXISTS pacientes (
+        id                SERIAL PRIMARY KEY,
+        nome              VARCHAR(255) NOT NULL,
+        slug              VARCHAR(255) UNIQUE NOT NULL,
+        cpf               VARCHAR(14),
+        telefone          VARCHAR(20),
+        email             VARCHAR(255),
+        data_nascimento   DATE,
+        sexo              VARCHAR(20),
+        estado_civil      VARCHAR(30),
+        profissao         VARCHAR(150),
+        convenio          VARCHAR(150),
+        numero_convenio   VARCHAR(50),
+        empresa           VARCHAR(255),
+        endereco          TEXT,
+        contato_emergencia VARCHAR(255),
+        telefone_emergencia VARCHAR(20),
+        observacoes       TEXT,
+        foto              TEXT,
+        criado_em         TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        atualizado_em     TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    );
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_pacientes_nome ON pacientes (nome);",
+    "CREATE INDEX IF NOT EXISTS idx_pacientes_slug ON pacientes (slug);",
+    "CREATE INDEX IF NOT EXISTS idx_pacientes_cpf ON pacientes (cpf);",
+    # ── Atendimentos: FK para pacientes ──
+    """
+    ALTER TABLE atendimentos ADD COLUMN IF NOT EXISTS paciente_id INTEGER REFERENCES pacientes(id) ON DELETE SET NULL;
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_atendimentos_paciente_id ON atendimentos (paciente_id);",
 )
 
 
@@ -484,6 +517,7 @@ def ensure_schema() -> None:
     # Migrations de dados legados
     _migrate_date_time_columns()
     _migrate_modalidade_periodico()
+    _migrate_pacientes_from_atendimentos()
     logger.info("Schema verificado e migrations aplicadas.")
 
 
@@ -526,6 +560,65 @@ def _migrate_modalidade_periodico() -> None:
                 logger.info(f"Migration: {cur.rowcount} registro(s) corrigidos para 'Periódico'.")
     except Exception:
         pass
+
+
+def _migrate_pacientes_from_atendimentos() -> None:
+    """Cria registros na tabela pacientes a partir de nomes únicos nos atendimentos."""
+    import re as _re
+    import unicodedata as _ud
+
+    def _make_slug(name: str) -> str:
+        s = (name or "").strip().lower()
+        s = _ud.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii")
+        s = _re.sub(r"[^a-z0-9]+", "_", s)
+        return s.strip("_")
+
+    try:
+        with connection_scope() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT COUNT(*) AS n FROM pacientes")
+            row = cur.fetchone()
+            if row and row["n"] > 0:
+                return
+
+            cur.execute("""
+                SELECT DISTINCT ON (LOWER(nome)) nome, MAX(empresa) AS empresa, MIN(criado_em) AS criado_em
+                FROM atendimentos
+                GROUP BY LOWER(nome), nome
+                ORDER BY LOWER(nome), MIN(criado_em)
+            """)
+            nomes = cur.fetchall()
+            if not nomes:
+                return
+
+            created = 0
+            for r in nomes:
+                nome = r["nome"]
+                slug = _make_slug(nome)
+                if not slug:
+                    continue
+                try:
+                    cur.execute("""
+                        INSERT INTO pacientes (nome, slug, empresa, criado_em, atualizado_em)
+                        VALUES (%s, %s, %s, %s, NOW())
+                        ON CONFLICT (slug) DO NOTHING
+                        RETURNING id
+                    """, (nome, slug, r.get("empresa"), r.get("criado_em")))
+                    result = cur.fetchone()
+                    if result:
+                        paciente_id = result["id"]
+                        cur.execute("""
+                            UPDATE atendimentos SET paciente_id = %s
+                            WHERE LOWER(nome) = LOWER(%s) AND paciente_id IS NULL
+                        """, (paciente_id, nome))
+                        created += 1
+                except Exception:
+                    continue
+
+            if created:
+                logger.info(f"Migration: {created} paciente(s) criado(s) a partir de atendimentos.")
+    except Exception as e:
+        logger.warning(f"Migration pacientes ignorada: {e}")
 
 
 def check_connection() -> bool:

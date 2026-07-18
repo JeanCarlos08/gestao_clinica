@@ -13,7 +13,7 @@ interface PatientDoc {
   id: number;
   nome: string;
   empresa: string | null;
-  photo: string | null;
+  foto: string | null;
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api";
@@ -37,7 +37,7 @@ export default function DocumentosPage() {
       if (res.status === 401) { localStorage.removeItem("token"); router.push("/"); return; }
       const data = await res.json();
       setPatients(Array.isArray(data) ? data : []);
-    } catch { /* ignore */ }
+    } catch (e) { console.debug("Erro ao carregar pacientes:", e); }
     finally { setLoading(false); }
   }, [router]);
 
@@ -57,7 +57,8 @@ export default function DocumentosPage() {
       if (j.google_doc_id) {
         setModalDocId(j.google_doc_id);
       }
-    } catch {
+    } catch (e) {
+      console.debug("openEditor: erro ao buscar documento", e);
       setDocErrors(prev => ({ ...prev, [patient.id]: "Erro ao buscar documento." }));
     }
   };

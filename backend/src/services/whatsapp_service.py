@@ -46,20 +46,21 @@ class WhatsAppService:
         modalidade: str,
         data_str: str,
         hora_str: str,
+        convenio: Optional[str] = None,
     ) -> str:
         """
         Constrói mensagem padrão de confirmação de agendamento.
 
-        Returns:
-            Texto formatado para WhatsApp.
+        Aceita dados avulsos ou de um objeto Paciente.
         """
+        convenio_line = f"\n🏥 *Convênio:* {convenio}" if convenio else ""
         return (
             f"Olá, *{nome}*! 👋\n\n"
             f"Seu atendimento foi agendado com sucesso:\n"
             f"📋 *Tipo:* {modalidade}\n"
             f"🏢 *Empresa:* {empresa}\n"
             f"📅 *Data:* {data_str}\n"
-            f"🕐 *Hora:* {hora_str}\n\n"
+            f"🕐 *Hora:* {hora_str}{convenio_line}\n\n"
             f"Por favor, traga seus documentos e chegue com 10 minutos de antecedência. ✅"
         )
 

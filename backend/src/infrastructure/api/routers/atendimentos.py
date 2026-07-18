@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from core.repositories.repositories import AtendimentoRepository, PreferencesRepository
-from infrastructure.api.routers.deps import _slug_name, require_permission, run_sync
+from infrastructure.api.routers.deps import require_permission, run_sync
 from infrastructure.api.routers.repo_deps import get_atendimento_repo, get_preferences_repo
 from utils.constants import (
     PERM_VIEW_ATENDIMENTOS, PERM_CREATE_ATENDIMENTO,
@@ -28,6 +28,7 @@ class AtendimentoResponse(BaseModel):
     data: str
     hora: str
     status: str
+    paciente_id: Optional[int] = None
 
 
 class PaginatedAtendimentos(BaseModel):
@@ -45,17 +46,7 @@ class AtendimentoPayload(BaseModel):
     data: str
     hora: str
     status: Optional[str] = "Agendado"
-
-
-class PacienteResponse(BaseModel):
-    id: int
-    nome: str
-    empresa: Optional[str] = None
-    total_atendimentos: int = 0
-    ultimo_atendimento: Optional[str] = None
-    status: Optional[str] = None
-    modalidades_distintas: int = 0
-    foto: Optional[str] = None
+    paciente_id: Optional[int] = None
 
 
 # ─────────────────────────────────────────────────────────────
@@ -87,11 +78,14 @@ async def list_atendimentos(
     atendimentos = await run_sync(atendimento_repo.list_all, filters=filters)
     total = await run_sync(atendimento_repo.count, filters=filters) if hasattr(atendimento_repo, 'count') else len(atendimentos)
 
-    nomes = {_slug_name(a.nome) for a in atendimentos}
-    fotos: dict = {}
-    if nomes:
-        all_fotos = await run_sync(preferences_repo.get_many, "patient_photo:")
-        fotos = {k: v for k, v in all_fotos.items() if any(n in k for n in nomes)}
+    from core.repositories.repositories import paciente_repo
+    paciente_ids = {a.paciente_id for a in atendimentos if a.paciente_id}
+    fotos_map: dict = {}
+    if paciente_ids:
+        for pid in paciente_ids:
+            foto = await run_sync(paciente_repo.get_foto, pid)
+            if foto:
+                fotos_map[pid] = foto
 
     items = [
         {
@@ -102,7 +96,8 @@ async def list_atendimentos(
             "data": a.data.strftime("%Y-%m-%d") if a.data else "",
             "hora": a.hora.strftime("%H:%M") if a.hora else "",
             "status": a.status,
-            "foto": fotos.get(f"patient_photo:{_slug_name(a.nome)}"),
+            "paciente_id": a.paciente_id,
+            "foto": fotos_map.get(a.paciente_id),
         }
         for a in atendimentos
     ]
@@ -116,32 +111,6 @@ async def list_atendimentos(
     }
 
 
-@router.get("/pacientes", response_model=list[PacienteResponse], tags=["Pacientes"])
-async def list_pacientes(
-    q: Optional[str] = None,
-    limit: int = 1000,
-    offset: int = 0,
-    current_user: dict = Depends(require_permission(PERM_VIEW_ATENDIMENTOS)),
-    atendimento_repo: AtendimentoRepository = Depends(get_atendimento_repo),
-    preferences_repo: PreferencesRepository = Depends(get_preferences_repo),
-):
-    pacientes = await run_sync(atendimento_repo.list_pacientes_resumo, q=q, limit=limit, offset=offset)
-    fotos: dict = await run_sync(preferences_repo.get_many, "patient_photo:")
-    return [
-        {
-            "id": p["id"],
-            "nome": p["nome"],
-            "empresa": p.get("empresa"),
-            "total_atendimentos": p.get("total_atendimentos", 0),
-            "ultimo_atendimento": p["ultimo_atendimento"].strftime("%Y-%m-%d") if p.get("ultimo_atendimento") else None,
-            "status": p.get("status"),
-            "modalidades_distintas": p.get("modalidades_distintas", 0),
-            "foto": fotos.get(f"patient_photo:{_slug_name(p['nome'])}"),
-        }
-        for p in pacientes
-    ]
-
-
 @router.post("/atendimentos", tags=["Atendimentos"])
 async def create_atendimento(
     payload: AtendimentoPayload,
@@ -150,6 +119,13 @@ async def create_atendimento(
 ):
     from datetime import date, time
     from core.entities.models import AtendimentoCreate
+    from core.repositories.repositories import paciente_repo
+
+    paciente_id = payload.paciente_id
+    if not paciente_id and payload.nome:
+        paciente_id = await run_sync(
+            paciente_repo.find_or_create_by_name, payload.nome, payload.empresa
+        )
 
     try:
         new_id = await run_sync(atendimento_repo.create, AtendimentoCreate(
@@ -159,6 +135,7 @@ async def create_atendimento(
             data=date.fromisoformat(payload.data),
             hora=time.fromisoformat(payload.hora),
             status=payload.status or "Agendado",
+            paciente_id=paciente_id,
         ))
         if not new_id:
             raise HTTPException(status_code=500, detail="Erro ao criar atendimento.")
@@ -185,6 +162,7 @@ async def update_atendimento(
             data=date.fromisoformat(payload.data),
             hora=time.fromisoformat(payload.hora),
             status=payload.status or "Agendado",
+            paciente_id=payload.paciente_id,
         ))
         if not success:
             raise HTTPException(status_code=404, detail="Atendimento não encontrado ou erro ao atualizar.")
@@ -228,8 +206,7 @@ async def batch_update_status(
 
     updated = 0
     for aid in payload.ids:
-        from datetime import date as _d, time as _t
-        existing = await run_sync(atendimento_repo.get_by_id, aid)
+        existing = await run_sync(atendimento_repo.find_by_id, aid)
         if existing:
             ok = await run_sync(atendimento_repo.update, aid, AtendimentoUpdate(
                 empresa=existing.empresa,
@@ -238,6 +215,7 @@ async def batch_update_status(
                 data=existing.data,
                 hora=existing.hora,
                 status=payload.status,
+                paciente_id=existing.paciente_id,
             ))
             if ok:
                 updated += 1

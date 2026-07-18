@@ -24,6 +24,7 @@ from infrastructure.api.limiter import limiter
 
 from core.config import settings
 from infrastructure.connection import ensure_schema
+from utils.constants import APP_VERSION
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -84,6 +85,14 @@ async def lifespan(app):
         logger.error(f"Startup: falha ao garantir schema: {e}")
 
     try:
+        from core.repositories.repositories import paciente_repo, preferences_repo
+        migrated = paciente_repo.migrate_fotos_from_preferences(preferences_repo)
+        if migrated:
+            logger.info(f"Startup: {migrated} fotos migradas de user_preferences para pacientes.")
+    except Exception as e:
+        logger.debug(f"Startup: migração de fotos ignorada: {e}")
+
+    try:
         from core.repositories.user_repositories import user_repo
         from utils.helpers import hash_password
 
@@ -120,7 +129,7 @@ async def lifespan(app):
 
 app = FastAPI(
     title="Clínica IA API",
-    version="3.0.0",
+    version=APP_VERSION,
     description=(
         "API de gestão clínica com conformidade LGPD completa.\n\n"
         "## Autenticação\n"

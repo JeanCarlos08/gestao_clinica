@@ -8,7 +8,7 @@ Uso:
     from utils.validators import validate_atendimento
     error = validate_empresa("Empresa Teste")
     if error:
-        st.error(error)
+        print(error)
 """
 
 import re

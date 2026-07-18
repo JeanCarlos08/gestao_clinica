@@ -10,11 +10,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from core.config import settings
-from core.repositories.repositories import AtendimentoRepository
+from core.repositories.repositories import AtendimentoRepository, PacienteRepository
 from utils.logger import get_logger
 
 from infrastructure.api.routers.deps import require_permission, run_sync
-from infrastructure.api.routers.repo_deps import get_atendimento_repo
+from infrastructure.api.routers.repo_deps import get_atendimento_repo, get_paciente_repo
 from utils.constants import PERM_VIEW_DASHBOARD, PERM_VIEW_AUTOMACOES, PERM_TRIGGER_AUTOMACOES
 
 logger = get_logger(__name__)
@@ -111,6 +111,7 @@ async def ia_chat(
     payload: IAChatPayload,
     current_user: dict = Depends(require_permission(PERM_VIEW_DASHBOARD)),
     atendimento_repo: AtendimentoRepository = Depends(get_atendimento_repo),
+    paciente_repo: PacienteRepository = Depends(get_paciente_repo),
 ):
     """Chat da barra lateral: responde perguntas com base nos dados da clínica."""
     from services.ai_service import AIService
@@ -119,6 +120,31 @@ async def ia_chat(
 
     stats = await run_sync(atendimento_repo.get_stats)
     atendimentos = await run_sync(atendimento_repo.list_all, filters=AtendimentoFilter(limit=200))
+
+    paciente_cache: dict = {}
+    enriched = []
+    for a in atendimentos:
+        entry = {
+            "nome": a.nome,
+            "empresa": a.empresa,
+            "modalidade": a.modalidade,
+            "data": a.data.strftime("%Y-%m-%d") if a.data else "",
+            "status": a.status,
+        }
+        if a.paciente_id:
+            if a.paciente_id not in paciente_cache:
+                paciente_cache[a.paciente_id] = await run_sync(paciente_repo.find_by_id, a.paciente_id)
+            pac = paciente_cache[a.paciente_id]
+            if pac:
+                entry["paciente"] = {
+                    "nome": pac.nome,
+                    "cpf": pac.cpf,
+                    "telefone": pac.telefone,
+                    "email": pac.email,
+                    "convenio": pac.convenio,
+                }
+        enriched.append(entry)
+
     context = {
         "stats": {
             "total_atendimentos": stats.total_atendimentos,
@@ -132,16 +158,7 @@ async def ia_chat(
             "por_modalidade": stats.por_modalidade,
             "por_empresa": stats.por_empresa,
         },
-        "atendimentos": [
-            {
-                "nome": a.nome,
-                "empresa": a.empresa,
-                "modalidade": a.modalidade,
-                "data": a.data.strftime("%Y-%m-%d") if a.data else "",
-                "status": a.status,
-            }
-            for a in atendimentos
-        ],
+        "atendimentos": enriched,
     }
 
     resposta = AIService.chat_with_data(payload.pergunta, _json.dumps(context, ensure_ascii=False))
@@ -155,6 +172,7 @@ async def ia_chat_stream(
     payload: IAChatPayload,
     current_user: dict = Depends(require_permission(PERM_VIEW_DASHBOARD)),
     atendimento_repo: AtendimentoRepository = Depends(get_atendimento_repo),
+    paciente_repo: PacienteRepository = Depends(get_paciente_repo),
 ):
     """Chat com streaming via Server-Sent Events (SSE)."""
     from fastapi.responses import StreamingResponse
@@ -164,6 +182,31 @@ async def ia_chat_stream(
 
     stats = await run_sync(atendimento_repo.get_stats)
     atendimentos = await run_sync(atendimento_repo.list_all, filters=AtendimentoFilter(limit=200))
+
+    paciente_cache: dict = {}
+    enriched = []
+    for a in atendimentos:
+        entry = {
+            "nome": a.nome,
+            "empresa": a.empresa,
+            "modalidade": a.modalidade,
+            "data": a.data.strftime("%Y-%m-%d") if a.data else "",
+            "status": a.status,
+        }
+        if a.paciente_id:
+            if a.paciente_id not in paciente_cache:
+                paciente_cache[a.paciente_id] = await run_sync(paciente_repo.find_by_id, a.paciente_id)
+            pac = paciente_cache[a.paciente_id]
+            if pac:
+                entry["paciente"] = {
+                    "nome": pac.nome,
+                    "cpf": pac.cpf,
+                    "telefone": pac.telefone,
+                    "email": pac.email,
+                    "convenio": pac.convenio,
+                }
+        enriched.append(entry)
+
     context = {
         "stats": {
             "total_atendimentos": stats.total_atendimentos,
@@ -177,16 +220,7 @@ async def ia_chat_stream(
             "por_modalidade": stats.por_modalidade,
             "por_empresa": stats.por_empresa,
         },
-        "atendimentos": [
-            {
-                "nome": a.nome,
-                "empresa": a.empresa,
-                "modalidade": a.modalidade,
-                "data": a.data.strftime("%Y-%m-%d") if a.data else "",
-                "status": a.status,
-            }
-            for a in atendimentos
-        ],
+        "atendimentos": enriched,
     }
 
     async def event_generator():

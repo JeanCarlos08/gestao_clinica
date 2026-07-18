@@ -89,7 +89,7 @@ class UserUpdate:
 @dataclass
 class SessionUser:
     """
-    Dados do usuário na sessão Streamlit.
+    Dados do usuário na sessão.
     Leve — não carrega password_hash nem dados pesados.
     """
     user_id: int

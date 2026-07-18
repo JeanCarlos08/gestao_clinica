@@ -34,7 +34,9 @@ class ConfigClinicaUpdate(BaseModel):
 
 
 @router.get("/config/options", tags=["Configuracoes"])
-async def get_config_options():
+async def get_config_options(
+    current_user: dict = Depends(get_current_user),
+):
     """Retorna as opções de modalidade e status disponíveis no sistema."""
     from utils.constants import MODALIDADES, STATUS_ATENDIMENTO
     return {
@@ -97,6 +99,10 @@ async def upload_config_photo(
     content = await file.read()
     if not content:
         raise HTTPException(status_code=400, detail="Arquivo vazio.")
+
+    max_size = 2 * 1024 * 1024  # 2MB
+    if len(content) > max_size:
+        raise HTTPException(status_code=413, detail="Imagem excede o limite de 2MB.")
 
     try:
         b64 = base64.b64encode(content).decode("utf-8")

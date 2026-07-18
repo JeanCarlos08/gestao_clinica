@@ -7,7 +7,7 @@ Notifica equipe e prepara documentação para ANPD.
 
 import json
 import smtplib
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from email.mime.text import MIMEText
@@ -52,7 +52,7 @@ class Incident:
         source: str = "system"
     ):
         self.id = self._generate_id()
-        self.timestamp = datetime.utcnow()
+        self.timestamp = datetime.now(UTC)
         self.incident_type = incident_type
         self.severity = severity
         self.title = title
@@ -65,13 +65,13 @@ class Incident:
     
     def _generate_id(self) -> str:
         """Gera ID único para o incidente."""
-        ts = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+        ts = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
         return f"INC-{ts}"
     
     def add_note(self, note: str):
         """Adiciona anotação ao incidente."""
         self.notes.append({
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(UTC).isoformat(),
             "note": note
         })
     
@@ -85,7 +85,7 @@ class Incident:
         """Converte para dicionário."""
         return {
             "id": self.id,
-            "timestamp": self.timestamp.isoformat() + "Z",
+            "timestamp": self.timestamp.isoformat(),
             "type": self.incident_type,
             "severity": self.severity,
             "title": self.title,
@@ -282,8 +282,8 @@ Verifique os logs para mais detalhes.
             by_severity[sev].append(inc)
         
         report = {
-            "report_id": f"ANPD-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "report_id": f"ANPD-{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}",
+            "timestamp": datetime.now(UTC).isoformat(),
             "total_incidents": len(incidents),
             "by_severity": by_severity,
             "incidents": incidents,

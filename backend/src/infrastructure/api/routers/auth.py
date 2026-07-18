@@ -73,26 +73,39 @@ _STATE_TTL_SECONDS = 600
 
 
 def _generate_state(response, frontend_base: str) -> str:
-    from services.security import create_access_token as _cap
     state = secrets.token_urlsafe(32)
+    import hmac, hashlib
+    signature = hmac.new(
+        settings.jwt_secret_key.encode(),
+        state.encode(),
+        hashlib.sha256,
+    ).hexdigest()[:16]
+    signed_value = f"{state}.{signature}"
     response.set_cookie(
         key="oauth_state",
-        value=state,
+        value=signed_value,
         max_age=_STATE_TTL_SECONDS,
         httponly=True,
         secure=settings.app_env == "production",
         samesite="lax",
     )
-    return state
+    return signed_value
 
 
 def _validate_state(state: str, request) -> bool:
-    if not state:
+    if not state or "." not in state:
         return False
     cookie_state = request.cookies.get("oauth_state")
     if not cookie_state or cookie_state != state:
         return False
-    return True
+    raw_token, provided_sig = state.rsplit(".", 1)
+    import hmac, hashlib
+    expected_sig = hmac.new(
+        settings.jwt_secret_key.encode(),
+        raw_token.encode(),
+        hashlib.sha256,
+    ).hexdigest()[:16]
+    return hmac.compare_digest(provided_sig, expected_sig)
 
 
 class TokenResponse(BaseModel):

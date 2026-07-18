@@ -75,7 +75,7 @@ export default function Sidebar() {
           localStorage.setItem("sidebar_photo_cache", photo);
           localStorage.setItem("sidebar_photo_time", now.toString());
         }
-      } catch { /* ignore */ }
+      } catch (e) { console.debug("Erro ao carregar foto do sidebar:", e); }
     })();
   }, []);
 
@@ -184,7 +184,7 @@ export default function Sidebar() {
         </button>
         <div className="px-3 flex items-center gap-2 pt-1">
           <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] opacity-40" />
-          <span className="text-[9px] text-[var(--text-muted)]">Clínica IA v3.0.0 · © 2026</span>
+          <span className="text-[9px] text-[var(--text-muted)]">Clínica IA · © 2026</span>
           <div className="ml-auto flex items-center gap-2">
             <Link href="/privacy" className="text-[9px] text-[var(--text-muted)] hover:text-white transition-colors">Privacy</Link>
             <Link href="/terms" className="text-[9px] text-[var(--text-muted)] hover:text-white transition-colors">Terms</Link>

@@ -30,6 +30,9 @@ from core.entities.models import (
     DocumentoCreate,
     Nota,
     NotaCreate,
+    Paciente,
+    PacienteCreate,
+    PacienteUpdate,
 )
 from utils.constants import (
     AUDIT_ATTACH,
@@ -43,6 +46,7 @@ from utils.constants import (
     TABLE_ARQUIVOS,
     TABLE_DOCUMENTOS,
     TABLE_NOTAS,
+    TABLE_PACIENTES,
     TABLE_PREFERENCES,
 )
 from utils.logger import get_logger
@@ -124,10 +128,10 @@ _auditoria = AuditoriaRepository()
 class AtendimentoRepository:
     """CRUD completo para a entidade Atendimento."""
 
-    _COLUMNS = "id, empresa, nome, modalidade, data, hora, laudo_pdf, avaliacao_pdf, status, observacoes, criado_em"
+    _COLUMNS = "id, empresa, nome, modalidade, data, hora, laudo_pdf, avaliacao_pdf, status, observacoes, criado_em, paciente_id"
     _ALLOWED_UPDATE_FIELDS = {
         "empresa", "nome", "modalidade", "data", "hora",
-        "status", "observacoes", "laudo_pdf", "avaliacao_pdf",
+        "status", "observacoes", "laudo_pdf", "avaliacao_pdf", "paciente_id",
     }
 
     def _row_to_model(self, row: Dict) -> Atendimento:
@@ -144,6 +148,7 @@ class AtendimentoRepository:
             status=row.get("status", "Agendado"),
             observacoes=row.get("observacoes"),
             criado_em=row.get("criado_em"),
+            paciente_id=row.get("paciente_id"),
         )
 
     def list_all(self, filters: Optional[AtendimentoFilter] = None) -> List[Atendimento]:
@@ -259,8 +264,8 @@ class AtendimentoRepository:
         query = f"""
             INSERT INTO {TABLE_ATENDIMENTOS}
                 (empresa, nome, modalidade, data, hora,
-                 laudo_pdf, avaliacao_pdf, observacoes, status)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, COALESCE(%s, 'Agendado'))
+                 laudo_pdf, avaliacao_pdf, observacoes, status, paciente_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, COALESCE(%s, 'Agendado'), %s)
             RETURNING id
         """
         params = (
@@ -273,6 +278,7 @@ class AtendimentoRepository:
             data.avaliacao_pdf,
             (data.observacoes or "").strip(),
             (data.status or "").strip()[:50],
+            data.paciente_id,
         )
         try:
             with connection_scope() as conn:
@@ -404,7 +410,7 @@ class AtendimentoRepository:
                 cur.execute(f"""
                     SELECT
                         COUNT(*) AS total,
-                        COUNT(DISTINCT nome) AS pacientes,
+                        COUNT(DISTINCT paciente_id) AS pacientes,
                         COUNT(*) FILTER (WHERE status = 'Agendado')  AS agendados,
                         COUNT(*) FILTER (WHERE status = 'Atendido')  AS atendidos,
                         COUNT(*) FILTER (WHERE status = 'Concluído') AS concluidos,
@@ -461,43 +467,6 @@ class AtendimentoRepository:
         except Exception:
             return []
 
-    def list_pacientes_resumo(self, q: Optional[str] = None, limit: int = 1000, offset: int = 0) -> List[Dict[str, Any]]:
-        """Retorna pacientes únicos derivados dos atendimentos salvos no banco."""
-        conditions: List[str] = []
-        params: List[Any] = []
-
-        if q:
-            conditions.append("(LOWER(nome) LIKE LOWER(%s) OR LOWER(COALESCE(empresa, '')) LIKE LOWER(%s))")
-            search = f"%{q}%"
-            params.extend([search, search])
-
-        where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
-        params.extend([max(1, min(int(limit or 1000), 5000)), max(0, int(offset or 0))])
-
-        query = f"""
-            SELECT
-                MIN(id) AS id,
-                nome,
-                MAX(empresa) AS empresa,
-                COUNT(*) AS total_atendimentos,
-                MAX(data) AS ultimo_atendimento,
-                MAX(status) AS status,
-                COUNT(DISTINCT modalidade) AS modalidades_distintas
-            FROM {TABLE_ATENDIMENTOS}
-            {where_clause}
-            GROUP BY LOWER(nome), nome
-            ORDER BY MAX(data) DESC NULLS LAST, nome ASC
-            LIMIT %s OFFSET %s
-        """
-
-        try:
-            with connection_scope(commit=False) as conn:
-                cur = conn.cursor()
-                cur.execute(query, params)
-                return [dict(row) for row in cur.fetchall()]
-        except Exception as e:
-            logger.error(f"Erro ao listar pacientes resumidos: {e}")
-            return []
 
 
 # ─────────────────────────────────────────────────────────────
@@ -810,10 +779,358 @@ class TemporaryPermissionRepository:
 
 
 # ─────────────────────────────────────────────────────────────
+# Paciente Repository
+# ─────────────────────────────────────────────────────────────
+
+import re as _re
+import unicodedata as _ud
+
+
+def _make_slug(name: str) -> str:
+    s = (name or "").strip().lower()
+    s = _ud.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii")
+    s = _re.sub(r"[^a-z0-9]+", "_", s)
+    return s.strip("_")
+
+
+class PacienteRepository:
+    """CRUD completo para a entidade Paciente."""
+
+    _COLUMNS = (
+        "id, nome, slug, cpf, telefone, email, data_nascimento, sexo, "
+        "estado_civil, profissao, convenio, numero_convenio, empresa, "
+        "endereco, contato_emergencia, telefone_emergencia, observacoes, "
+        "foto, criado_em, atualizado_em"
+    )
+
+    def _row_to_model(self, row: Dict) -> Paciente:
+        return Paciente(**{k: row[k] for k in row.keys() if k in Paciente.__dataclass_fields__})
+
+    def _row_to_dict(self, row: Dict) -> Dict[str, Any]:
+        return dict(row)
+
+    def create(self, data: PacienteCreate) -> int:
+        slug = _make_slug(data.nome)
+        if not slug:
+            return 0
+
+        query = f"""
+            INSERT INTO {TABLE_PACIENTES}
+                (nome, slug, cpf, telefone, email, data_nascimento, sexo,
+                 estado_civil, profissao, convenio, numero_convenio, empresa,
+                 endereco, contato_emergencia, telefone_emergencia, observacoes)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (slug) DO UPDATE SET
+                cpf = COALESCE(EXCLUDED.cpf, {TABLE_PACIENTES}.cpf),
+                telefone = COALESCE(EXCLUDED.telefone, {TABLE_PACIENTES}.telefone),
+                email = COALESCE(EXCLUDED.email, {TABLE_PACIENTES}.email),
+                atualizado_em = NOW()
+            RETURNING id
+        """
+        params = (
+            data.nome.strip()[:255],
+            slug,
+            data.cpf,
+            data.telefone,
+            data.email,
+            data.data_nascimento,
+            data.sexo,
+            data.estado_civil,
+            data.profissao,
+            data.convenio,
+            data.numero_convenio,
+            data.empresa,
+            data.endereco,
+            data.contato_emergencia,
+            data.telefone_emergencia,
+            data.observacoes,
+        )
+        try:
+            with connection_scope() as conn:
+                cur = conn.cursor()
+                cur.execute(query, params)
+                row = cur.fetchone()
+                new_id = int(row["id"]) if row else 0
+            if new_id:
+                _auditoria.registrar(AUDIT_CREATE, TABLE_PACIENTES, new_id, "Paciente criado")
+            return new_id
+        except Exception as e:
+            logger.error(f"Erro ao criar paciente: {e}")
+            return 0
+
+    def find_by_id(self, paciente_id: int) -> Optional[Paciente]:
+        try:
+            with connection_scope(commit=False) as conn:
+                cur = conn.cursor()
+                cur.execute(
+                    f"SELECT {self._COLUMNS} FROM {TABLE_PACIENTES} WHERE id = %s",
+                    (paciente_id,),
+                )
+                row = cur.fetchone()
+                return self._row_to_model(dict(row)) if row else None
+        except Exception as e:
+            logger.error(f"Erro ao buscar paciente #{paciente_id}: {e}")
+            return None
+
+    def find_by_slug(self, slug: str) -> Optional[Paciente]:
+        try:
+            with connection_scope(commit=False) as conn:
+                cur = conn.cursor()
+                cur.execute(
+                    f"SELECT {self._COLUMNS} FROM {TABLE_PACIENTES} WHERE slug = %s",
+                    (slug,),
+                )
+                row = cur.fetchone()
+                return self._row_to_model(dict(row)) if row else None
+        except Exception as e:
+            logger.error(f"Erro ao buscar paciente por slug '{slug}': {e}")
+            return None
+
+    def find_or_create_by_name(self, nome: str, empresa: Optional[str] = None) -> int:
+        """Busca paciente por nome (case-insensitive) ou cria se não existir. Retorna ID."""
+        slug = _make_slug(nome)
+        if not slug:
+            return 0
+        try:
+            with connection_scope() as conn:
+                cur = conn.cursor()
+                cur.execute(
+                    f"SELECT id FROM {TABLE_PACIENTES} WHERE slug = %s",
+                    (slug,),
+                )
+                row = cur.fetchone()
+                if row:
+                    return int(row["id"])
+                cur.execute(
+                    f"""INSERT INTO {TABLE_PACIENTES} (nome, slug, empresa)
+                        VALUES (%s, %s, %s) RETURNING id""",
+                    (nome.strip()[:255], slug, empresa),
+                )
+                row = cur.fetchone()
+                return int(row["id"]) if row else 0
+        except Exception as e:
+            logger.error(f"Erro ao find_or_create paciente '{nome}': {e}")
+            return 0
+
+    def update(self, paciente_id: int, data: PacienteUpdate) -> bool:
+        updates = {k: v for k, v in data.to_dict().items()}
+        if not updates:
+            return False
+
+        if "nome" in updates and updates["nome"]:
+            new_slug = _make_slug(updates["nome"])
+            if new_slug:
+                updates["slug"] = new_slug
+
+        updates["atualizado_em"] = "NOW()"
+
+        set_parts = []
+        params: List[Any] = []
+        for field, value in updates.items():
+            if value == "NOW()":
+                set_parts.append(f"{field} = NOW()")
+            else:
+                set_parts.append(f"{field} = %s")
+                params.append(value)
+
+        params.append(paciente_id)
+        query = f"""
+            UPDATE {TABLE_PACIENTES}
+            SET {', '.join(set_parts)}
+            WHERE id = %s
+        """
+        try:
+            with connection_scope() as conn:
+                cur = conn.cursor()
+                cur.execute(query, params)
+                success = cur.rowcount > 0
+            if success:
+                _auditoria.registrar(AUDIT_UPDATE, TABLE_PACIENTES, paciente_id,
+                    f"Campos atualizados: {', '.join(k for k in updates if k != 'atualizado_em')}")
+            return success
+        except Exception as e:
+            logger.error(f"Erro ao atualizar paciente #{paciente_id}: {e}")
+            return False
+
+    def update_foto(self, paciente_id: int, foto: str) -> bool:
+        try:
+            with connection_scope() as conn:
+                cur = conn.cursor()
+                cur.execute(
+                    f"UPDATE {TABLE_PACIENTES} SET foto = %s, atualizado_em = NOW() WHERE id = %s",
+                    (foto, paciente_id),
+                )
+                return cur.rowcount > 0
+        except Exception as e:
+            logger.error(f"Erro ao atualizar foto do paciente #{paciente_id}: {e}")
+            return False
+
+    def get_foto(self, paciente_id: int) -> Optional[str]:
+        try:
+            with connection_scope(commit=False) as conn:
+                cur = conn.cursor()
+                cur.execute(
+                    f"SELECT foto FROM {TABLE_PACIENTES} WHERE id = %s",
+                    (paciente_id,),
+                )
+                row = cur.fetchone()
+                return row["foto"] if row else None
+        except Exception:
+            return None
+
+    def delete(self, paciente_id: int) -> bool:
+        try:
+            with connection_scope() as conn:
+                cur = conn.cursor()
+                cur.execute(
+                    f"UPDATE {TABLE_ATENDIMENTOS} SET paciente_id = NULL WHERE paciente_id = %s",
+                    (paciente_id,),
+                )
+                cur.execute(
+                    f"DELETE FROM {TABLE_PACIENTES} WHERE id = %s",
+                    (paciente_id,),
+                )
+                success = cur.rowcount > 0
+            if success:
+                _auditoria.registrar(AUDIT_DELETE, TABLE_PACIENTES, paciente_id, "Paciente excluído")
+            return success
+        except Exception as e:
+            logger.error(f"Erro ao excluir paciente #{paciente_id}: {e}")
+            return False
+
+    def list_all(self, q: Optional[str] = None, empresa: Optional[str] = None,
+                 limit: int = 1000, offset: int = 0) -> List[Dict[str, Any]]:
+        conditions: List[str] = []
+        params: List[Any] = []
+
+        if q:
+            conditions.append(
+                "(LOWER(nome) LIKE LOWER(%s) OR LOWER(COALESCE(empresa, '')) LIKE LOWER(%s) "
+                "OR cpf = %s)"
+            )
+            search = f"%{q}%"
+            params.extend([search, search, q])
+        if empresa:
+            conditions.append("LOWER(empresa) LIKE LOWER(%s)")
+            params.append(f"%{empresa}%")
+
+        where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+        params.extend([max(1, min(limit, 5000)), max(0, offset)])
+
+        query = f"""
+            SELECT {self._COLUMNS}
+            FROM {TABLE_PACIENTES}
+            {where_clause}
+            ORDER BY nome ASC
+            LIMIT %s OFFSET %s
+        """
+        try:
+            with connection_scope(commit=False) as conn:
+                cur = conn.cursor()
+                cur.execute(query, params)
+                return [self._row_to_dict(dict(row)) for row in cur.fetchall()]
+        except Exception as e:
+            logger.error(f"Erro ao listar pacientes: {e}")
+            return []
+
+    def count(self, q: Optional[str] = None, empresa: Optional[str] = None) -> int:
+        conditions: List[str] = []
+        params: List[Any] = []
+        if q:
+            conditions.append(
+                "(LOWER(nome) LIKE LOWER(%s) OR LOWER(COALESCE(empresa, '')) LIKE LOWER(%s) "
+                "OR cpf = %s)"
+            )
+            search = f"%{q}%"
+            params.extend([search, search, q])
+        if empresa:
+            conditions.append("LOWER(empresa) LIKE LOWER(%s)")
+            params.append(f"%{empresa}%")
+        where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+        try:
+            with connection_scope(commit=False) as conn:
+                cur = conn.cursor()
+                cur.execute(f"SELECT COUNT(*) FROM {TABLE_PACIENTES} {where_clause}", params)
+                row = cur.fetchone()
+                return row[0] if row else 0
+        except Exception:
+            return 0
+
+    def list_resumo(self, q: Optional[str] = None, limit: int = 1000, offset: int = 0) -> List[Dict[str, Any]]:
+        """Retorna resumo de pacientes com contagem de atendimentos via JOIN."""
+        conditions: List[str] = []
+        params: List[Any] = []
+
+        if q:
+            conditions.append(
+                "(LOWER(p.nome) LIKE LOWER(%s) OR LOWER(COALESCE(p.empresa, '')) LIKE LOWER(%s))"
+            )
+            search = f"%{q}%"
+            params.extend([search, search])
+
+        where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+        params.extend([max(1, min(limit, 5000)), max(0, offset)])
+
+        query = f"""
+            SELECT
+                p.id,
+                p.nome,
+                p.empresa,
+                p.foto,
+                p.slug,
+                COUNT(a.id) AS total_atendimentos,
+                MAX(a.data) AS ultimo_atendimento,
+                MAX(a.status) AS status,
+                COUNT(DISTINCT a.modalidade) AS modalidades_distintas
+            FROM {TABLE_PACIENTES} p
+            LEFT JOIN {TABLE_ATENDIMENTOS} a ON a.paciente_id = p.id
+            {where_clause}
+            GROUP BY p.id, p.nome, p.empresa, p.foto, p.slug
+            ORDER BY MAX(a.data) DESC NULLS LAST, p.nome ASC
+            LIMIT %s OFFSET %s
+        """
+        try:
+            with connection_scope(commit=False) as conn:
+                cur = conn.cursor()
+                cur.execute(query, params)
+                return [dict(row) for row in cur.fetchall()]
+        except Exception as e:
+            logger.error(f"Erro ao listar resumo de pacientes: {e}")
+            return []
+
+    def migrate_fotos_from_preferences(self, preferences_repo) -> int:
+        """Migra fotos de user_preferences para a coluna foto da tabela pacientes."""
+        try:
+            all_fotos = preferences_repo.get_many("patient_photo:")
+            if not all_fotos:
+                return 0
+            migrated = 0
+            with connection_scope() as conn:
+                cur = conn.cursor()
+                for key, foto_data in all_fotos.items():
+                    slug = key.replace("patient_photo:", "")
+                    if not slug:
+                        continue
+                    cur.execute(
+                        f"UPDATE {TABLE_PACIENTES} SET foto = %s WHERE slug = %s AND foto IS NULL",
+                        (foto_data, slug),
+                    )
+                    if cur.rowcount > 0:
+                        migrated += 1
+            if migrated:
+                logger.info(f"Migration: {migrated} fotos migradas de user_preferences para pacientes.")
+            return migrated
+        except Exception as e:
+            logger.warning(f"Migration fotos ignorada: {e}")
+            return 0
+
+
+# ─────────────────────────────────────────────────────────────
 # Instâncias Singleton (prontas para uso)
 # ─────────────────────────────────────────────────────────────
 
 atendimento_repo = AtendimentoRepository()
+paciente_repo = PacienteRepository()
 arquivo_repo = ArquivoRepository()
 preferences_repo = PreferencesRepository()
 documento_repo = DocumentoRepository()

@@ -45,7 +45,7 @@ const emptyForm: LaudoForm = {
   data_exame: new Date().toISOString().split("T")[0],
   motivo_avaliacao: "", avaliacao_psicologica: false, admissional: false,
   periodica: false, pessoal: false, mudanca_funcao: false,
-  itens_auxiliados: "", conclusao: "", psicologista_nome: "Dr. Psicólogo", psicologista_crp: "XX/XXXXX",
+  itens_auxiliados: "", conclusao: "", psicologista_nome: "Dr. Psicólogo", psicologista_crp: "",
 };
 
 export default function LaudosPage() {
@@ -75,7 +75,7 @@ export default function LaudosPage() {
       });
       if (res.ok) { setShowModal(false); setForm(emptyForm); mutate(); }
       else alert("Erro ao gerar laudo.");
-    } catch { alert("Erro de comunicação."); }
+    } catch (e) { console.debug("gerarLaudo: erro de comunicação", e); alert("Erro de comunicação."); }
     finally { setSaving(false); }
   };
 
@@ -271,13 +271,13 @@ export default function LaudosPage() {
                   <input value={form.psicologista_nome} onChange={e => setForm({ ...form, psicologista_nome: e.target.value })} className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-white focus:border-[var(--primary)] focus:outline-none" />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-[var(--text-label)] uppercase tracking-wider mb-1.5">CRP</label>
-                  <input value={form.psicologista_crp} onChange={e => setForm({ ...form, psicologista_crp: e.target.value })} className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-white focus:border-[var(--primary)] focus:outline-none" />
+                  <label className="block text-[11px] font-bold text-[var(--text-label)] uppercase tracking-wider mb-1.5">CRP *</label>
+                  <input required value={form.psicologista_crp} onChange={e => setForm({ ...form, psicologista_crp: e.target.value })} placeholder="06/XXXXX" className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-white focus:border-[var(--primary)] focus:outline-none" />
                 </div>
               </div>
               <div className="pt-4 flex justify-end gap-3">
                 <button type="button" onClick={() => setShowModal(false)} className="px-5 py-2.5 text-sm font-bold text-[var(--text-muted)] hover:text-white transition-colors">Cancelar</button>
-                <button onClick={gerarLaudo} disabled={saving || !form.nome_paciente || !form.cpf || !form.data_exame} className="bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-colors shadow-[0_0_15px_rgba(20,184,166,0.25)] hover:shadow-[0_0_25px_rgba(20,184,166,0.4)] disabled:opacity-50">
+                <button onClick={gerarLaudo} disabled={saving || !form.nome_paciente || !form.cpf || !form.data_exame || !form.psicologista_crp} className="bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-colors shadow-[0_0_15px_rgba(20,184,166,0.25)] hover:shadow-[0_0_25px_rgba(20,184,166,0.4)] disabled:opacity-50">
                   {saving ? <RefreshCw size={16} className="animate-spin inline mr-2" /> : null}
                   {saving ? "Gerando..." : "Gerar Laudo"}
                 </button>

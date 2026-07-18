@@ -51,7 +51,7 @@ class LaudoPayload(BaseModel):
     itens_auxiliados: str = ""
     conclusao: str = ""
     psicologista_nome: str = "Dr. Psicólogo"
-    psicologista_crp: str = "XX/XXXXX"
+    psicologista_crp: str = Field(..., min_length=5, description="Registro profissional do CRP")
 
 
 class LaudoResponse(BaseModel):

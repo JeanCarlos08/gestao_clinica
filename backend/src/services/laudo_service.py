@@ -45,7 +45,7 @@ class DadosLaudo:
 
     # Metadados
     psicologista_nome: str = "Dr. Psicólogo"
-    psicologista_crp: str = "XX/XXXXX"
+    psicologista_crp: str = ""
 
 
 def resolve_template_id(template_override: Optional[str] = None) -> str:

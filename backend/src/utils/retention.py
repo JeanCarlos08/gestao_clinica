@@ -78,7 +78,7 @@ class DataCleaner:
         """Limpa arquivos temporários antigos."""
         days = days or self.policy.get_retention_days("temp_files")
         
-        temp_dirs = [Path("laudos"), Path("/tmp")]
+        temp_dirs = [Path("laudos")]
         total_removed = 0
         
         for temp_dir in temp_dirs:
@@ -189,7 +189,7 @@ class DataCleaner:
             for line in f:
                 try:
                     cleanups.append(json.loads(line))
-                except:
+                except (json.JSONDecodeError, ValueError):
                     pass
         
         return {

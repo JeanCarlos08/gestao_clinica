@@ -37,7 +37,7 @@ class SimpleRateLimiter:
         }
 
     def cleanup(self):
-        cutoff = datetime.now(UTC) - timedelta(seconds=self.window_seconds * 10)
+        cutoff = datetime.now(UTC) - timedelta(seconds=self.window_seconds)
         for key in list(self.requests.keys()):
             self.requests[key] = [ts for ts in self.requests[key] if ts > cutoff]
             if not self.requests[key]:

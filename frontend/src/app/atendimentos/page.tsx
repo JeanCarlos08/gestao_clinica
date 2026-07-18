@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import useSWR from "swr";
 import {
   CalendarDays, Clock, PlayCircle, Plus, Search,
@@ -10,7 +10,11 @@ import EmptyIllustration from "@/components/EmptyIllustration";
 import { swrFetcher, API as API_BASE } from "@/lib/api";
 
 interface Atendimento {
-  id: number; empresa: string; nome: string; modalidade: string; data: string; hora: string; status: string;
+  id: number; empresa: string; nome: string; modalidade: string; data: string; hora: string; status: string; paciente_id: number | null;
+}
+
+interface PacienteOption {
+  id: number; nome: string; empresa: string | null;
 }
 
 const fetcher = swrFetcher;
@@ -28,6 +32,12 @@ export default function AtendimentosPage() {
   const [data, setData] = useState("");
   const [hora, setHora] = useState("");
   const [status, setStatus] = useState("Agendado");
+  const [selectedPacienteId, setSelectedPacienteId] = useState<number | null>(null);
+  const [pacienteSearch, setPacienteSearch] = useState("");
+  const [pacienteOptions, setPacienteOptions] = useState<PacienteOption[]>([]);
+  const [showPacienteDropdown, setShowPacienteDropdown] = useState(false);
+  const [pacienteSearchLoading, setPacienteSearchLoading] = useState(false);
+  const pacienteDropdownRef = useRef<HTMLDivElement>(null);
 
   // AI Prompt Modal
   const [showAI, setShowAI] = useState(false);
@@ -36,6 +46,18 @@ export default function AtendimentosPage() {
   const [aiResult, setAiResult] = useState<string | null>(null);
 
   useEffect(() => { const t = setTimeout(() => setDebouncedQ(q), 300); return () => clearTimeout(t); }, [q]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (pacienteDropdownRef.current && !pacienteDropdownRef.current.contains(e.target as Node)) {
+        setShowPacienteDropdown(false);
+      }
+    };
+    if (showPacienteDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [showPacienteDropdown]);
 
   const { data: paginated, isLoading: loading, mutate } = useSWR<{ items: Atendimento[]; total: number; has_more: boolean }>(
     `${API_BASE}/atendimentos?q=${encodeURIComponent(debouncedQ)}&limit=50`,
@@ -47,14 +69,16 @@ export default function AtendimentosPage() {
 
   const openNew = () => {
     setEditingId(null); setEmpresa(""); setNome(""); setModalidade("");
-    setData(new Date().toISOString().split("T")[0]); setHora("09:00"); setStatus("Agendado"); setShowModal(true);
+    setData(new Date().toISOString().split("T")[0]); setHora("09:00"); setStatus("Agendado");
+    setSelectedPacienteId(null); setPacienteSearch(""); setShowPacienteDropdown(false);
+    setShowModal(true);
   };
 
   const saveAtendimento = async (e: React.FormEvent) => {
     e.preventDefault();
     const tk = localStorage.getItem("token");
     if (!tk) return;
-    const body = { empresa, nome, modalidade, data, hora, status };
+    const body = { empresa, nome, modalidade, data, hora, status, paciente_id: selectedPacienteId };
     try {
       const url = editingId ? `${API_BASE}/atendimentos/${editingId}` : `${API_BASE}/atendimentos`;
       const res = await fetch(url, { method: editingId ? "PUT" : "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${tk}` }, body: JSON.stringify(body) });
@@ -81,6 +105,22 @@ export default function AtendimentosPage() {
     alert("Parecer copiado para a área de transferência!");
     setShowAI(false);
   };
+
+  const searchPacientes = useCallback(async (q: string) => {
+    const tk = localStorage.getItem("token");
+    if (!tk || q.length < 2) { setPacienteOptions([]); setPacienteSearchLoading(false); return; }
+    setPacienteSearchLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/pacientes?q=${encodeURIComponent(q)}&limit=10`, {
+        headers: { Authorization: `Bearer ${tk}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPacienteOptions(Array.isArray(data) ? data : []);
+      }
+    } catch (e) { console.debug("Erro ao carregar pacientes:", e); }
+    finally { setPacienteSearchLoading(false); }
+  }, []);
 
   const getStatusColor = (s: string) => {
     switch (s) {
@@ -161,7 +201,8 @@ export default function AtendimentosPage() {
                     <tr key={a.id} className="border-b border-[var(--border)] hover:bg-[var(--card-hover)] transition-colors group">
                       <td className="p-4 pl-6 cursor-pointer" onClick={() => {
                         setEditingId(a.id); setEmpresa(a.empresa); setNome(a.nome); setModalidade(a.modalidade);
-                        setData(a.data); setHora(a.hora); setStatus(a.status); setShowModal(true);
+                        setData(a.data); setHora(a.hora); setStatus(a.status); setSelectedPacienteId(a.paciente_id || null);
+                        setPacienteSearch(""); setShowPacienteDropdown(false); setShowModal(true);
                       }}>
                         <div className="font-bold text-sm text-white mb-0.5 group-hover:text-[var(--primary)] transition-colors">{a.nome}</div>
                         <div className="text-[11px] text-[var(--text-muted)] flex items-center gap-1"><Building2 size={10} /> {a.empresa}</div>
@@ -208,7 +249,54 @@ export default function AtendimentosPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[11px] font-bold text-[var(--text-label)] uppercase tracking-wider mb-1.5 flex items-center gap-1"><User size={12} /> Paciente</label>
-                  <input required value={nome} onChange={e => setNome(e.target.value)} className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-white focus:border-[var(--primary)] focus:outline-none transition-colors" />
+                  <div className="relative" ref={pacienteDropdownRef}>
+                    <input
+                      value={selectedPacienteId ? nome : pacienteSearch}
+                      onChange={e => {
+                        setPacienteSearch(e.target.value);
+                        setNome(e.target.value);
+                        setSelectedPacienteId(null);
+                        setShowPacienteDropdown(true);
+                        searchPacientes(e.target.value);
+                      }}
+                      onFocus={() => { if (pacienteSearch.length >= 2) setShowPacienteDropdown(true); }}
+                      placeholder="Buscar paciente..."
+                      className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-white focus:border-[var(--primary)] focus:outline-none transition-colors"
+                    />
+                    {showPacienteDropdown && (
+                      <div className="absolute z-20 top-full mt-1 w-full bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-xl max-h-48 overflow-y-auto">
+                        {pacienteSearchLoading && (
+                          <div className="px-3 py-2 text-xs text-[var(--text-muted)] flex items-center gap-2">
+                            <RefreshCw size={12} className="animate-spin" /> Buscando...
+                          </div>
+                        )}
+                        {!pacienteSearchLoading && pacienteOptions.length === 0 && pacienteSearch.length >= 2 && (
+                          <div className="px-3 py-2 text-xs text-[var(--text-muted)]">Nenhum paciente encontrado</div>
+                        )}
+                        {!pacienteSearchLoading && pacienteOptions.map(p => (
+                          <button key={p.id} type="button"
+                            onClick={() => {
+                              setNome(p.nome); setEmpresa(p.empresa || ""); setSelectedPacienteId(p.id);
+                              setPacienteSearch(""); setShowPacienteDropdown(false);
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[var(--primary)]/10 transition-colors border-b border-[var(--border)] last:border-0">
+                            <div className="font-semibold">{p.nome}</div>
+                            <div className="text-[10px] text-[var(--text-muted)]">{p.empresa || "Sem empresa"}</div>
+                          </button>
+                        ))}
+                        {!pacienteSearchLoading && pacienteSearch.length >= 2 && (
+                          <button type="button"
+                            onClick={() => {
+                              setNome(pacienteSearch); setSelectedPacienteId(null);
+                              setPacienteSearch(""); setShowPacienteDropdown(false);
+                            }}
+                            className="w-full text-left px-3 py-2 text-xs font-semibold text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors">
+                            + Criar novo paciente &quot;{pacienteSearch}&quot;
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-[11px] font-bold text-[var(--text-label)] uppercase tracking-wider mb-1.5 flex items-center gap-1"><Building2 size={12} /> Empresa</label>

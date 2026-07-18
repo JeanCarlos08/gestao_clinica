@@ -69,7 +69,7 @@ export default function RelatoriosPage() {
       if (sr.status === 401) { localStorage.removeItem("token"); router.push("/"); return; }
       setStats(await sr.json());
       setAtendimentos(await lr.json());
-    } catch { /* ignore */ }
+    } catch (e) { console.debug("Erro ao carregar relatórios:", e); }
     finally { setLoading(false); }
   }, [dataInicio, dataFim, router]);
 

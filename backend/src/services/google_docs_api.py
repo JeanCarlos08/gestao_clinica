@@ -86,7 +86,6 @@ class GoogleDocsAPI:
 
         # Tentar paths comuns
         common_paths = [
-            "/media/jean/7AF8AFA7F8AF5FDD/gestao_clinica/credentials.json",
             "./credentials.json",
             os.path.expanduser("~/.google/credentials.json"),
         ]

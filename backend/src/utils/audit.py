@@ -29,4 +29,13 @@ def read_events(limit: int = 100) -> list:
     with open(AUDIT_LOG, "r", encoding="utf-8") as f:
         lines = f.readlines()[-limit:]
 
-    return [json.loads(l) for l in lines]
+    events = []
+    for line in lines:
+        if not line.strip():
+            continue
+        try:
+            events.append(json.loads(line))
+        except (json.JSONDecodeError, ValueError):
+            continue
+    return events
+

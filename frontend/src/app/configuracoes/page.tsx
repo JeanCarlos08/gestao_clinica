@@ -47,7 +47,7 @@ export default function ConfigPage() {
           setConfig(d.clinica || { clinic_name: "", clinic_logo_base64: null, user_photo_base64: null });
         }
         if (logsRes.ok) setLogs(await logsRes.json());
-      } catch { /* ignore */ }
+      } catch (e) { console.debug("Erro ao carregar configurações:", e); }
       finally { setLoading(false); }
     };
     fetchData();

@@ -39,8 +39,7 @@ export function getLoggedUserProfile(token: string | null): LoggedUserProfile {
       role,
       displayName: buildDisplayName(username),
     };
-  } catch {
-    return {
+  } catch (e) { console.debug("getLoggedUserProfile: token decode error", e); return {
       username: "",
       role: "",
       displayName: "Usuário",
@@ -79,16 +78,14 @@ export function isTokenExpired(token: string): boolean {
     const decoded = JSON.parse(decodeBase64Url(payload)) as { exp?: number };
     if (!decoded.exp) return false;
     return decoded.exp * 1000 < Date.now();
-  } catch {
-    return true;
-  }
+  } catch (e) { console.debug("isTokenExpired: decode error", e); return true; }
 }
 
 export function hasRole(token: string | null, requiredRole: string): boolean {
   if (!token) return false;
   const profile = getLoggedUserProfile(token);
   if (!profile.role) return false;
-  const roleHierarchy: Record<string, number> = { admin: 3, manager: 2, viewer: 1 };
+  const roleHierarchy: Record<string, number> = { admin: 3, psicologo: 2, recepcionista: 1 };
   const userLevel = roleHierarchy[profile.role] ?? 0;
   const requiredLevel = roleHierarchy[requiredRole] ?? 0;
   return userLevel >= requiredLevel;
@@ -131,7 +128,5 @@ export async function tryRefreshToken(): Promise<string | null> {
     localStorage.setItem("token", data.access_token);
     if (data.refresh_token) setRefreshToken(data.refresh_token);
     return data.access_token;
-  } catch {
-    return null;
-  }
+  } catch (e) { console.debug("tryRefreshToken: refresh failed", e); return null; }
 }

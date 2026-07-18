@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends
 
 from infrastructure.api.routers.deps import get_current_user, require_permission, run_sync
 from infrastructure.api.routers.repo_deps import get_atendimento_repo
-from utils.constants import PERM_VIEW_CONFIGURACOES
+from utils.constants import PERM_VIEW_CONFIGURACOES, APP_VERSION
 
 router = APIRouter(prefix="/api")
 
@@ -19,7 +19,7 @@ async def health_check():
     """Health check público — não expõe internals."""
     return {
         "status": "ok",
-        "version": "3.0.0",
+        "version": APP_VERSION,
         "uptime_seconds": int(time.time() - _start_time),
     }
 
@@ -46,7 +46,7 @@ async def health_detail(current_user: dict = Depends(get_current_user)):
     status = "ok" if db_ok else "degraded"
     return {
         "status": status,
-        "version": "3.0.0",
+        "version": APP_VERSION,
         "uptime_seconds": int(time.time() - _start_time),
         "checks": {
             "database": {

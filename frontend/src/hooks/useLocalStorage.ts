@@ -7,9 +7,7 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
     try {
       const item = window.localStorage.getItem(key);
       return item ? JSON.parse(item) : initialValue;
-    } catch {
-      return initialValue;
-    }
+    } catch (e) { console.debug("useLocalStorage: parse error", e); return initialValue; }
   });
 
   const setValue = useCallback(
@@ -18,9 +16,7 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
       setStored(valueToStore);
       try {
         window.localStorage.setItem(key, JSON.stringify(valueToStore));
-      } catch {
-        // quota exceeded or private browsing
-      }
+      } catch (e) { console.debug("useLocalStorage: quota exceeded", e); }
     },
     [key, stored]
   );
@@ -30,7 +26,7 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
       if (e.key === key && e.newValue) {
         try {
           setStored(JSON.parse(e.newValue));
-        } catch { /* ignore */ }
+        } catch (e) { console.debug("useLocalStorage: storage event parse error", e); }
       }
     };
     window.addEventListener("storage", handleStorage);

@@ -18,7 +18,9 @@ from core.repositories.repositories import (
     DocumentoRepository,
     AuditoriaRepository,
     TemporaryPermissionRepository,
+    PacienteRepository,
     atendimento_repo,
+    paciente_repo,
     arquivo_repo,
     preferences_repo,
     documento_repo,
@@ -35,6 +37,10 @@ from core.repositories.user_repositories import (
 
 def get_atendimento_repo() -> AtendimentoRepository:
     return atendimento_repo
+
+
+def get_paciente_repo() -> PacienteRepository:
+    return paciente_repo
 
 
 def get_arquivo_repo() -> ArquivoRepository:

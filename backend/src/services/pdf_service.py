@@ -4,7 +4,6 @@ Serviço de geração de PDF/CSV do sistema mvpdepsicologia.
 Responsável por:
 - Geração de relatório em PDF via fpdf2
 - Exportação de dados em CSV via pandas
-- Download de arquivos no Streamlit
 
 Uso:
     from services.pdf_service import pdf_service

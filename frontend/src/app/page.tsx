@@ -39,6 +39,7 @@ export default function LoginPage() {
 
       const data = await response.json();
       localStorage.setItem("token", data.access_token);
+      if (data.refresh_token) localStorage.setItem("refresh_token", data.refresh_token);
       router.push("/atendimentos");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erro ao fazer login");
@@ -61,7 +62,7 @@ export default function LoginPage() {
           provider,
         }),
       });
-    } catch { /* não bloquear o login se o registro de consentimento falhar */ }
+    } catch (e) { console.debug("Consentimento LGPD não registrado:", e); }
 
     if (provider === "google") {
       window.location.href = `${API}/auth/google`;
@@ -494,7 +495,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div className="auth-bottom">Clínica IA v3.0.0 &nbsp;·&nbsp; © 2026 Todos os direitos reservados</div>
+          <div className="auth-bottom">Clínica IA &nbsp;·&nbsp; © 2026 Todos os direitos reservados</div>
         </div>
       </div>
 

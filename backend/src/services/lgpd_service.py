@@ -209,7 +209,7 @@ class LGPDService:
             # 1. Deletar consentimentos
             resultado["consentimentos_removidos"] = consentimento_repo.deletar_por_email(email)
 
-            # 2. Anonimizar atendimentos (não deleta — mantém estatísticas)
+            # 2. Anonimizar atendimentos e paciente (não deleta — mantém estatísticas)
             if nome:
                 try:
                     with connection_scope() as conn:
@@ -224,8 +224,20 @@ class LGPDService:
                             (f"%{nome}%",),
                         )
                         resultado["atendimentos_anonimizados"] = cur.rowcount
+
+                        cur.execute(
+                            """
+                            UPDATE pacientes
+                            SET nome = '[DADOS REMOVIDOS - LGPD Art.18]',
+                                cpf = NULL, telefone = NULL, email = NULL,
+                                endereco = NULL, observacoes = NULL, foto = NULL,
+                                atualizado_em = NOW()
+                            WHERE LOWER(nome) LIKE LOWER(%s)
+                            """,
+                            (f"%{nome}%",),
+                        )
                 except Exception as e:
-                    logger.error(f"Erro ao anonimizar atendimentos: {e}")
+                    logger.error(f"Erro ao anonimizar atendimentos/paciente: {e}")
 
             # 3. Limpar tentativas de login
             login_attempt_repo.resetar_usuario(email)

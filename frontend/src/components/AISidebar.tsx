@@ -43,9 +43,7 @@ export default function AISidebar() {
         if (!res.ok) { setAiAvailable(false); return; }
         const data = await res.json();
         setAiAvailable(data.has_ai && data.gemini_key_set);
-      } catch {
-        setAiAvailable(false);
-      }
+      } catch (e) { console.debug("AISidebar: AI availability check failed", e); setAiAvailable(false); }
     };
     checkAI();
   }, []);

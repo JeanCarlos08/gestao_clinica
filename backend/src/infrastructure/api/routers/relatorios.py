@@ -6,13 +6,13 @@ filtered atendimentos list used for report generation.
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from core.repositories.repositories import AtendimentoRepository
 from infrastructure.api.routers.deps import require_permission, run_sync
 from infrastructure.api.routers.repo_deps import get_atendimento_repo
 from utils.cache import cache_get, cache_set
-from utils.constants import PERM_VIEW_ATENDIMENTOS
+from utils.constants import PERM_VIEW_ATENDIMENTOS, TABLE_PACIENTES
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -47,13 +47,13 @@ async def get_relatorios_stats(
             conditions.append("data >= %s")
             params.append(date.fromisoformat(data_inicio))
         except ValueError:
-            pass
+            raise HTTPException(status_code=400, detail=f"Data de início inválida: {data_inicio}. Use formato YYYY-MM-DD.")
     if data_fim:
         try:
             conditions.append("data <= %s")
             params.append(date.fromisoformat(data_fim))
         except ValueError:
-            pass
+            raise HTTPException(status_code=400, detail=f"Data de fim inválida: {data_fim}. Use formato YYYY-MM-DD.")
 
     where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
@@ -111,11 +111,22 @@ async def get_relatorios_stats(
                 """, params)
                 por_mes = {r["mes"]: r["total"] for r in cur.fetchall()}
 
+                # Por paciente (top 10) via JOIN com pacientes
+                cur.execute(f"""
+                    SELECT COALESCE(p.nome, a.nome) AS paciente, COUNT(*) AS total
+                    FROM {TABLE_ATENDIMENTOS} a
+                    LEFT JOIN {TABLE_PACIENTES} p ON p.id = a.paciente_id
+                    {where_clause}
+                    GROUP BY paciente ORDER BY total DESC LIMIT 10
+                """, params)
+                por_paciente = {r["paciente"]: r["total"] for r in cur.fetchall()}
+
             return {
                 "total": totals.get("total", 0),
                 "por_status": por_status,
                 "por_modalidade": por_modalidade,
                 "por_empresa": por_empresa,
+                "por_paciente": por_paciente,
                 "por_mes": por_mes,
                 "periodo": {
                     "data_inicio": data_inicio,
@@ -133,6 +144,7 @@ async def get_relatorios_stats(
             "por_status": {},
             "por_modalidade": {},
             "por_empresa": {},
+            "por_paciente": {},
             "por_mes": {},
             "periodo": {"data_inicio": data_inicio, "data_fim": data_fim},
         }
@@ -156,12 +168,12 @@ async def get_relatorios_atendimentos(
         try:
             filters.data_inicio = date.fromisoformat(data_inicio)
         except ValueError:
-            pass
+            raise HTTPException(status_code=400, detail=f"Data de início inválida: {data_inicio}. Use formato YYYY-MM-DD.")
     if data_fim:
         try:
             filters.data_fim = date.fromisoformat(data_fim)
         except ValueError:
-            pass
+            raise HTTPException(status_code=400, detail=f"Data de fim inválida: {data_fim}. Use formato YYYY-MM-DD.")
 
     atendimentos = await run_sync(atendimento_repo.list_all, filters=filters)
     return [
@@ -173,6 +185,7 @@ async def get_relatorios_atendimentos(
             "data": a.data.strftime("%d/%m/%Y") if a.data else "",
             "hora": a.hora.strftime("%H:%M") if a.hora else "",
             "status": a.status,
+            "paciente_id": a.paciente_id,
             "has_laudo": a.has_laudo,
             "has_avaliacao": a.has_avaliacao,
         }

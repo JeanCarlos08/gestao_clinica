@@ -18,7 +18,7 @@ Para cronjob (cron):
 import argparse
 import time
 import json
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 from utils.retention import run_scheduled_cleanup
 from utils.logger import get_logger
@@ -53,13 +53,13 @@ def generate_report():
         
         stats = handler.get_statistics()
         report = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(UTC).isoformat(),
             "incident_stats": stats,
             "open_incidents": handler.get_open_incidents(),
         }
         
         # Salvar relatório
-        report_path = Path("logs") / f"report_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.json"
+        report_path = Path("logs") / f"report_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}.json"
         with open(report_path, "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2, ensure_ascii=False)
         

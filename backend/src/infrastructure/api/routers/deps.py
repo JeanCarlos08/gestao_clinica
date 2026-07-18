@@ -8,6 +8,7 @@ helper for running blocking repo calls from async endpoints.
 
 import asyncio
 import re as _re
+import unicodedata as _ud
 from functools import partial
 from typing import Callable, TypeVar
 
@@ -70,5 +71,6 @@ def _get_client_ip(request: Request) -> str:
 def _slug_name(name: str) -> str:
     """Gera um slug a partir do nome do paciente para buscas de foto."""
     s = (name or "").strip().lower()
+    s = _ud.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii")
     s = _re.sub(r"[^a-z0-9]+", "_", s)
     return s.strip("_")
