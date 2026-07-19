@@ -2,7 +2,7 @@ services:
   - type: web
     name: gestao-clinica-api
     runtime: docker
-    dockerfilePath: ./Dockerfile
+    dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     envVars:
       - key: PYTHONPATH
