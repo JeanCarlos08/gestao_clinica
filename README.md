@@ -1,36 +1,84 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Gestão Clínica (Vercel + Render)
 
-## Getting Started
+Estrutura simplificada para produção:
 
-First, run the development server:
+- `frontend/`: Next.js 14 (deploy na Vercel)
+- `backend/`: FastAPI (deploy no Render)
+- Banco: PostgreSQL via `DATABASE_URL`
+
+## Infraestrutura alvo
+
+- Frontend: Vercel com `Root Directory = frontend`
+- Backend: Render Web Service usando `backend/Dockerfile`
+- Comunicação: frontend chama `/api/*` e o rewrite aponta para o backend
+
+## Variáveis obrigatórias
+
+### Render (backend)
+
+- `DATABASE_URL`
+- `APP_SECRET_KEY`
+- `JWT_SECRET_KEY`
+- `APP_ADMIN_USER`
+- `APP_ADMIN_PASS`
+- `ALLOWED_ORIGINS`
+
+### Render (IA / laudos)
+
+- `GOOGLE_API_KEY`
+- `GEMINI_MODEL` (opcional, padrão: `gemini-2.5-flash`)
+- `GEMINI_FALLBACK_MODELS` (opcional, csv)
+- `GOOGLE_DOCS_TEMPLATE_ID` (se usar laudos)
+- `GOOGLE_SERVICE_ACCOUNT_JSON_B64` (se usar laudos)
+- `CREDENTIALS_SOURCE=env` (se usar laudos)
+
+### Vercel (frontend)
+
+- `BACKEND_API_URL=https://SEU-BACKEND-RENDER`
+- `NEXT_PUBLIC_API_URL` opcional
+
+## Execução local
+
+### Backend
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cd backend
+pip install -r requirements.txt
+uvicorn src.infrastructure.api.index:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Frontend
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Upload de fotos
 
-## Learn More
+- Configuração (logo/foto do usuário): `POST /api/configuracoes/photo`
+- Paciente: `POST /api/pacientes/{slug}/photo`
 
-To learn more about Next.js, take a look at the following resources:
+Observação: imagens são salvas em base64 em `user_preferences`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Google Docs integration (test & configuration)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+To test the Google Docs editor end-to-end you need service account credentials and a Google Docs template ID (for laudo generation) or an existing doc id for manual testing.
 
-## Deploy on Vercel
+1. Provide credentials for Google APIs. Options supported by the project (see `backend/src/services/credentials_loader.py`):
+	- Place `credentials.json` in the project root (recommended for local dev).
+	- Set `GOOGLE_SERVICE_ACCOUNT_JSON_B64` with base64-encoded JSON.
+	- Configure Secret Manager (set `CREDENTIALS_SOURCE=secret_manager` and related env vars).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+2. (Optional) Configure `GOOGLE_DOCS_TEMPLATE_ID` in the `.env` to enable automatic laudo generation from a template.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+3. To create a test Google Doc using the loaded service account credentials run:
+
+```bash
+python backend/scripts/create_test_doc.py
+```
+
+The script prints the newly created `doc_id` and a view URL you can use to test the modal in the frontend.
+
+If you prefer, provide an existing `doc_id` and open the modal from the frontend page for a patient.
