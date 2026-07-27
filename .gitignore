@@ -1,11 +1,9 @@
 # ── Next.js / Node ─────────────────────────────────────
 node_modules/
-frontend/node_modules/
 .pnp
 .pnp.js
 .yarn/install-state.gz
 .next/
-frontend/.next/
 out/
 build/
 coverage/
@@ -18,38 +16,20 @@ yarn-debug.log*
 yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
-frontend/next-env.d.ts
 .vercel
-
-# ── Python ─────────────────────────────────────────────
-venv/
-.venv/
-backend/.venv/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-*.egg-info/
-dist/
-*.so
 
 # ── Environment ────────────────────────────────────────
 .env
 .env.local
 .env.*.local
-backend/.env
 
 # ── Credentials & Secrets ──────────────────────────────
 credentials.json
 credentials/*.json
 
-# ── Application outputs ────────────────────────────────
-/laudos/
-backend/laudos/
+# ── Logs ──────────────────────────────────────────────
 logs/
 *.log
-backend/logs/
 
 # ── Accidental artifacts ────────────────────────────────
 scratch_refactor.py
