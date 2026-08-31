@@ -190,56 +190,51 @@ export default function RelatoriosPage() {
 
           {activeTab === "lista" && (
             <div className="premium-surface border border-[var(--border)] rounded-2xl overflow-hidden">
-              <div className="p-5 border-b border-[var(--border)] flex justify-between items-center">
+              <div className="p-4 border-b border-[var(--border)] flex items-center justify-between bg-[var(--card)]/50 backdrop-blur-sm">
                 <span className="font-semibold flex items-center gap-2 text-sm">
-                  <FileText size={16} className="text-[var(--primary)]" /> {atendimentos.length} registros
+                  <FileText size={16} className="text-[var(--primary)]" /> {atendimentos.length} registros <span className="text-[var(--text-muted)] font-normal hidden sm:inline">· lista moderna</span>
                 </span>
-                <button onClick={exportCSV} className="text-xs text-[var(--primary)] hover:underline flex items-center gap-1">
-                  <Download size={12} /> CSV
+                <button onClick={exportCSV} className="inline-flex items-center gap-1.5 bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] border border-[var(--primary)]/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
+                  <Download size={12} /> Exportar
                 </button>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-[var(--border)] text-[10px] uppercase text-[var(--text-label)] tracking-wider bg-[var(--card)]">
-                      {["#", "Empresa", "Paciente", "Modalidade", "Data", "Status", "Docs"].map(h => (
-                        <th key={h} className="p-4 font-semibold">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {atendimentos.length === 0 ? (
-                      <tr><td colSpan={7} className="p-10 text-center">
-                        <div className="flex flex-col items-center">
-                          <EmptyIllustration variant="report" size={80} />
-                          <p className="text-sm text-[var(--text-muted)] mt-3">Nenhum registro encontrado.</p>
-                        </div>
-                      </td></tr>
-                    ) : atendimentos.map((a, i) => (
-                      <tr key={a.id} className="border-b border-[var(--border)] hover:bg-[var(--card-hover)] transition-colors">
-                        <td className="p-4 text-xs text-[var(--text-muted)]">{i + 1}</td>
-                        <td className="p-4 text-sm font-semibold text-white max-w-[160px] truncate">{a.empresa}</td>
-                        <td className="p-4 text-xs text-[var(--text-muted)]">{a.nome}</td>
-                        <td className="p-4 text-sm text-white">{a.modalidade}</td>
-                        <td className="p-4 text-sm text-[var(--text-muted)]">{a.data}</td>
-                        <td className="p-4">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border"
-                            style={{ background: `${STATUS_COLORS[a.status] || "#14b8a6"}18`, color: STATUS_COLORS[a.status] || "#14b8a6", borderColor: `${STATUS_COLORS[a.status] || "#14b8a6"}30` }}>
-                            {a.status}
-                          </span>
-                        </td>
-                        <td className="p-4 text-center">
-                          <div className="flex justify-center gap-1 text-[10px]">
-                            {a.has_laudo && <span className="bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/20">L</span>}
-                            {a.has_avaliacao && <span className="bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded border border-purple-500/20">A</span>}
-                            {!a.has_laudo && !a.has_avaliacao && <span className="text-[var(--text-muted)]">–</span>}
+              {atendimentos.length === 0 ? (
+                <div className="p-12 text-center">
+                  <EmptyIllustration variant="report" size={80} />
+                  <p className="text-sm text-[var(--text-muted)] mt-3">Nenhum registro encontrado.</p>
+                  <p className="text-xs text-[var(--text-muted)] mt-1">Ajuste o período ou crie atendimentos</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-[var(--border)] max-h-[65vh] overflow-y-auto scrollbar-thin">
+                  {atendimentos.map((a, i) => {
+                    const initials = a.nome.split(" ").filter(Boolean).slice(0,2).map(p=>p[0]?.toUpperCase()).join("");
+                    return (
+                      <div key={a.id} className="group flex items-center gap-4 p-4 hover:bg-[var(--card-hover)] transition-colors">
+                        <div className="hidden sm:flex w-7 h-7 rounded-full bg-[var(--card)] border border-[var(--border)] items-center justify-center text-[10px] font-bold text-[var(--text-muted)] flex-shrink-0">#{i+1}</div>
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[var(--primary)]/20 to-[var(--card)] border border-[var(--border)] group-hover:border-[var(--primary)]/30 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">{initials}</div>
+                        <div className="min-w-0 flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 items-center">
+                          <div className="min-w-0">
+                            <div className="text-sm font-bold text-white truncate group-hover:text-[var(--primary)] transition-colors">{a.nome}</div>
+                            <div className="text-xs text-[var(--text-muted)] truncate flex items-center gap-1"><Building2 size={10} /> {a.empresa} <span className="w-1 h-1 rounded-full bg-[var(--text-muted)]" /> {a.modalidade}</div>
                           </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                          <div className="flex sm:justify-center">
+                            <span className="inline-flex items-center gap-1.5 bg-[var(--background)] border border-[var(--border)] rounded-full px-3 py-1 text-xs">
+                              <Calendar size={12} className="text-[var(--text-muted)]" />{a.data} <Clock size={12} className="text-[var(--text-muted)] ml-1" />{a.hora}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between sm:justify-end gap-3">
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold border" style={{ background: `${STATUS_COLORS[a.status] || "#14b8a6"}14`, color: STATUS_COLORS[a.status] || "#14b8a6", borderColor: `${STATUS_COLORS[a.status] || "#14b8a6"}30` }}>{a.status}</span>
+                            <div className="flex items-center gap-1">
+                              {a.has_laudo ? <span className="bg-blue-500/15 text-blue-400 border border-blue-500/20 px-2 py-1 rounded-full text-[10px] font-bold">Laudo</span> : <span className="hidden sm:inline text-[10px] text-[var(--text-muted)]">—</span>}
+                              {a.has_avaliacao && <span className="bg-violet-500/15 text-violet-400 border border-violet-500/20 px-2 py-1 rounded-full text-[10px] font-bold">Aval</span>}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </>

@@ -148,67 +148,63 @@ export default function LaudosPage() {
         {q && <button onClick={() => setQ("")} className="text-[var(--text-muted)] hover:text-white"><XCircle size={14} /></button>}
       </div>
 
-      {/* Tabela de Laudos */}
+      {/* Lista Moderna de Laudos — sem tabela Excel */}
       <div className="premium-surface border border-[var(--border)] rounded-2xl overflow-hidden fade-up-delay-1">
-        <div className="p-5 border-b border-[var(--border)] flex justify-between items-center bg-[var(--card)]">
+        <div className="p-4 border-b border-[var(--border)] flex items-center justify-between bg-[var(--card)]/50 backdrop-blur-sm">
           <span className="font-semibold text-sm flex items-center gap-2">
-            <FileText size={16} className="text-[var(--primary)]" /> Base de Laudos
+            <FileText size={16} className="text-[var(--primary)]" /> Base de Laudos <span className="text-[var(--text-muted)] font-normal hidden sm:inline">· {laudos.length}</span>
           </span>
-          <button onClick={() => mutate()} className="text-[var(--primary)] hover:text-[var(--primary-bright)] flex items-center gap-1 text-xs">
+          <button onClick={() => mutate()} className="inline-flex items-center gap-1.5 bg-[var(--card)] border border-[var(--border)] hover:border-[var(--primary)]/30 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors">
             <RefreshCw size={12} className={loading ? "animate-spin" : ""} /> Atualizar
           </button>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[800px]">
-            <thead>
-              <tr className="border-b border-[var(--border)] text-[10px] uppercase text-[var(--text-label)] tracking-wider bg-[var(--background)]">
-                <th className="p-4 pl-6 font-semibold">Paciente</th>
-                <th className="p-4 font-semibold">Tipo</th>
-                <th className="p-4 font-semibold">Data</th>
-                <th className="p-4 font-semibold">Status</th>
-                <th className="p-4 font-semibold text-right pr-6">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading && laudos.length === 0 ? (
-                <tr><td colSpan={5} className="p-16 text-center text-[var(--text-muted)]"><RefreshCw size={24} className="animate-spin mx-auto mb-2" /> Carregando...</td></tr>
-              ) : laudos.length === 0 ? (
-                <tr><td colSpan={5} className="p-16 text-center">
-                  <div className="flex flex-col items-center">
-                    <EmptyIllustration variant="document" size={90} />
-                    <p className="text-sm text-[var(--text-muted)] mt-4">Nenhum laudo encontrado.</p>
+        {loading && laudos.length === 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 animate-pulse">
+                <div className="flex items-center gap-3 mb-3"><div className="w-10 h-10 rounded-full skeleton" /><div className="flex-1"><div className="h-3 w-24 skeleton mb-2" /><div className="h-3 w-16 skeleton" /></div></div>
+                <div className="h-3 w-full skeleton" />
+              </div>
+            ))}
+          </div>
+        ) : laudos.length === 0 ? (
+          <div className="p-16 text-center">
+            <EmptyIllustration variant="document" size={90} />
+            <p className="text-white font-semibold mt-4">Nenhum laudo encontrado</p>
+            <p className="text-sm text-[var(--text-muted)] mt-1">Gere seu primeiro laudo clínico</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-[var(--border)] max-h-[65vh] overflow-y-auto scrollbar-thin">
+            {laudos.map(l => {
+              const initials = l.paciente.split(" ").filter(Boolean).slice(0,2).map(p=>p[0]?.toUpperCase()).join("");
+              return (
+                <div key={l.id} className="group flex items-center gap-4 p-4 hover:bg-[var(--card-hover)] transition-colors">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500/20 to-[var(--card)] border border-[var(--border)] group-hover:border-amber-500/30 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">{initials || <FileText size={14} />}</div>
+                  <div className="min-w-0 flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 items-center">
+                    <div className="min-w-0">
+                      <div className="font-bold text-sm text-white truncate group-hover:text-amber-400 transition-colors">{l.paciente}</div>
+                      <div className="text-xs text-[var(--text-muted)] truncate">{l.titulo} <span className="hidden sm:inline">· {l.tipo}</span></div>
+                    </div>
+                    <div className="flex sm:justify-center">
+                      <span className="inline-flex items-center gap-1.5 bg-[var(--background)] border border-[var(--border)] rounded-full px-3 py-1 text-xs font-medium text-white"><Clock size={12} className="text-[var(--text-muted)]" />{l.data}</span>
+                    </div>
+                    <div className="flex items-center justify-between sm:justify-end gap-3">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${statusColors[l.status] || "bg-gray-500/10 text-gray-400 border-gray-500/20"}`}>{statusIcons[l.status] || <Clock size={12} />} {l.status}</span>
+                      <div className="hidden sm:flex items-center gap-2">
+                        {l.url && <a href={l.url} target="_blank" rel="noreferrer" className="p-2 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 transition-colors"><FileText size={14} /></a>}
+                        <button onClick={() => downloadPdf(l.id, l.paciente)} className="p-2 rounded-lg bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] border border-[var(--primary)]/20 transition-colors"><FileDown size={14} /></button>
+                      </div>
+                    </div>
                   </div>
-                </td></tr>
-              ) : (
-                laudos.map(l => (
-                  <tr key={l.id} className="border-b border-[var(--border)] hover:bg-[var(--card-hover)] transition-colors group">
-                    <td className="p-4 pl-6">
-                      <div className="font-bold text-sm text-white mb-0.5">{l.paciente}</div>
-                      <div className="text-[11px] text-[var(--text-muted)]">{l.titulo}</div>
-                    </td>
-                    <td className="p-4 text-sm text-[var(--text-muted)] font-medium">{l.tipo}</td>
-                    <td className="p-4 text-sm font-semibold text-white">{l.data}</td>
-                    <td className="p-4">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border ${statusColors[l.status] || "bg-gray-500/10 text-gray-400"}`}>
-                        {statusIcons[l.status] || <Clock size={14} className="text-gray-400" />} {l.status}
-                      </span>
-                    </td>
-                    <td className="p-4 pr-6 text-right space-x-2">
-                      {l.url && (
-                        <a href={l.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors">
-                          <FileText size={12} /> Google Docs
-                        </a>
-                      )}
-                      <button onClick={() => downloadPdf(l.id, l.paciente)} className="inline-flex items-center gap-1.5 bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] border border-[var(--primary)]/20 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors">
-                        <FileDown size={12} /> Baixar PDF
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                  <div className="sm:hidden flex items-center gap-2">
+                    {l.url && <a href={l.url} target="_blank" rel="noreferrer" className="p-2 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20"><FileText size={12} /></a>}
+                    <button onClick={() => downloadPdf(l.id, l.paciente)} className="p-2 rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/20"><FileDown size={12} /></button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Modal Gerar Laudo */}
