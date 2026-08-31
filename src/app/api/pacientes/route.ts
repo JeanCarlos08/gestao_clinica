@@ -13,28 +13,36 @@ export async function GET(request: NextRequest) {
   const limit = parseInt(url.searchParams.get("limit") || "1000");
   const offset = parseInt(url.searchParams.get("offset") || "0");
 
+  // Cap limit para evitar payload gigante (era 1000 default)
+  const safeLimit = Math.min(Math.max(limit, 1), 100);
+  const safeOffset = Math.max(offset, 0);
+
   try {
     let pacientes;
     if (q) {
       pacientes = await sql`
         SELECT p.*,
-          (SELECT COUNT(*) FROM atendimentos WHERE paciente_id = p.id) as total_atendimentos,
-          (SELECT MAX(data) FROM atendimentos WHERE paciente_id = p.id) as ultimo_atendimento,
-          (SELECT DISTINCT modalidade FROM atendimentos WHERE paciente_id = p.id) as modalidades
+          COUNT(a.id)::int as total_atendimentos,
+          MAX(a.data) as ultimo_atendimento,
+          COUNT(DISTINCT a.modalidade)::int as modalidades_cnt
         FROM pacientes p
+        LEFT JOIN atendimentos a ON a.paciente_id = p.id
         WHERE p.nome ILIKE ${"%" + q + "%"} OR p.empresa ILIKE ${"%" + q + "%"}
+        GROUP BY p.id
         ORDER BY p.nome
-        LIMIT ${limit} OFFSET ${offset}
+        LIMIT ${safeLimit} OFFSET ${safeOffset}
       `;
     } else {
       pacientes = await sql`
         SELECT p.*,
-          (SELECT COUNT(*) FROM atendimentos WHERE paciente_id = p.id) as total_atendimentos,
-          (SELECT MAX(data) FROM atendimentos WHERE paciente_id = p.id) as ultimo_atendimento,
-          (SELECT DISTINCT modalidade FROM atendimentos WHERE paciente_id = p.id) as modalidades
+          COUNT(a.id)::int as total_atendimentos,
+          MAX(a.data) as ultimo_atendimento,
+          COUNT(DISTINCT a.modalidade)::int as modalidades_cnt
         FROM pacientes p
+        LEFT JOIN atendimentos a ON a.paciente_id = p.id
+        GROUP BY p.id
         ORDER BY p.nome
-        LIMIT ${limit} OFFSET ${offset}
+        LIMIT ${safeLimit} OFFSET ${safeOffset}
       `;
     }
 
@@ -61,7 +69,7 @@ export async function GET(request: NextRequest) {
       atualizado_em: p.atualizado_em,
       total_atendimentos: parseInt(String(p.total_atendimentos ?? "0")),
       ultimo_atendimento: p.ultimo_atendimento,
-      modalidades_distintas: Array.isArray(p.modalidades) ? p.modalidades.length : 0,
+      modalidades_distintas: parseInt(String((p as any).modalidades_cnt ?? "0")),
     })));
   } catch (e: any) {
     return jsonError("Erro ao listar pacientes: " + e.message, 500);

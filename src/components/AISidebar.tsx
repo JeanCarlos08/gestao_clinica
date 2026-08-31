@@ -33,9 +33,12 @@ export default function AISidebar() {
   }, [messages, loading]);
 
   useEffect(() => {
+    // Defer diagnostics para não bloquear render inicial (P1)
+    if (collapsed && !mobileOpen) return;
     const checkAI = async () => {
       try {
         const token = localStorage.getItem("token");
+        if (!token) { setAiAvailable(false); return; }
         const res = await fetch(
           (process.env.NEXT_PUBLIC_API_URL || "/api") + "/ia/diagnostics",
           { headers: { Authorization: `Bearer ${token}` } }
@@ -45,8 +48,15 @@ export default function AISidebar() {
         setAiAvailable(data.has_ai && data.gemini_key_set);
       } catch (e) { console.debug("AISidebar: AI availability check failed", e); setAiAvailable(false); }
     };
-    checkAI();
-  }, []);
+    // Idle defer: não trava TTI
+    const idle = (typeof window !== "undefined" && (window as any).requestIdleCallback)
+      ? (window as any).requestIdleCallback(() => checkAI(), { timeout: 2000 })
+      : setTimeout(checkAI, 1000);
+    return () => {
+      if (typeof idle === "number") clearTimeout(idle);
+      else if (idle) (window as any).cancelIdleCallback?.(idle);
+    };
+  }, [collapsed, mobileOpen]);
 
   const sendMessage = async (text?: string) => {
     const q = (text ?? query).trim();

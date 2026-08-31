@@ -13,6 +13,8 @@ export async function GET(request: NextRequest) {
   const dataFim = url.searchParams.get("data_fim");
   const status = url.searchParams.get("status");
   const modalidade = url.searchParams.get("modalidade");
+  const limit = Math.min(Math.max(parseInt(url.searchParams.get("limit") || "500"), 1), 1000);
+  const offset = Math.max(parseInt(url.searchParams.get("offset") || "0"), 0);
 
   try {
     let atendimentos;
@@ -22,22 +24,22 @@ export async function GET(request: NextRequest) {
       const end = dataFim || "2099-12-31";
 
       atendimentos = await sql`
-        SELECT a.*, d.id as doc_id
+        SELECT a.id, a.empresa, a.nome, a.modalidade, a.data, a.hora, a.status, a.paciente_id, d.id as doc_id
         FROM atendimentos a
         LEFT JOIN documentos d ON d.atendimento_id = a.id
         WHERE a.data >= ${start} AND a.data <= ${end}
         ${status ? sql`AND a.status = ${status}` : sql``}
         ${modalidade ? sql`AND a.modalidade = ${modalidade}` : sql``}
         ORDER BY a.data DESC, a.hora DESC
-        LIMIT 5000
+        LIMIT ${limit} OFFSET ${offset}
       `;
     } else {
       atendimentos = await sql`
-        SELECT a.*, d.id as doc_id
+        SELECT a.id, a.empresa, a.nome, a.modalidade, a.data, a.hora, a.status, a.paciente_id, d.id as doc_id
         FROM atendimentos a
         LEFT JOIN documentos d ON d.atendimento_id = a.id
         ORDER BY a.data DESC, a.hora DESC
-        LIMIT 5000
+        LIMIT ${limit} OFFSET ${offset}
       `;
     }
 

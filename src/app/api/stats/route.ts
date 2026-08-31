@@ -9,21 +9,23 @@ export async function GET(request: NextRequest) {
   if (auth instanceof Response) return auth;
 
   try {
-    const stats = await sql`
-      SELECT
-        (SELECT COUNT(*) FROM atendimentos) as total_atendimentos,
-        (SELECT COUNT(*) FROM pacientes) as total_pacientes,
-        (SELECT COUNT(*) FROM atendimentos WHERE status = 'Agendado') as agendados,
-        (SELECT COUNT(*) FROM atendimentos WHERE status = 'Atendido') as atendidos,
-        (SELECT COUNT(*) FROM atendimentos WHERE status = 'Concluido') as concluidos,
-        (SELECT COUNT(*) FROM atendimentos WHERE status = 'Cancelado') as cancelados,
-        (SELECT COUNT(DISTINCT empresa) FROM atendimentos) as total_empresas,
-        (SELECT COUNT(*) FROM atendimentos WHERE data = CURRENT_DATE) as atendimentos_hoje,
-        (SELECT COUNT(*) FROM atendimentos WHERE data >= date_trunc('month', CURRENT_DATE)) as atendimentos_mes
-    `;
-
-    const porModalidade = await sql`SELECT modalidade, COUNT(*) as total FROM atendimentos GROUP BY modalidade ORDER BY total DESC`;
-    const porEmpresa = await sql`SELECT empresa, COUNT(*) as total FROM atendimentos GROUP BY empresa ORDER BY total DESC LIMIT 10`;
+    const [statsRows, porModalidade, porEmpresa] = await Promise.all([
+      sql`
+        SELECT
+          (SELECT COUNT(*) FROM atendimentos) as total_atendimentos,
+          (SELECT COUNT(*) FROM pacientes) as total_pacientes,
+          (SELECT COUNT(*) FROM atendimentos WHERE status = 'Agendado') as agendados,
+          (SELECT COUNT(*) FROM atendimentos WHERE status = 'Atendido') as atendidos,
+          (SELECT COUNT(*) FROM atendimentos WHERE status IN ('Concluido','Concluído')) as concluidos,
+          (SELECT COUNT(*) FROM atendimentos WHERE status = 'Cancelado') as cancelados,
+          (SELECT COUNT(DISTINCT empresa) FROM atendimentos) as total_empresas,
+          (SELECT COUNT(*) FROM atendimentos WHERE data = CURRENT_DATE) as atendimentos_hoje,
+          (SELECT COUNT(*) FROM atendimentos WHERE data >= date_trunc('month', CURRENT_DATE)) as atendimentos_mes
+      `,
+      sql`SELECT modalidade, COUNT(*) as total FROM atendimentos GROUP BY modalidade ORDER BY total DESC`,
+      sql`SELECT empresa, COUNT(*) as total FROM atendimentos GROUP BY empresa ORDER BY total DESC LIMIT 10`,
+    ]);
+    const stats = statsRows;
 
     return jsonOk({
       total_atendimentos: parseInt(stats[0]?.total_atendimentos ?? "0"),

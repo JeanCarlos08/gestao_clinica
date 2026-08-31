@@ -154,4 +154,20 @@ export async function ensureSchema() {
       criado_em TIMESTAMPTZ DEFAULT NOW(),
       atualizado_em TIMESTAMPTZ DEFAULT NOW()
     )`;
+
+  // ── Índices para performance (P0) ──
+  await sql`CREATE INDEX IF NOT EXISTS idx_atend_paciente ON atendimentos(paciente_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_atend_data_hora ON atendimentos(data DESC, hora DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_atend_status ON atendimentos(status)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_atend_empresa ON atendimentos(empresa)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_atend_modalidade ON atendimentos(modalidade)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_pacientes_nome ON pacientes(nome)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_pacientes_empresa ON pacientes(empresa)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_documentos_tipo ON documentos(tipo)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_documentos_criado ON documentos(criado_em DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_auditoria_criado ON auditoria(criado_em DESC)`;
+  // pg_trgm para ILIKE rápido (se extensão disponível)
+  try { await sql`CREATE EXTENSION IF NOT EXISTS pg_trgm`; } catch {}
+  try { await sql`CREATE INDEX IF NOT EXISTS idx_pac_nome_trgm ON pacientes USING gin (nome gin_trgm_ops)`; } catch {}
+  try { await sql`CREATE INDEX IF NOT EXISTS idx_pac_empresa_trgm ON pacientes USING gin (empresa gin_trgm_ops)`; } catch {}
 }

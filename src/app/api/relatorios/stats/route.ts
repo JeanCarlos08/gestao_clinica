@@ -19,19 +19,23 @@ export async function GET(request: NextRequest) {
       const start = dataInicio || "1900-01-01";
       const end = dataFim || "2099-12-31";
 
-      total = await sql`SELECT COUNT(*) as cnt FROM atendimentos WHERE data >= ${start} AND data <= ${end}`;
-      porStatus = await sql`SELECT status, COUNT(*) as total FROM atendimentos WHERE data >= ${start} AND data <= ${end} GROUP BY status ORDER BY total DESC`;
-      porModalidade = await sql`SELECT modalidade, COUNT(*) as total FROM atendimentos WHERE data >= ${start} AND data <= ${end} GROUP BY modalidade ORDER BY total DESC`;
-      porEmpresa = await sql`SELECT empresa, COUNT(*) as total FROM atendimentos WHERE data >= ${start} AND data <= ${end} GROUP BY empresa ORDER BY total DESC LIMIT 10`;
-      porMes = await sql`SELECT TO_CHAR(data, 'YYYY-MM') as mes, COUNT(*) as total FROM atendimentos WHERE data >= ${start} AND data <= ${end} GROUP BY mes ORDER BY mes`;
-      porPaciente = await sql`SELECT COALESCE(p.nome, a.nome) as paciente, COUNT(*) as total FROM atendimentos a LEFT JOIN pacientes p ON p.id = a.paciente_id WHERE a.data >= ${start} AND a.data <= ${end} GROUP BY paciente ORDER BY total DESC LIMIT 10`;
+      [total, porStatus, porModalidade, porEmpresa, porMes, porPaciente] = await Promise.all([
+        sql`SELECT COUNT(*) as cnt FROM atendimentos WHERE data >= ${start} AND data <= ${end}`,
+        sql`SELECT status, COUNT(*) as total FROM atendimentos WHERE data >= ${start} AND data <= ${end} GROUP BY status ORDER BY total DESC`,
+        sql`SELECT modalidade, COUNT(*) as total FROM atendimentos WHERE data >= ${start} AND data <= ${end} GROUP BY modalidade ORDER BY total DESC`,
+        sql`SELECT empresa, COUNT(*) as total FROM atendimentos WHERE data >= ${start} AND data <= ${end} GROUP BY empresa ORDER BY total DESC LIMIT 10`,
+        sql`SELECT TO_CHAR(data, 'YYYY-MM') as mes, COUNT(*) as total FROM atendimentos WHERE data >= ${start} AND data <= ${end} GROUP BY mes ORDER BY mes`,
+        sql`SELECT COALESCE(p.nome, a.nome) as paciente, COUNT(*) as total FROM atendimentos a LEFT JOIN pacientes p ON p.id = a.paciente_id WHERE a.data >= ${start} AND a.data <= ${end} GROUP BY paciente ORDER BY total DESC LIMIT 10`,
+      ]);
     } else {
-      total = await sql`SELECT COUNT(*) as cnt FROM atendimentos`;
-      porStatus = await sql`SELECT status, COUNT(*) as total FROM atendimentos GROUP BY status ORDER BY total DESC`;
-      porModalidade = await sql`SELECT modalidade, COUNT(*) as total FROM atendimentos GROUP BY modalidade ORDER BY total DESC`;
-      porEmpresa = await sql`SELECT empresa, COUNT(*) as total FROM atendimentos GROUP BY empresa ORDER BY total DESC LIMIT 10`;
-      porMes = await sql`SELECT TO_CHAR(data, 'YYYY-MM') as mes, COUNT(*) as total FROM atendimentos GROUP BY mes ORDER BY mes`;
-      porPaciente = await sql`SELECT COALESCE(p.nome, a.nome) as paciente, COUNT(*) as total FROM atendimentos a LEFT JOIN pacientes p ON p.id = a.paciente_id GROUP BY paciente ORDER BY total DESC LIMIT 10`;
+      [total, porStatus, porModalidade, porEmpresa, porMes, porPaciente] = await Promise.all([
+        sql`SELECT COUNT(*) as cnt FROM atendimentos`,
+        sql`SELECT status, COUNT(*) as total FROM atendimentos GROUP BY status ORDER BY total DESC`,
+        sql`SELECT modalidade, COUNT(*) as total FROM atendimentos GROUP BY modalidade ORDER BY total DESC`,
+        sql`SELECT empresa, COUNT(*) as total FROM atendimentos GROUP BY empresa ORDER BY total DESC LIMIT 10`,
+        sql`SELECT TO_CHAR(data, 'YYYY-MM') as mes, COUNT(*) as total FROM atendimentos GROUP BY mes ORDER BY mes`,
+        sql`SELECT COALESCE(p.nome, a.nome) as paciente, COUNT(*) as total FROM atendimentos a LEFT JOIN pacientes p ON p.id = a.paciente_id GROUP BY paciente ORDER BY total DESC LIMIT 10`,
+      ]);
     }
 
     return jsonOk({

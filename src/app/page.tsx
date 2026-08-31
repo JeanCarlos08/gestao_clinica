@@ -76,14 +76,12 @@ export default function LoginPage() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         .auth-root {
           min-height: 100vh;
           display: flex;
-          font-family: 'Inter', system-ui, sans-serif;
+          font-family: var(--font-inter), 'Inter', system-ui, sans-serif;
           background: #020d0d;
           overflow: hidden;
           position: relative;

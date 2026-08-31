@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Manrope } from "next/font/google";
+import { Manrope, Inter } from "next/font/google";
 import Sidebar from "@/components/Sidebar";
 import { ToastProvider } from "@/components/Toast";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -7,9 +7,22 @@ import PageTransition from "@/components/PageTransition";
 import dynamic from "next/dynamic";
 import "./globals.css";
 
-const AISidebar = dynamic(() => import("@/components/AISidebar"), { ssr: false });
+const AISidebar = dynamic(() => import("@/components/AISidebar"), { ssr: false, loading: () => null });
 
-const manrope = Manrope({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"] });
+const manrope = Manrope({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+  variable: "--font-manrope",
+  preload: true,
+});
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "800", "900"],
+  display: "swap",
+  variable: "--font-inter",
+  preload: true,
+});
 
 export const metadata: Metadata = {
   title: "Clínica IA",
@@ -34,8 +47,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR">
-      <body className={`${manrope.className} bg-[var(--background)] text-[var(--foreground)] antialiased flex h-dvh overflow-hidden app-premium-bg`}>
+    <html lang="pt-BR" className={`${manrope.variable} ${inter.variable}`}>
+      <body className={`font-sans bg-[var(--background)] text-[var(--foreground)] antialiased flex h-dvh overflow-hidden app-premium-bg`} style={{ fontFamily: "var(--font-inter), var(--font-manrope), system-ui, sans-serif" }}>
         <Sidebar />
         <main className="flex-1 flex flex-col h-full overflow-hidden bg-[var(--background)] pt-14 md:pt-0">
           <ToastProvider>

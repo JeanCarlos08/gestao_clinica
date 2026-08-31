@@ -11,7 +11,6 @@ import {
 import { getLoggedUserProfile } from "@/lib/auth";
 import { swrFetcher, API as API_BASE } from "@/lib/api";
 import EmptyIllustration from "@/components/EmptyIllustration";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 interface DashboardStats {
   total_atendimentos: number;
@@ -56,7 +55,10 @@ interface DashboardConsultationCard {
 type BadgeTone = "neutral" | "positive" | "warning";
 
 const weekdayOrder = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-const AttendanceChart = dynamic<AttendanceChartProps>(() => Promise.resolve(AttendanceChartInner), { ssr: false });
+const AttendanceChart = dynamic(() => import("@/components/DashboardChart"), {
+  ssr: false,
+  loading: () => <div className="h-[280px] w-full flex items-center justify-center"><div className="skeleton w-full h-full rounded-xl" /></div>,
+});
 
 // ── Counter animation hook ─────────────────────────────────
 function useCountUp(target: number, duration = 1200): number {
@@ -329,49 +331,6 @@ function MetricCard({ title, value, suffix, change, tone = "neutral", icon: Icon
       <p className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight relative z-10">
         {new Intl.NumberFormat("pt-BR").format(animated)}{suffix}
       </p>
-    </div>
-  );
-}
-
-// ── Area Chart ────────────────────────────────────────────────
-function AttendanceChartInner({ data }: AttendanceChartProps) {
-  return (
-    <div className="h-[280px] w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: -10 }}>
-          <defs>
-            <linearGradient id="colorAtend" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%"   stopColor="#14b8a6" stopOpacity={0.25} />
-              <stop offset="95%"  stopColor="#14b8a6" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
-          <XAxis dataKey="name" stroke="#3d5554" tick={{ fill: "#6b8e8a", fontSize: 11 }} axisLine={false} tickLine={false} />
-          <YAxis stroke="#3d5554" tick={{ fill: "#6b8e8a", fontSize: 11 }} axisLine={false} tickLine={false} />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: "rgba(8,15,9,0.95)",
-              borderColor: "rgba(20,184,166,0.2)",
-              borderRadius: "12px",
-              color: "#fff",
-              boxShadow: "0 16px 48px rgba(0,0,0,0.6)",
-              backdropFilter: "blur(16px)",
-            }}
-            itemStyle={{ color: "#2dd4bf", fontWeight: 700 }}
-            labelStyle={{ color: "#6b8e8a", fontSize: 11 }}
-          />
-          <Area
-            type="monotone"
-            dataKey="atendimentos"
-            stroke="#14b8a6"
-            strokeWidth={2.5}
-            fill="url(#colorAtend)"
-            dot={{ fill: "#020d0d", stroke: "#14b8a6", strokeWidth: 2, r: 4 }}
-            activeDot={{ r: 6, fill: "#14b8a6", stroke: "#fff", strokeWidth: 2 }}
-            animationDuration={1500}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
     </div>
   );
 }
