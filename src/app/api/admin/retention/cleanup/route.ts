@@ -16,12 +16,12 @@ export async function POST(request: NextRequest) {
     const auditCutoff = new Date(Date.now() - auditDays * 86400000).toISOString();
     const loginCutoff = new Date(Date.now() - loginDays * 86400000).toISOString();
 
-    const auditResult = await sql`DELETE FROM auditoria WHERE criado_em < ${auditCutoff}`;
-    const loginResult = await sql`DELETE FROM login_attempts WHERE tentado_em < ${loginCutoff}`;
+    const auditResult = await sql`DELETE FROM auditoria WHERE criado_em < ${auditCutoff} RETURNING 1`;
+    const loginResult = await sql`DELETE FROM login_attempts WHERE tentado_em < ${loginCutoff} RETURNING 1`;
 
     return jsonOk({
-      audit_logs_removed: auditResult.count,
-      login_attempts_removed: loginResult.count,
+      audit_logs_removed: auditResult.length,
+      login_attempts_removed: loginResult.length,
       audit_retention_days: auditDays,
       login_retention_days: loginDays,
     });

@@ -1,56 +1,53 @@
-# Gestão Clínica (Vercel + Render)
+# Gestão Clínica
 
-Estrutura simplificada para produção:
+Sistema de gestão clínica full-stack, deploy 100% na **Vercel**.
 
-- `frontend/`: Next.js 14 (deploy na Vercel)
-- `backend/`: FastAPI (deploy no Render)
-- Banco: PostgreSQL via `DATABASE_URL`
+- **Framework**: Next.js 14 (App Router) — API Routes substituem o antigo backend FastAPI
+- **Banco**: PostgreSQL via Neon Serverless (`@neondatabase/serverless`)
+- **Auth**: JWT (access + refresh) com `jose` e `bcryptjs`
+- **IA**: Google Gemini (`@google/genai`) — diagnósticos, pareceres, chat
+- **PWA**: Suporte a instalação com service worker (Workbox)
 
-## Infraestrutura alvo
+## Infraestrutura
 
-- Frontend: Vercel com `Root Directory = frontend`
-- Backend: Render Web Service usando `backend/Dockerfile`
-- Comunicação: frontend chama `/api/*` e o rewrite aponta para o backend
+- **Vercel** (framework `nextjs`) — configuração em `vercel.json`
+- Banco Neon (serverless, edge-compatible)
 
-## Variáveis obrigatórias
+## Variáveis de ambiente obrigatórias
 
-### Render (backend)
+| Variável | Descrição |
+|---|---|
+| `DATABASE_URL` | Connection string do PostgreSQL (Neon) |
+| `APP_SECRET_KEY` | Chave secreta da aplicação |
+| `JWT_SECRET_KEY` | Chave para assinar JWT |
+| `JWT_REFRESH_SECRET_KEY` | Chave para refresh token |
+| `APP_ADMIN_USER` | Login do admin inicial |
+| `APP_ADMIN_PASS` | Senha do admin inicial |
+| `ALLOWED_ORIGINS` | Origens permitidas (CORS) |
+| `NEXT_PUBLIC_API_URL` | URL base da API (opcional, auto-detected) |
 
-- `DATABASE_URL`
-- `APP_SECRET_KEY`
-- `JWT_SECRET_KEY`
-- `APP_ADMIN_USER`
-- `APP_ADMIN_PASS`
-- `ALLOWED_ORIGINS`
+### IA / Laudos
 
-### Render (IA / laudos)
+| Variável | Descrição |
+|---|---|
+| `GOOGLE_API_KEY` | Chave da API Gemini |
+| `GEMINI_MODEL` | Modelo Gemini (padrão: `gemini-2.5-flash`) |
+| `GEMINI_FALLBACK_MODELS` | Modelos fallback (csv, opcional) |
+| `GOOGLE_DOCS_TEMPLATE_ID` | Template para geração de laudos |
+| `GOOGLE_SERVICE_ACCOUNT_JSON_B64` | Credencial service account (base64) |
 
-- `GOOGLE_API_KEY`
-- `GEMINI_MODEL` (opcional, padrão: `gemini-2.5-flash`)
-- `GEMINI_FALLBACK_MODELS` (opcional, csv)
-- `GOOGLE_DOCS_TEMPLATE_ID` (se usar laudos)
-- `GOOGLE_SERVICE_ACCOUNT_JSON_B64` (se usar laudos)
-- `CREDENTIALS_SOURCE=env` (se usar laudos)
+### OAuth Social
 
-### Vercel (frontend)
-
-- `BACKEND_API_URL=https://SEU-BACKEND-RENDER`
-- `NEXT_PUBLIC_API_URL` opcional
+| Variável | Descrição |
+|---|---|
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Login com Google |
+| `MICROSOFT_CLIENT_ID` / `MICROSOFT_CLIENT_SECRET` | Login com Microsoft |
+| `APPLE_CLIENT_ID` / `APPLE_CLIENT_SECRET` | Login com Apple |
+| `NEXT_PUBLIC_APP_URL` | URL pública da aplicação (para callbacks OAuth) |
 
 ## Execução local
 
-### Backend
-
 ```bash
-cd backend
-pip install -r requirements.txt
-uvicorn src.infrastructure.api.index:app --reload --host 0.0.0.0 --port 8000
-```
-
-### Frontend
-
-```bash
-cd frontend
 npm install
 npm run dev
 ```
@@ -60,25 +57,16 @@ npm run dev
 - Configuração (logo/foto do usuário): `POST /api/configuracoes/photo`
 - Paciente: `POST /api/pacientes/{slug}/photo`
 
-Observação: imagens são salvas em base64 em `user_preferences`.
+Imagens são salvas em base64 em `user_preferences`.
 
-## Google Docs integration (test & configuration)
+## Google Docs integration
 
-To test the Google Docs editor end-to-end you need service account credentials and a Google Docs template ID (for laudo generation) or an existing doc id for manual testing.
+Para testar a integração com Google Docs:
 
-1. Provide credentials for Google APIs. Options supported by the project (see `backend/src/services/credentials_loader.py`):
-	- Place `credentials.json` in the project root (recommended for local dev).
-	- Set `GOOGLE_SERVICE_ACCOUNT_JSON_B64` with base64-encoded JSON.
-	- Configure Secret Manager (set `CREDENTIALS_SOURCE=secret_manager` and related env vars).
-
-2. (Optional) Configure `GOOGLE_DOCS_TEMPLATE_ID` in the `.env` to enable automatic laudo generation from a template.
-
-3. To create a test Google Doc using the loaded service account credentials run:
+1. Configure `GOOGLE_SERVICE_ACCOUNT_JSON_B64` com as credenciais da service account (base64).
+2. (Opcional) Configure `GOOGLE_DOCS_TEMPLATE_ID` para geração automática de laudos.
+3. Crie um documento de teste:
 
 ```bash
-python backend/scripts/create_test_doc.py
+npx tsx scripts/create_test_doc.ts
 ```
-
-The script prints the newly created `doc_id` and a view URL you can use to test the modal in the frontend.
-
-If you prefer, provide an existing `doc_id` and open the modal from the frontend page for a patient.

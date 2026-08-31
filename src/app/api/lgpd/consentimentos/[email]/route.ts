@@ -10,6 +10,6 @@ export async function GET(request: NextRequest, { params }: { params: { email: s
 
 export async function DELETE(request: NextRequest, { params }: { params: { email: string } }) {
   const email = decodeURIComponent(params.email);
-  const result = await sql`UPDATE consentimentos SET revogado = true WHERE titular_email = ${email} AND revogado = false`;
-  return jsonOk({ sucesso: true, revogados: result.count, mensagem: `${result.count} consentimento(s) revogado(s).` });
+  const result = await sql`UPDATE consentimentos SET revogado = true WHERE titular_email = ${email} AND revogado = false RETURNING id`;
+  return jsonOk({ sucesso: true, revogados: result.length, mensagem: `${result.length} consentimento(s) revogado(s).` });
 }

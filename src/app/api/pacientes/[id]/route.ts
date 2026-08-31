@@ -67,9 +67,10 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         observacoes = COALESCE(${observacoes}, observacoes),
         atualizado_em = NOW()
       WHERE id = ${id}
+      RETURNING id
     `;
 
-    if (result.count === 0) return jsonError("Paciente não encontrado.", 404);
+    if (result.length === 0) return jsonError("Paciente não encontrado.", 404);
 
     const updated = await sql`SELECT * FROM pacientes WHERE id = ${id}`;
     return jsonOk(mapPaciente(updated[0]));
@@ -85,8 +86,8 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
   const id = parseInt(params.id);
   try {
     await sql`UPDATE atendimentos SET paciente_id = NULL WHERE paciente_id = ${id}`;
-    const result = await sql`DELETE FROM pacientes WHERE id = ${id}`;
-    if (result.count === 0) return jsonError("Paciente não encontrado.", 404);
+    const result = await sql`DELETE FROM pacientes WHERE id = ${id} RETURNING id`;
+    if (result.length === 0) return jsonError("Paciente não encontrado.", 404);
     return jsonOk({ mensagem: "Paciente excluído com sucesso." });
   } catch (e: any) {
     return jsonError("Erro ao excluir: " + e.message, 500);

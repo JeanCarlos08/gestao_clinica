@@ -14,13 +14,13 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const consentResult = await sql`DELETE FROM consentimentos WHERE titular_email = ${email}`;
+    const consentResult = await sql`DELETE FROM consentimentos WHERE titular_email = ${email} RETURNING id`;
     let anonimizados = 0;
 
     if (nome) {
-      const r1 = await sql`UPDATE atendimentos SET nome = '[DADOS REMOVIDOS - LGPD Art.18]' WHERE LOWER(nome) LIKE LOWER(${`%${nome}%`})`;
-      const r2 = await sql`UPDATE pacientes SET nome = '[DADOS REMOVIDOS - LGPD Art.18]', cpf = NULL, telefone = NULL, email = NULL, endereco = NULL, observacoes = NULL, foto = NULL, atualizado_em = NOW() WHERE LOWER(nome) LIKE LOWER(${`%${nome}%`})`;
-      anonimizados = r1.count + r2.count;
+      const r1 = await sql`UPDATE atendimentos SET nome = '[DADOS REMOVIDOS - LGPD Art.18]' WHERE LOWER(nome) LIKE LOWER(${`%${nome}%`}) RETURNING id`;
+      const r2 = await sql`UPDATE pacientes SET nome = '[DADOS REMOVIDOS - LGPD Art.18]', cpf = NULL, telefone = NULL, email = NULL, endereco = NULL, observacoes = NULL, foto = NULL, atualizado_em = NOW() WHERE LOWER(nome) LIKE LOWER(${`%${nome}%`}) RETURNING id`;
+      anonimizados = r1.length + r2.length;
     }
 
     const crypto = await import("crypto");
@@ -28,13 +28,13 @@ export async function POST(request: NextRequest) {
 
     const audit = await sql`
       INSERT INTO lgpd_esquecimentos (titular_email, titular_hash, consentimentos_removidos, atendimentos_anonimizados)
-      VALUES (${email}, ${titularHash}, ${consentResult.count}, ${anonimizados})
+      VALUES (${email}, ${titularHash}, ${consentResult.length}, ${anonimizados})
       RETURNING id
     `;
 
     return jsonOk({
       executado_em: new Date().toISOString(),
-      consentimentos_removidos: consentResult.count,
+      consentimentos_removidos: consentResult.length,
       atendimentos_anonimizados: anonimizados,
       auditoria_id: audit[0].id,
       sucesso: true,

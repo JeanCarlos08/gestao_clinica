@@ -16,8 +16,8 @@ export async function POST(request: NextRequest) {
 
   let updated = 0;
   for (const id of ids) {
-    const result = await sql`UPDATE atendimentos SET status = ${status} WHERE id = ${id}`;
-    if (result.count > 0) updated++;
+    const result = await sql`UPDATE atendimentos SET status = ${status} WHERE id = ${id} RETURNING id`;
+    if (result.length > 0) updated++;
   }
 
   return jsonOk({ updated, total: ids.length });

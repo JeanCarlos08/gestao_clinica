@@ -19,9 +19,10 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         data = ${data}, hora = ${hora}, status = ${status || "Agendado"},
         paciente_id = ${paciente_id || null}
       WHERE id = ${id}
+      RETURNING id
     `;
 
-    if (result.count === 0) return jsonError("Atendimento não encontrado.", 404);
+    if (result.length === 0) return jsonError("Atendimento não encontrado.", 404);
     return jsonOk({ mensagem: "Atendimento atualizado com sucesso." });
   } catch (e: any) {
     return jsonError("Erro ao atualizar: " + e.message, 500);
@@ -34,8 +35,8 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 
   const id = parseInt(params.id);
   try {
-    const result = await sql`DELETE FROM atendimentos WHERE id = ${id}`;
-    if (result.count === 0) return jsonError("Atendimento não encontrado.", 404);
+    const result = await sql`DELETE FROM atendimentos WHERE id = ${id} RETURNING id`;
+    if (result.length === 0) return jsonError("Atendimento não encontrado.", 404);
     return jsonOk({ mensagem: "Atendimento excluído com sucesso." });
   } catch (e: any) {
     return jsonError("Erro ao excluir: " + e.message, 500);

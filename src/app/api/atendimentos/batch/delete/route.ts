@@ -16,8 +16,8 @@ export async function POST(request: NextRequest) {
 
   let deleted = 0;
   for (const id of ids) {
-    const result = await sql`DELETE FROM atendimentos WHERE id = ${id}`;
-    if (result.count > 0) deleted++;
+    const result = await sql`DELETE FROM atendimentos WHERE id = ${id} RETURNING id`;
+    if (result.length > 0) deleted++;
   }
 
   return jsonOk({ deleted, total: ids.length });

@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import { config } from "@/lib/config";
 import { jsonError } from "@/lib/utils";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   if (!config.googleOAuthClientId) {
     return jsonError("Login com Google não configurado.", 503);

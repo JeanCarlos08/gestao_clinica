@@ -10,8 +10,8 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 
   const id = parseInt(params.id);
   try {
-    const result = await sql`DELETE FROM arquivos WHERE id = ${id}`;
-    if (result.count === 0) return jsonError("Arquivo não encontrado.", 404);
+    const result = await sql`DELETE FROM arquivos WHERE id = ${id} RETURNING id`;
+    if (result.length === 0) return jsonError("Arquivo não encontrado.", 404);
     return jsonOk({ mensagem: "Arquivo excluído com sucesso." });
   } catch (e: any) {
     return jsonError("Erro: " + e.message, 500);
