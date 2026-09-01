@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   FileEdit, Search, Loader2, RefreshCw, FileText,
-  ChevronRight, AlertCircle,
+  ChevronRight, AlertCircle, LayoutGrid, List, Building2,
 } from "lucide-react";
 import EmptyIllustration from "@/components/EmptyIllustration";
 import GoogleDocsModal from "@/components/GoogleDocsModal";
@@ -25,6 +25,7 @@ export default function DocumentosPage() {
   const [q, setQ] = useState("");
   const [modalDocId, setModalDocId] = useState<string | null>(null);
   const [docErrors, setDocErrors] = useState<Record<number, string>>({});
+  const [viewMode, setViewMode] = useState<"grid" | "lista">("grid");
 
   const fetchPatients = useCallback(async () => {
     const token = localStorage.getItem("token");
@@ -92,19 +93,28 @@ export default function DocumentosPage() {
         </button>
       </div>
 
-      {/* Search */}
-      <div className="premium-surface rounded-xl p-4 mb-6 flex items-center gap-3 border border-[var(--border)] focus-within:border-[var(--primary)]/30 transition-colors">
-        <Search size={16} className="text-[var(--text-muted)] flex-shrink-0" />
-        <input
-          type="text"
-          value={q}
-          onChange={e => setQ(e.target.value)}
-          placeholder="Buscar paciente..."
-          className="w-full bg-transparent outline-none text-sm text-white placeholder:text-[var(--text-muted)]"
-        />
-        {q && (
-          <button onClick={() => setQ("")} className="text-[var(--text-muted)] hover:text-white text-xs">✕</button>
-        )}
+      {/* Search + View Toggle — app moderno */}
+      <div className="flex flex-col md:flex-row gap-3 mb-6">
+        <div className="flex-1 premium-surface rounded-xl p-3 flex items-center gap-3 border border-[var(--border)] focus-within:border-[var(--primary)]/30 transition-colors">
+          <Search size={16} className="text-[var(--text-muted)] flex-shrink-0 ml-1" />
+          <input
+            type="text"
+            value={q}
+            onChange={e => setQ(e.target.value)}
+            placeholder="Buscar paciente, empresa..."
+            className="w-full bg-transparent outline-none text-sm text-white placeholder:text-[var(--text-muted)]"
+          />
+          {q && (
+            <button onClick={() => setQ("")} className="text-[var(--text-muted)] hover:text-white text-xs p-1">✕</button>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="premium-surface rounded-xl p-1 flex items-center gap-1 border border-[var(--border)]">
+            <button onClick={() => setViewMode("grid")} className={`px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${viewMode==="grid" ? "bg-[var(--primary)] text-black shadow-md" : "text-[var(--text-muted)] hover:text-white"}`}><LayoutGrid size={14} /> Grid</button>
+            <button onClick={() => setViewMode("lista")} className={`px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${viewMode==="lista" ? "bg-[var(--primary)] text-black shadow-md" : "text-[var(--text-muted)] hover:text-white"}`}><List size={14} /> Lista</button>
+          </div>
+          <span className="hidden sm:flex text-xs text-[var(--text-muted)]">{filtered.length} pacientes</span>
+        </div>
       </div>
 
       {/* Patient list */}
@@ -130,13 +140,13 @@ export default function DocumentosPage() {
           </p>
           <p className="text-[var(--text-muted)] text-sm mt-1">Registre atendimentos para que pacientes apareçam aqui.</p>
         </div>
-      ) : (
+      ) : viewMode==="grid" ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((patient, idx) => (
             <div
               key={patient.id}
               className="premium-surface rounded-2xl p-5 border border-[var(--border)] hover:border-[var(--border-light)] hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 group list-item-fade"
-              style={{ animationDelay: `${idx * 50}ms` }}
+              style={{ animationDelay: `${idx * 30}ms` }}
             >
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-12 h-12 rounded-full border-2 border-[var(--border)] group-hover:border-[var(--primary)]/30 transition-colors bg-gradient-to-br from-[var(--primary)]/20 to-[var(--card)] flex items-center justify-center flex-shrink-0">
@@ -167,6 +177,26 @@ export default function DocumentosPage() {
               </button>
             </div>
           ))}
+        </div>
+      ) : (
+        <div className="premium-surface border border-[var(--border)] rounded-2xl overflow-hidden">
+          <div className="divide-y divide-[var(--border)]">
+            {filtered.map(patient => {
+              const initials = patient.nome.split(" ").filter(Boolean).slice(0,2).map(p=>p[0]?.toUpperCase()).join("");
+              return (
+                <div key={patient.id} className="group flex items-center gap-4 p-4 hover:bg-[var(--card-hover)] transition-colors">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-500/20 to-[var(--card)] border border-[var(--border)] group-hover:border-teal-500/30 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">{initials || <FileText size={14} />}</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-bold text-white truncate group-hover:text-teal-400 transition-colors">{patient.nome}</div>
+                    <div className="text-xs text-[var(--text-muted)] flex items-center gap-1 truncate"><Building2 size={10} /> {patient.empresa || "Sem empresa"}</div>
+                    {docErrors[patient.id] && <div className="text-[10px] text-red-400 mt-1 flex items-center gap-1"><AlertCircle size={10} />{docErrors[patient.id]}</div>}
+                  </div>
+                  <button onClick={() => openEditor(patient)} className="hidden sm:inline-flex items-center gap-1.5 bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] border border-[var(--primary)]/20 px-3 py-2 rounded-lg text-xs font-bold transition-colors"><FileEdit size={13} /> Editar</button>
+                  <button onClick={() => openEditor(patient)} className="sm:hidden p-2 rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/20"><FileEdit size={14} /></button>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 

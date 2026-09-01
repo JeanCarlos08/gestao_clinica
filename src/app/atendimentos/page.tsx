@@ -5,8 +5,9 @@ import useSWR from "swr";
 import {
   CalendarDays, Clock, PlayCircle, Plus, Search,
   XCircle, RefreshCw, Filter, Sparkles, Building2, User,
-  LayoutGrid, List, Kanban, MoreHorizontal, ChevronRight, CheckCircle2, AlertCircle
+  LayoutGrid, List, Kanban, MoreHorizontal, ChevronRight, CheckCircle2, AlertCircle, Calendar
 } from "lucide-react";
+import AppointmentCalendar from "@/components/AppointmentCalendar";
 import EmptyIllustration from "@/components/EmptyIllustration";
 import { swrFetcher, API as API_BASE } from "@/lib/api";
 
@@ -47,7 +48,7 @@ export default function AtendimentosPage() {
   const [aiResult, setAiResult] = useState<string | null>(null);
 
   // Modern view state
-  const [viewMode, setViewMode] = useState<"kanban" | "lista">("kanban");
+  const [viewMode, setViewMode] = useState<"kanban" | "lista" | "calendario">("kanban");
   const [statusFilter, setStatusFilter] = useState<string>("todos");
 
   useEffect(() => { const t = setTimeout(() => setDebouncedQ(q), 300); return () => clearTimeout(t); }, [q]);
@@ -172,6 +173,7 @@ export default function AtendimentosPage() {
             <div className="premium-surface rounded-xl p-1 flex items-center gap-1 border border-[var(--border)]">
               <button onClick={() => setViewMode("kanban")} className={`px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${viewMode==="kanban" ? "bg-[var(--primary)] text-black shadow-md" : "text-[var(--text-muted)] hover:text-white"}`}><Kanban size={14} /> Kanban</button>
               <button onClick={() => setViewMode("lista")} className={`px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${viewMode==="lista" ? "bg-[var(--primary)] text-black shadow-md" : "text-[var(--text-muted)] hover:text-white"}`}><List size={14} /> Lista</button>
+              <button onClick={() => setViewMode("calendario")} className={`px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${viewMode==="calendario" ? "bg-[var(--primary)] text-black shadow-md" : "text-[var(--text-muted)] hover:text-white"}`}><Calendar size={14} /> Calendário</button>
             </div>
             <div className="hidden sm:flex items-center gap-2 text-xs text-[var(--text-muted)]">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> {paginated?.total ?? atendimentos.length} ativos
@@ -256,7 +258,7 @@ export default function AtendimentosPage() {
             );
           })}
         </div>
-      ) : (
+      ) : viewMode === "lista" ? (
         /* Lista moderna — sem <table>, app-style rows */
         <div className="premium-surface border border-[var(--border)] rounded-2xl overflow-hidden fade-up-delay-1">
           <div className="p-4 border-b border-[var(--border)] flex items-center justify-between bg-[var(--card)]/50 backdrop-blur-sm">
@@ -290,6 +292,10 @@ export default function AtendimentosPage() {
               );
             })}
           </div>
+        </div>
+      ) : (
+        <div className="fade-up-delay-1">
+          <AppointmentCalendar appointments={filteredAtendimentos.map(a => ({ id: a.id, nome: a.nome, empresa: a.empresa, modalidade: a.modalidade, status: a.status, data: a.data, hora: a.hora }))} onSelect={(a) => { const found = filteredAtendimentos.find(x => x.id === a.id); if(found){ setEditingId(found.id); setEmpresa(found.empresa); setNome(found.nome); setModalidade(found.modalidade); setData(found.data); setHora(found.hora); setStatus(found.status); setSelectedPacienteId(found.paciente_id||null); setPacienteSearch(""); setShowPacienteDropdown(false); setShowModal(true); } }} />
         </div>
       )}
 
