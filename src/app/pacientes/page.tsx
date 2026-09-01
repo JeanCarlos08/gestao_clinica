@@ -7,7 +7,7 @@ import useSWR from "swr";
 import {
   Search, Users, CalendarClock, Activity, RefreshCw, Loader2,
   Plus, XCircle, Edit3, Trash2, User, Phone, Mail, Building2, CreditCard, Save,
-  FileText,
+  FileText, LayoutGrid, List,
 } from "lucide-react";
 import EmptyIllustration from "@/components/EmptyIllustration";
 import { swrFetcher, API as API_BASE } from "@/lib/api";
@@ -61,6 +61,7 @@ export default function PacientesPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "lista">("grid");
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(q), 280);
@@ -195,17 +196,26 @@ export default function PacientesPage() {
         ))}
       </div>
 
-      {/* Search */}
-      <div className="premium-surface rounded-xl p-4 mb-6 flex items-center gap-3 border border-[var(--border)] focus-within:border-[var(--primary)]/30 transition-colors">
-        <Search size={16} className="text-[var(--text-muted)] flex-shrink-0" />
-        <input type="text" value={q} onChange={e => setQ(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && mutate()}
-          placeholder="Buscar por nome, empresa ou CPF..."
-          className="w-full bg-transparent outline-none text-sm text-white placeholder:text-[var(--text-muted)]" />
-        {q && <button onClick={() => setQ("")} className="text-[var(--text-muted)] hover:text-white text-xs">✕</button>}
+      {/* Search + View Toggle — app moderno */}
+      <div className="flex flex-col md:flex-row gap-3 mb-6">
+        <div className="flex-1 premium-surface rounded-xl p-3 flex items-center gap-3 border border-[var(--border)] focus-within:border-[var(--primary)]/30 transition-colors">
+          <Search size={16} className="text-[var(--text-muted)] flex-shrink-0 ml-1" />
+          <input type="text" value={q} onChange={e => setQ(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && mutate()}
+            placeholder="Buscar por nome, empresa ou CPF..."
+            className="w-full bg-transparent outline-none text-sm text-white placeholder:text-[var(--text-muted)]" />
+          {q && <button onClick={() => setQ("")} className="text-[var(--text-muted)] hover:text-white text-xs p-1">✕</button>}
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="premium-surface rounded-xl p-1 flex items-center gap-1 border border-[var(--border)]">
+            <button onClick={() => setViewMode("grid")} className={`px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${viewMode==="grid" ? "bg-[var(--primary)] text-black shadow-md" : "text-[var(--text-muted)] hover:text-white"}`}><LayoutGrid size={14} /> Grid</button>
+            <button onClick={() => setViewMode("lista")} className={`px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${viewMode==="lista" ? "bg-[var(--primary)] text-black shadow-md" : "text-[var(--text-muted)] hover:text-white"}`}><List size={14} /> Lista</button>
+          </div>
+          <span className="hidden sm:flex text-xs text-[var(--text-muted)]">{pacientes.length} pacientes</span>
+        </div>
       </div>
 
-      {/* Patient Grid */}
+      {/* Patient Views */}
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -225,15 +235,48 @@ export default function PacientesPage() {
           </p>
           <p className="text-[var(--text-muted)] text-sm mt-1">Clique em &quot;Novo Paciente&quot; para cadastrar.</p>
         </div>
-      ) : (
+      ) : viewMode === "grid" ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {pacientes.map((paciente, idx) => (
             <PatientCard
-              key={paciente.id} paciente={paciente} delay={idx * 50}
+              key={paciente.id} paciente={paciente} delay={idx * 30}
               onPhoto={uploadPhoto} onEdit={openEdit} onDelete={deletePaciente}
               onViewDocs={() => router.push(`/pacientes/${paciente.id}/doc-editor`)}
             />
           ))}
+        </div>
+      ) : (
+        <div className="premium-surface border border-[var(--border)] rounded-2xl overflow-hidden">
+          <div className="divide-y divide-[var(--border)]">
+            {pacientes.map(paciente => {
+              const initials = paciente.nome.split(" ").filter(Boolean).slice(0,2).map(p=>p[0]?.toUpperCase()).join("");
+              return (
+                <div key={paciente.id} className="group flex items-center gap-4 p-4 hover:bg-[var(--card-hover)] transition-colors">
+                  <div className="w-10 h-10 rounded-full border-2 border-[var(--border)] group-hover:border-[var(--primary)]/30 bg-gradient-to-br from-[var(--primary)]/20 to-[var(--card)] flex items-center justify-center text-white font-bold text-xs flex-shrink-0 overflow-hidden">
+                    {paciente.foto ? <Image src={paciente.foto} alt={paciente.nome} width={40} height={40} unoptimized className="w-full h-full object-cover" /> : initials}
+                  </div>
+                  <div className="min-w-0 flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 items-center">
+                    <div className="min-w-0">
+                      <div className="text-sm font-bold text-white truncate group-hover:text-[var(--primary)] transition-colors">{paciente.nome}</div>
+                      <div className="text-xs text-[var(--text-muted)] flex items-center gap-1 truncate"><Building2 size={10} /> {paciente.empresa || "Sem empresa"}</div>
+                    </div>
+                    <div className="flex items-center gap-2 sm:justify-center">
+                      <span className="inline-flex items-center gap-1 bg-[var(--background)] border border-[var(--border)] rounded-full px-2.5 py-1 text-xs"><Activity size={10} className="text-[var(--text-muted)]" />{paciente.total_atendimentos} atends.</span>
+                      <span className="hidden sm:inline-flex items-center gap-1 bg-[var(--background)] border border-[var(--border)] rounded-full px-2.5 py-1 text-xs text-[var(--text-muted)]"><CalendarClock size={10} />{paciente.ultimo_atendimento ? formatDate(paciente.ultimo_atendimento) : "—"}</span>
+                    </div>
+                    <div className="flex items-center justify-between sm:justify-end gap-2">
+                      <span className="text-xs font-bold text-white bg-[var(--primary)]/10 border border-[var(--primary)]/20 px-2.5 py-1 rounded-full">{paciente.modalidades_distintas} mods</span>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => openEdit(paciente)} className="p-2 rounded-lg bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] border border-[var(--primary)]/20 transition-colors"><Edit3 size={14} /></button>
+                        <button onClick={() => router.push(`/pacientes/${paciente.id}/doc-editor`)} className="hidden sm:inline-flex p-2 rounded-lg bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 border border-violet-500/20 transition-colors"><FileText size={14} /></button>
+                        <button onClick={() => deletePaciente(paciente.id)} className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition-colors"><Trash2 size={14} /></button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
