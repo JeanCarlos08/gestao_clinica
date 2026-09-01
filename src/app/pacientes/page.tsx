@@ -392,9 +392,9 @@ export default function PacientesPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-[var(--text-label)] uppercase tracking-wider mb-1.5 flex items-center gap-1"><Building2 size={12} /> Empresa</label>
-                  <input value={form.empresa} onChange={e => setField("empresa", e.target.value)}
-                    className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-white focus:border-[var(--primary)] focus:outline-none transition-colors" />
+                  <label className="block text-[11px] font-bold text-[var(--text-label)] uppercase tracking-wider mb-1.5 flex items-center gap-1"><Building2 size={12} /> Convênio / Origem <span className="text-[var(--text-muted)] normal-case font-normal">(opcional)</span></label>
+                  <input value={form.empresa} onChange={e => setField("empresa", e.target.value)} placeholder="Particular, Unimed..."
+                    className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none transition-colors" />
                 </div>
                 <div>
                   <label className="block text-[11px] font-bold text-[var(--text-label)] uppercase tracking-wider mb-1.5">Profissão</label>
