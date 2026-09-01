@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 
-const POLICY = `# Política de Privacidade — Clínica IA
+const POLICY = `# Política de Privacidade — MVP Psicologia
 
-**Controlador de Dados:** Clínica IA / mvpdepsicologia  
+**Controlador de Dados:** MVP Psicologia  
 **Encarregado de Dados (DPO):** Configurado em variável DPO_NOME / DPO_EMAIL  
 **Vigência:** A partir de 18/05/2026  
 **Lei aplicável:** LGPD — Lei nº 13.709/2018
@@ -13,7 +13,7 @@ const POLICY = `# Política de Privacidade — Clínica IA
 
 ## 1. Quem Somos
 
-A **Clínica IA** é um sistema de gestão clínica e elaboração de laudos psicológicos,
+A **MVP Psicologia** é um sistema de prontuário, agenda e evoluções para psicólogos,
 desenvolvido para auxiliar profissionais de psicologia no atendimento a empresas e pacientes.
 
 **Contato do Encarregado de Dados (DPO):**

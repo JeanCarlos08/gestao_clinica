@@ -1,7 +1,7 @@
 {
-  "name": "Gestão Clínica",
-  "short_name": "Clínica",
-  "description": "Gerenciamento de consultas, laudos e relatórios",
+  "name": "MVP Psicologia",
+  "short_name": "Psi MVP",
+  "description": "Prontuário, agenda e evoluções para psicólogos",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

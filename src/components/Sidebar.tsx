@@ -102,8 +102,8 @@ export default function Sidebar() {
               <Sparkles size={16} className="text-[#2dd4bf]" />
             </div>
             <div>
-              <div className="font-bold text-sm text-white tracking-tight leading-tight">Clínica IA</div>
-              <div className="text-[10px] text-[var(--text-muted)] tracking-wide">Portal Administrativo</div>
+              <div className="font-bold text-sm text-white tracking-tight leading-tight">MVP Psicologia</div>
+              <div className="text-[10px] text-[var(--text-muted)] tracking-wide">Prontuário • Agenda</div>
             </div>
             <div className="ml-auto flex flex-col items-end">
               <Clock />
@@ -184,7 +184,7 @@ export default function Sidebar() {
         </button>
         <div className="px-3 flex items-center gap-2 pt-1">
           <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] opacity-40" />
-          <span className="text-[9px] text-[var(--text-muted)]">Clínica IA · © 2026</span>
+          <span className="text-[9px] text-[var(--text-muted)]">MVP Psicologia · © 2026</span>
           <div className="ml-auto flex items-center gap-2">
             <Link href="/privacy" className="text-[9px] text-[var(--text-muted)] hover:text-white transition-colors">Privacy</Link>
             <Link href="/terms" className="text-[9px] text-[var(--text-muted)] hover:text-white transition-colors">Terms</Link>
@@ -210,7 +210,7 @@ export default function Sidebar() {
           <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#0d9488] to-[#134e4a] flex items-center justify-center">
             <Sparkles size={12} className="text-[#2dd4bf]" />
           </div>
-          <span className="font-bold text-sm tracking-tight gradient-text">Clínica IA</span>
+          <span className="font-bold text-sm tracking-tight gradient-text">MVP Psicologia</span>
         </div>
         <div className="w-9" />
       </header>

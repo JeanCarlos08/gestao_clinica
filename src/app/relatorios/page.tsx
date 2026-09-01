@@ -31,9 +31,10 @@ interface AtendimentoRelatorio {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  "Concluído": "#14b8a6", "Atendido": "#3b82f6",
-  "Agendado": "#f59e0b", "Cancelado": "#ef4444",
-  "Pendente": "#f97316", "Em andamento": "#a855f7",
+  "Concluído": "#10b981", "Atendido": "#3b82f6",
+  "Agendado": "#f59e0b", "Confirmado": "#06b6d4",
+  "Cancelado": "#ef4444", "Faltou": "#f97316",
+  "Reagendado": "#6366f1", "Pendente": "#f97316", "Em andamento": "#a855f7",
 };
 const COLORS = ["#14b8a6", "#3b82f6", "#a855f7", "#f59e0b", "#ef4444", "#06b6d4", "#ec4899"];
 
@@ -50,6 +51,8 @@ export default function RelatoriosPage() {
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
   const [activeTab, setActiveTab] = useState<"visao" | "lista">("visao");
+  const [listaQ, setListaQ] = useState("");
+  const [listaStatus, setListaStatus] = useState("todos");
 
   const fetchData = useCallback(async () => {
     const token = localStorage.getItem("token");
@@ -188,55 +191,70 @@ export default function RelatoriosPage() {
 
           {activeTab === "visao" && <Charts stats={stats} total={total} />}
 
-          {activeTab === "lista" && (
-            <div className="premium-surface border border-[var(--border)] rounded-2xl overflow-hidden">
-              <div className="p-4 border-b border-[var(--border)] flex items-center justify-between bg-[var(--card)]/50 backdrop-blur-sm">
-                <span className="font-semibold flex items-center gap-2 text-sm">
-                  <FileText size={16} className="text-[var(--primary)]" /> {atendimentos.length} registros <span className="text-[var(--text-muted)] font-normal hidden sm:inline">· lista moderna</span>
-                </span>
-                <button onClick={exportCSV} className="inline-flex items-center gap-1.5 bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] border border-[var(--primary)]/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
-                  <Download size={12} /> Exportar
-                </button>
-              </div>
-              {atendimentos.length === 0 ? (
-                <div className="p-12 text-center">
-                  <EmptyIllustration variant="report" size={80} />
-                  <p className="text-sm text-[var(--text-muted)] mt-3">Nenhum registro encontrado.</p>
-                  <p className="text-xs text-[var(--text-muted)] mt-1">Ajuste o período ou crie atendimentos</p>
+          {activeTab === "lista" && (() => {
+            const filtered = atendimentos.filter(a => {
+              const matchesQ = !listaQ || a.nome.toLowerCase().includes(listaQ.toLowerCase()) || a.empresa.toLowerCase().includes(listaQ.toLowerCase()) || a.modalidade.toLowerCase().includes(listaQ.toLowerCase());
+              const matchesStatus = listaStatus === "todos" || a.status === listaStatus;
+              return matchesQ && matchesStatus;
+            });
+            const statusOpts = ["todos", ...Array.from(new Set(atendimentos.map(a=>a.status)))];
+            return (
+            <div className="space-y-4">
+              {/* Filtros da lista - app style, não planilha */}
+              <div className="flex flex-col md:flex-row gap-3">
+                <div className="flex-1 premium-surface rounded-xl p-3 flex items-center gap-3 border border-[var(--border)] focus-within:border-[var(--primary)]/30 transition-colors">
+                  <FileText size={14} className="text-[var(--text-muted)] flex-shrink-0 ml-1" />
+                  <input value={listaQ} onChange={e=>setListaQ(e.target.value)} placeholder="Buscar paciente, convênio ou abordagem..." className="w-full bg-transparent outline-none text-sm text-white placeholder:text-[var(--text-muted)]" />
+                  {listaQ && <button onClick={()=>setListaQ("")} className="text-[var(--text-muted)] hover:text-white text-xs p-1">✕</button>}
                 </div>
-              ) : (
-                <div className="divide-y divide-[var(--border)] max-h-[65vh] overflow-y-auto scrollbar-thin">
-                  {atendimentos.map((a, i) => {
-                    const initials = a.nome.split(" ").filter(Boolean).slice(0,2).map(p=>p[0]?.toUpperCase()).join("");
-                    return (
-                      <div key={a.id} className="group flex items-center gap-4 p-4 hover:bg-[var(--card-hover)] transition-colors">
-                        <div className="hidden sm:flex w-7 h-7 rounded-full bg-[var(--card)] border border-[var(--border)] items-center justify-center text-[10px] font-bold text-[var(--text-muted)] flex-shrink-0">#{i+1}</div>
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[var(--primary)]/20 to-[var(--card)] border border-[var(--border)] group-hover:border-[var(--primary)]/30 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">{initials}</div>
-                        <div className="min-w-0 flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 items-center">
-                          <div className="min-w-0">
-                            <div className="text-sm font-bold text-white truncate group-hover:text-[var(--primary)] transition-colors">{a.nome}</div>
-                            <div className="text-xs text-[var(--text-muted)] truncate flex items-center gap-1"><Building2 size={10} /> {a.empresa} <span className="w-1 h-1 rounded-full bg-[var(--text-muted)]" /> {a.modalidade}</div>
-                          </div>
-                          <div className="flex sm:justify-center">
-                            <span className="inline-flex items-center gap-1.5 bg-[var(--background)] border border-[var(--border)] rounded-full px-3 py-1 text-xs">
-                              <Calendar size={12} className="text-[var(--text-muted)]" />{a.data} <Clock size={12} className="text-[var(--text-muted)] ml-1" />{a.hora}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between sm:justify-end gap-3">
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold border" style={{ background: `${STATUS_COLORS[a.status] || "#14b8a6"}14`, color: STATUS_COLORS[a.status] || "#14b8a6", borderColor: `${STATUS_COLORS[a.status] || "#14b8a6"}30` }}>{a.status}</span>
-                            <div className="flex items-center gap-1">
-                              {a.has_laudo ? <span className="bg-blue-500/15 text-blue-400 border border-blue-500/20 px-2 py-1 rounded-full text-[10px] font-bold">Laudo</span> : <span className="hidden sm:inline text-[10px] text-[var(--text-muted)]">—</span>}
-                              {a.has_avaliacao && <span className="bg-violet-500/15 text-violet-400 border border-violet-500/20 px-2 py-1 rounded-full text-[10px] font-bold">Aval</span>}
+                <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
+                  {statusOpts.map(s => (
+                    <button key={s} onClick={()=>setListaStatus(s)} className={`px-3 py-2 rounded-full text-xs font-semibold border whitespace-nowrap transition-all ${listaStatus===s ? "bg-[var(--primary)] text-black border-[var(--primary)] shadow-md" : "bg-[var(--card)] border-[var(--border)] text-[var(--text-muted)] hover:text-white hover:border-[var(--border-light)]"}`}>{s==="todos"?"Todos":s}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="premium-surface border border-[var(--border)] rounded-2xl overflow-hidden">
+                <div className="p-4 border-b border-[var(--border)] flex items-center justify-between bg-[var(--card)]/50 backdrop-blur-sm">
+                  <span className="font-semibold flex items-center gap-2 text-sm">
+                    <FileText size={16} className="text-[var(--primary)]" /> {filtered.length} sessões <span className="text-[var(--text-muted)] font-normal hidden sm:inline">· {listaStatus==="todos"?"todas":"filtrado"} • app view</span>
+                  </span>
+                  <button onClick={exportCSV} className="inline-flex items-center gap-1.5 bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] border border-[var(--primary)]/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
+                    <Download size={12} /> Exportar CSV
+                  </button>
+                </div>
+                {filtered.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <EmptyIllustration variant="report" size={80} />
+                    <p className="text-sm text-[var(--text-muted)] mt-3">Nenhum registro para este filtro.</p>
+                    <button onClick={()=>{setListaQ(""); setListaStatus("todos");}} className="text-xs text-[var(--primary)] underline mt-2">Limpar filtros</button>
+                  </div>
+                ) : (
+                  <div className="p-3 space-y-3 max-h-[65vh] overflow-y-auto scrollbar-thin bg-[var(--background)]/30">
+                    {filtered.map((a) => {
+                      const initials = a.nome.split(" ").filter(Boolean).slice(0,2).map(p=>p[0]?.toUpperCase()).join("");
+                      const color = STATUS_COLORS[a.status] || "#14b8a6";
+                      return (
+                        <div key={a.id} className="group bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 hover:border-[var(--primary)]/20 hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--primary)]/20 to-[var(--card)] border border-[var(--border)] group-hover:border-[var(--primary)]/30 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">{initials}</div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2 mb-1">
+                              <span className="text-sm font-bold text-white truncate group-hover:text-[var(--primary)] transition-colors">{a.nome}</span>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border flex-shrink-0" style={{ background: `${color}14`, color, borderColor: `${color}30` }}><span className="w-1.5 h-1.5 rounded-full mr-1.5 flex-shrink-0" style={{ background: color }} />{a.status}</span>
+                              {a.has_laudo && <span className="bg-blue-500/15 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full text-[10px] font-bold">Laudo</span>}
+                            </div>
+                            <div className="text-xs text-[var(--text-muted)] flex flex-wrap items-center gap-2">
+                              <span className="inline-flex items-center gap-1"><Calendar size={11} />{a.data}</span><span className="w-1 h-1 rounded-full bg-[var(--text-muted)]" /><span className="inline-flex items-center gap-1"><Clock size={11} />{a.hora}</span><span className="w-1 h-1 rounded-full bg-[var(--text-muted)] hidden sm:inline" /><span className="hidden sm:inline-flex items-center gap-1"><Building2 size={11} />{a.empresa || "Particular"}</span><span className="hidden sm:inline w-1 h-1 rounded-full bg-[var(--text-muted)]" /><span className="bg-white/5 border border-white/5 rounded-full px-2 py-0.5 text-[11px]">{a.modalidade}</span>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
-          )}
+            );
+          })()}
         </>
       )}
     </div>

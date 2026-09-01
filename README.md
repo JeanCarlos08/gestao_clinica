@@ -1,6 +1,6 @@
-# Gestão Clínica
+# MVP Psicologia
 
-Sistema de gestão clínica full-stack, deploy 100% na **Vercel**.
+Sistema **MVP focado em psicologia** — agenda, prontuário/evoluções sigilosas, laudos e relatórios. Full-stack deploy 100% na **Vercel** (fork de gestão clínica genérica).
 
 - **Framework**: Next.js 14 (App Router) — API Routes substituem o antigo backend FastAPI
 - **Banco**: PostgreSQL via Neon Serverless (`@neondatabase/serverless`)

@@ -339,10 +339,10 @@ export default function LoginPage() {
               <Sparkles size={12} /> Plataforma Premium
             </div>
             <h1 className="auth-left-title">
-              Gestão clínica<br />com <span>inteligência</span><br />artificial
+              Psicologia com<br /><span>prontuário</span><br />inteligente
             </h1>
             <p className="auth-left-desc">
-              Automatize laudos, gerencie pacientes e tome decisões baseadas em dados — tudo em um único lugar.
+              Agenda, evoluções sigilosas, escala e laudos — MVP feito para psicólogos autônomos e clínicas.
             </p>
             <div className="auth-left-stats">
               <div className="auth-stat">
@@ -369,8 +369,8 @@ export default function LoginPage() {
               <div className="auth-brand-icon">
                 <Sparkles size={26} color="#2dd4bf" />
               </div>
-              <div className="auth-brand-name">Clínica IA</div>
-              <div className="auth-brand-tagline">Portal Administrativo Seguro</div>
+              <div className="auth-brand-name">MVP Psicologia</div>
+              <div className="auth-brand-tagline">Prontuário • Agenda • Evoluções</div>
             </div>
 
             {/* Card */}
@@ -493,7 +493,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div className="auth-bottom">Clínica IA &nbsp;·&nbsp; © 2026 Todos os direitos reservados</div>
+          <div className="auth-bottom">MVP Psicologia &nbsp;·&nbsp; © 2026 Todos os direitos reservados</div>
         </div>
       </div>
 

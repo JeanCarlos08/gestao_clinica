@@ -2,16 +2,16 @@
 
 import Link from "next/link";
 
-const PUBLIC_URL = "https://gestao-clinica.vercel.app";
+const PUBLIC_URL = "https://mvp-psicologia.vercel.app";
 
-const TERMS = `# Termos de Serviço — Clínica IA
+const TERMS = `# Termos de Serviço — MVP Psicologia
 
 Última atualização: 18/05/2026
 
-Bem-vindo à Plataforma Clínica IA. Ao acessar ou usar nossos serviços, você concorda com estes Termos de Serviço e com a nossa Política de Privacidade.
+Bem-vindo à Plataforma MVP Psicologia. Ao acessar ou usar nossos serviços, você concorda com estes Termos de Serviço e com a nossa Política de Privacidade.
 
 1. Serviços
-A Clínica IA fornece um sistema de gestão clínica, geração de laudos psicológicos e ferramentas de administração para profissionais e empresas.
+A MVP Psicologia fornece sistema de agenda, prontuário/evoluções e relatórios para psicólogos e clínicas de psicologia.
 
 2. Elegibilidade
 Você declara que tem autoridade para usar a plataforma e que cumprirá as leis aplicáveis e normas profissionais.
@@ -23,7 +23,7 @@ Você é responsável por manter a confidencialidade de suas credenciais. Notifi
 Sendo proibido: enviar ou armazenar material ilegal; tentar acessar recursos sem autorização.
 
 5. Propriedade Intelectual
-O software, conteúdo e marca pertencem à Clínica IA ou licenciantes. Usuários possuem direitos sobre dados e documentos que gerarem.
+O software, conteúdo e marca pertencem à MVP Psicologia ou licenciantes. Usuários possuem direitos sobre dados e documentos que gerarem.
 
 6. Limitação de Responsabilidade
 A plataforma é fornecida "como está". Não garantimos resultados clínicos ou adequação a todos os casos.

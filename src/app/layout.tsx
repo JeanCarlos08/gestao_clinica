@@ -25,8 +25,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Clínica IA",
-  description: "Gerenciamento de Consultas e Procedimentos",
+  title: "MVP Psicologia",
+  description: "Prontuário, agenda e evoluções para psicólogos - MVP",
   manifest: "/manifest.json",
   icons: {
     icon: [

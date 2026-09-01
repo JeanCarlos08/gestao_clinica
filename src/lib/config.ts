@@ -5,7 +5,7 @@ export const config = {
   authUsername: process.env.APP_ADMIN_USER || "admin",
   authPassword: process.env.APP_ADMIN_PASS || "",
   appEnv: process.env.APP_ENV || "development",
-  appName: process.env.APP_NAME || "Clínica IA",
+  appName: process.env.APP_NAME || "MVP Psicologia",
   appVersion: "3.0.0",
 
   geminiApiKey: process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || "",
