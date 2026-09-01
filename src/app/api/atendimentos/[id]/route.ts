@@ -15,7 +15,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   try {
     const result = await sql`
       UPDATE atendimentos SET
-        empresa = ${empresa}, nome = ${nome}, modalidade = ${modalidade},
+        empresa = ${empresa || "Particular"}, nome = ${nome}, modalidade = ${modalidade},
         data = ${data}, hora = ${hora}, status = ${status || "Agendado"},
         paciente_id = ${paciente_id || null}
       WHERE id = ${id}

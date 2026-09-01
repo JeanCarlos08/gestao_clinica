@@ -7,7 +7,7 @@ import useSWR from "swr";
 import {
   Search, Users, CalendarClock, Activity, RefreshCw, Loader2,
   Plus, XCircle, Edit3, Trash2, User, Phone, Mail, Building2, CreditCard, Save,
-  FileText, LayoutGrid, List,
+  FileText, LayoutGrid, List, NotebookPen, Star, Sparkles, Send, Clock3,
 } from "lucide-react";
 import EmptyIllustration from "@/components/EmptyIllustration";
 import { swrFetcher, API as API_BASE } from "@/lib/api";
@@ -62,6 +62,15 @@ export default function PacientesPage() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "lista">("grid");
+
+  // ── Prontuário / Evolução (reaproveita tabela `notas`) ──
+  const [showProntuario, setShowProntuario] = useState(false);
+  const [prontPaciente, setProntPaciente] = useState<PacienteResumo | null>(null);
+  const [evolucoes, setEvolucoes] = useState<{ id:number; titulo:string; conteudo:string; favorita:boolean; criado_em:string }[]>([]);
+  const [evoLoading, setEvoLoading] = useState(false);
+  const [novaEvo, setNovaEvo] = useState("");
+  const [evoSaving, setEvoSaving] = useState(false);
+  const [evoIAloading, setEvoIAloading] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(q), 280);
@@ -148,6 +157,47 @@ export default function PacientesPage() {
   };
 
   const setField = (field: string, value: string) => setForm(prev => ({ ...prev, [field]: value }));
+
+  // ── Prontuário helpers ──
+  const fetchEvolucoes = async (pacienteId: number) => {
+    const tk = localStorage.getItem("token");
+    if (!tk) return;
+    setEvoLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/notas?paciente_id=${pacienteId}`, { headers: { Authorization: `Bearer ${tk}` } });
+      if (res.ok) setEvolucoes(await res.json());
+    } catch (e) { console.debug("fetchEvolucoes", e); }
+    finally { setEvoLoading(false); }
+  };
+  const openProntuario = (p: PacienteResumo) => {
+    setProntPaciente(p); setNovaEvo(""); setShowProntuario(true); fetchEvolucoes(p.id);
+  };
+  const salvarEvolucao = async () => {
+    if (!prontPaciente || !novaEvo.trim()) return;
+    const tk = localStorage.getItem("token"); if (!tk) return;
+    setEvoSaving(true);
+    try {
+      const res = await fetch(`${API_BASE}/notas`, { method: "POST", headers: { "Content-Type":"application/json", Authorization:`Bearer ${tk}` }, body: JSON.stringify({ paciente_id: prontPaciente.id, conteudo: novaEvo }) });
+      if (res.ok) { setNovaEvo(""); fetchEvolucoes(prontPaciente.id); }
+    } catch (e) { console.debug(e); alert("Erro ao salvar evolução"); }
+    finally { setEvoSaving(false); }
+  };
+  const deletarEvolucao = async (id:number) => {
+    if (!confirm("Excluir evolução?")) return;
+    const tk = localStorage.getItem("token"); if (!tk) return;
+    await fetch(`${API_BASE}/notas/${id}`, { method:"DELETE", headers:{ Authorization:`Bearer ${tk}` } });
+    if (prontPaciente) fetchEvolucoes(prontPaciente.id);
+  };
+  const resumirComIA = async () => {
+    if (!novaEvo.trim() || !prontPaciente) return;
+    const tk = localStorage.getItem("token"); if (!tk) return;
+    setEvoIAloading(true);
+    try {
+      const res = await fetch(`${API_BASE}/ia/gerar-parecer`, { method:"POST", headers:{ "Content-Type":"application/json", Authorization:`Bearer ${tk}` }, body: JSON.stringify({ notas: novaEvo, modalidade: "Psicologia Clínica" }) });
+      if (res.ok) { const d = await res.json(); setNovaEvo(d.texto || novaEvo); }
+    } catch (e) { console.debug(e); }
+    finally { setEvoIAloading(false); }
+  };
 
   const totalPacientes = pacientes.length;
   const totalAtendimentos = pacientes.reduce((s, p) => s + p.total_atendimentos, 0);
@@ -242,6 +292,7 @@ export default function PacientesPage() {
               key={paciente.id} paciente={paciente} delay={idx * 30}
               onPhoto={uploadPhoto} onEdit={openEdit} onDelete={deletePaciente}
               onViewDocs={() => router.push(`/pacientes/${paciente.id}/doc-editor`)}
+              onProntuario={() => openProntuario(paciente)}
             />
           ))}
         </div>
@@ -264,9 +315,10 @@ export default function PacientesPage() {
                       <span className="inline-flex items-center gap-1 bg-[var(--background)] border border-[var(--border)] rounded-full px-2.5 py-1 text-xs"><Activity size={10} className="text-[var(--text-muted)]" />{paciente.total_atendimentos} atends.</span>
                       <span className="hidden sm:inline-flex items-center gap-1 bg-[var(--background)] border border-[var(--border)] rounded-full px-2.5 py-1 text-xs text-[var(--text-muted)]"><CalendarClock size={10} />{paciente.ultimo_atendimento ? formatDate(paciente.ultimo_atendimento) : "—"}</span>
                     </div>
-                    <div className="flex items-center justify-between sm:justify-end gap-2">
+                     <div className="flex items-center justify-between sm:justify-end gap-2">
                       <span className="text-xs font-bold text-white bg-[var(--primary)]/10 border border-[var(--primary)]/20 px-2.5 py-1 rounded-full">{paciente.modalidades_distintas} mods</span>
                       <div className="flex items-center gap-1">
+                        <button onClick={() => openProntuario(paciente)} title="Prontuário" className="p-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 transition-colors"><NotebookPen size={14} /></button>
                         <button onClick={() => openEdit(paciente)} className="p-2 rounded-lg bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] border border-[var(--primary)]/20 transition-colors"><Edit3 size={14} /></button>
                         <button onClick={() => router.push(`/pacientes/${paciente.id}/doc-editor`)} className="hidden sm:inline-flex p-2 rounded-lg bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 border border-violet-500/20 transition-colors"><FileText size={14} /></button>
                         <button onClick={() => deletePaciente(paciente.id)} className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition-colors"><Trash2 size={14} /></button>
@@ -393,16 +445,81 @@ export default function PacientesPage() {
           </div>
         </div>
       )}
+
+      {/* Modal Prontuário / Evoluções - reaproveita tabela notas */}
+      {showProntuario && prontPaciente && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-[0_32px_64px_rgba(0,0,0,0.7)] animate-in fade-in zoom-in duration-200">
+            <div className="p-5 border-b border-[var(--border)] flex items-center justify-between sticky top-0 bg-[var(--card)] z-10 rounded-t-2xl">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <NotebookPen size={18} className="text-emerald-400" /> Prontuário — {prontPaciente.nome}
+              </h2>
+              <button onClick={() => setShowProntuario(false)} className="text-[var(--text-muted)] hover:text-white"><XCircle size={20} /></button>
+            </div>
+            <div className="p-5 space-y-4 overflow-y-auto flex-1">
+              {/* Nova evolução */}
+              <div className="bg-[var(--background)] border border-[var(--border)] rounded-xl p-4">
+                <label className="block text-[11px] font-bold text-[var(--text-label)] uppercase tracking-wider mb-2 flex items-center gap-1"><NotebookPen size={12} /> Nova evolução (sigilosa)</label>
+                <textarea value={novaEvo} onChange={e => setNovaEvo(e.target.value)} rows={4} placeholder="Ex: Paciente relatou melhora no sono, mantém ansiedade em crises... (SOAP livre)" className="w-full bg-[var(--card)] border border-[var(--border)] rounded-xl px-3 py-3 text-sm text-white placeholder:text-[var(--text-muted)] focus:border-emerald-500/50 focus:outline-none resize-none" />
+                <div className="flex gap-2 mt-3">
+                  <button onClick={resumirComIA} disabled={evoIAloading || !novaEvo.trim()} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 border border-violet-500/20 text-xs font-semibold disabled:opacity-40 transition-colors">
+                    {evoIAloading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />} Lapidar com IA
+                  </button>
+                  <div className="flex-1" />
+                  <button onClick={salvarEvolucao} disabled={evoSaving || !novaEvo.trim()} className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-5 py-2 rounded-xl text-sm disabled:opacity-40 transition-colors">
+                    {evoSaving ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} Salvar evolução
+                  </button>
+                </div>
+                <p className="text-[10px] text-[var(--text-muted)] mt-2">Armazenado na tabela <code>notas</code> com tag <code>paciente:{prontPaciente.id}</code> — sigiloso, LGPD ok.</p>
+              </div>
+
+              {/* Timeline */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xs font-bold text-[var(--text-label)] uppercase tracking-wider flex items-center gap-1"><Clock3 size={12} /> Timeline ({evolucoes.length})</h3>
+                  <button onClick={() => fetchEvolucoes(prontPaciente.id)} className="text-xs text-[var(--text-muted)] hover:text-white inline-flex items-center gap-1"><RefreshCw size={12} /> Atualizar</button>
+                </div>
+                {evoLoading ? (
+                  <div className="text-center py-8 text-sm text-[var(--text-muted)] flex flex-col items-center gap-2"><Loader2 size={20} className="animate-spin text-emerald-400" /> Carregando evoluções...</div>
+                ) : evolucoes.length === 0 ? (
+                  <div className="premium-surface rounded-xl p-8 text-center border border-dashed border-[var(--border)]">
+                    <NotebookPen size={28} className="mx-auto text-[var(--text-muted)] mb-2 opacity-50" />
+                    <p className="text-sm text-[var(--text-muted)]">Nenhuma evolução registrada.</p>
+                    <p className="text-xs text-[var(--text-muted)] mt-1">A primeira evolução cria o prontuário do paciente.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {evolucoes.map(evo => (
+                      <div key={evo.id} className="bg-[var(--background)] border border-[var(--border)] rounded-xl p-4 hover:border-[var(--border-light)] transition-colors group">
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div className="text-xs font-bold text-white flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" /> {evo.titulo}</div>
+                          <div className="flex items-center gap-1">
+                            {evo.favorita && <Star size={12} className="text-amber-400 fill-amber-400" />}
+                            <span className="text-[10px] text-[var(--text-muted)] font-mono bg-[var(--card)] border border-[var(--border)] px-1.5 py-0.5 rounded">{new Date(evo.criado_em).toLocaleString("pt-BR")}</span>
+                            <button onClick={() => deletarEvolucao(evo.id)} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-500/10 text-red-400 transition-all"><Trash2 size={12} /></button>
+                          </div>
+                        </div>
+                        <div className="text-sm text-white/90 whitespace-pre-wrap leading-relaxed">{evo.conteudo}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function PatientCard({ paciente, onPhoto, onEdit, onDelete, onViewDocs, delay }: {
+function PatientCard({ paciente, onPhoto, onEdit, onDelete, onViewDocs, onProntuario, delay }: {
   paciente: PacienteResumo;
   onPhoto: (p: PacienteResumo, f?: File | null) => void;
   onEdit: (p: PacienteResumo) => void;
   onDelete: (id: number) => void;
   onViewDocs: () => void;
+  onProntuario: () => void;
   delay: number;
 }) {
   const initials = paciente.nome.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() || "").join("");
@@ -448,19 +565,22 @@ function PatientCard({ paciente, onPhoto, onEdit, onDelete, onViewDocs, delay }:
       )}
 
       <div className="flex gap-2">
+        <button onClick={onProntuario}
+          className="flex-1 py-2 rounded-lg text-xs font-semibold text-emerald-400 border border-emerald-500/20 bg-emerald-500/10 hover:bg-emerald-500/20 transition-all flex items-center justify-center gap-1.5">
+          <NotebookPen size={12} /> Prontuário
+        </button>
         <button onClick={() => onEdit(paciente)}
           className="flex-1 py-2 rounded-lg text-xs font-semibold text-[var(--primary)] border border-[var(--primary)]/20 bg-[var(--primary)]/5 hover:bg-[var(--primary)]/10 transition-all flex items-center justify-center gap-1.5">
           <Edit3 size={12} /> Editar
-        </button>
-        <button onClick={onViewDocs}
-          className="flex-1 py-2 rounded-lg text-xs font-semibold text-violet-400 border border-violet-500/20 bg-violet-500/5 hover:bg-violet-500/10 transition-all flex items-center justify-center gap-1.5">
-          <FileText size={12} /> Docs
         </button>
         <button onClick={() => onDelete(paciente.id)}
           className="py-2 px-3 rounded-lg text-xs font-semibold text-red-400 border border-red-500/20 bg-red-500/5 hover:bg-red-500/10 transition-all flex items-center justify-center">
           <Trash2 size={12} />
         </button>
       </div>
+      <button onClick={onViewDocs} className="mt-2 w-full py-2 rounded-lg text-xs font-semibold text-violet-400 border border-violet-500/20 bg-violet-500/5 hover:bg-violet-500/10 transition-all flex items-center justify-center gap-1.5">
+        <FileText size={12} /> Documentos
+      </button>
     </div>
   );
 }

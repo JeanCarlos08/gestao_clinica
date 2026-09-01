@@ -10,6 +10,7 @@ import {
 import AppointmentCalendar from "@/components/AppointmentCalendar";
 import EmptyIllustration from "@/components/EmptyIllustration";
 import { swrFetcher, API as API_BASE } from "@/lib/api";
+import { MODALIDADES } from "@/lib/constants";
 
 interface Atendimento {
   id: number; empresa: string; nome: string; modalidade: string; data: string; hora: string; status: string; paciente_id: number | null;
@@ -31,6 +32,8 @@ export default function AtendimentosPage() {
   const [empresa, setEmpresa] = useState("");
   const [nome, setNome] = useState("");
   const [modalidade, setModalidade] = useState("");
+  const [modalidadeCustom, setModalidadeCustom] = useState("");
+  const isCustomModalidade = modalidade && !MODALIDADES.includes(modalidade) && modalidade !== "Outro";
   const [data, setData] = useState("");
   const [hora, setHora] = useState("");
   const [status, setStatus] = useState("Agendado");
@@ -75,7 +78,7 @@ export default function AtendimentosPage() {
   const filteredAtendimentos = statusFilter === "todos" ? atendimentos : atendimentos.filter(a => a.status === statusFilter);
 
   const openNew = () => {
-    setEditingId(null); setEmpresa(""); setNome(""); setModalidade("");
+    setEditingId(null); setEmpresa(""); setNome(""); setModalidade(""); setModalidadeCustom("");
     setData(new Date().toISOString().split("T")[0]); setHora("09:00"); setStatus("Agendado");
     setSelectedPacienteId(null); setPacienteSearch(""); setShowPacienteDropdown(false);
     setShowModal(true);
@@ -363,12 +366,26 @@ export default function AtendimentosPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-[var(--text-label)] uppercase tracking-wider mb-1.5 flex items-center gap-1"><Building2 size={12} /> Empresa</label>
-                  <input required value={empresa} onChange={e => setEmpresa(e.target.value)} className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-white focus:border-[var(--primary)] focus:outline-none transition-colors" />
+                  <label className="block text-[11px] font-bold text-[var(--text-label)] uppercase tracking-wider mb-1.5 flex items-center gap-1"><Building2 size={12} /> Convênio / Origem <span className="text-[var(--text-muted)] normal-case font-normal">(opcional)</span></label>
+                  <input value={empresa} onChange={e => setEmpresa(e.target.value)} placeholder="Particular, Unimed, SUS..." className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none transition-colors" />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-[11px] font-bold text-[var(--text-label)] uppercase tracking-wider mb-1.5">Modalidade</label>
-                  <input required value={modalidade} onChange={e => setModalidade(e.target.value)} className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-white focus:border-[var(--primary)] focus:outline-none transition-colors" />
+                  <label className="block text-[11px] font-bold text-[var(--text-label)] uppercase tracking-wider mb-1.5">Abordagem / Modalidade *</label>
+                  <select required value={isCustomModalidade ? "Outro" : modalidade} onChange={e => {
+                    if (e.target.value === "Outro") { setModalidade("Outro"); setModalidadeCustom(""); }
+                    else { setModalidade(e.target.value); setModalidadeCustom(""); }
+                  }} className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-white focus:border-[var(--primary)] focus:outline-none transition-colors appearance-none">
+                    <option value="">Selecione a abordagem...</option>
+                    {MODALIDADES.map(m => <option key={m} value={m}>{m}</option>)}
+                    <option value="Outro">Outro (personalizado)</option>
+                  </select>
+                  {(modalidade === "Outro" || isCustomModalidade) && (
+                    <input autoFocus required value={isCustomModalidade ? modalidade : modalidadeCustom} placeholder="Digite a modalidade personalizada..." onChange={e => {
+                      const v = e.target.value;
+                      setModalidadeCustom(v);
+                      setModalidade(v);
+                    }} className="mt-2 w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none transition-colors" />
+                  )}
                 </div>
                 <div>
                   <label className="block text-[11px] font-bold text-[var(--text-label)] uppercase tracking-wider mb-1.5">Data</label>
@@ -382,10 +399,13 @@ export default function AtendimentosPage() {
                   <label className="block text-[11px] font-bold text-[var(--text-label)] uppercase tracking-wider mb-1.5">Status</label>
                   <select value={status} onChange={e => setStatus(e.target.value)} className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-white focus:border-[var(--primary)] focus:outline-none transition-colors appearance-none">
                     <option>Agendado</option>
+                    <option>Confirmado</option>
                     <option>Atendido</option>
                     <option>Em andamento</option>
                     <option>Concluído</option>
                     <option>Cancelado</option>
+                    <option>Faltou</option>
+                    <option>Reagendado</option>
                   </select>
                 </div>
               </div>

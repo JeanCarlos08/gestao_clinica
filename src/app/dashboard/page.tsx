@@ -7,6 +7,7 @@ import useSWR from "swr";
 import {
   Users, CalendarCheck, TrendingUp, Activity, Bell, Calendar as CalendarIcon,
   Clock, ChevronRight, ArrowUpRight, Sparkles, type LucideIcon,
+  AlertCircle, XCircle, RotateCcw, UserCheck,
 } from "lucide-react";
 import { getLoggedUserProfile } from "@/lib/auth";
 import { swrFetcher, API as API_BASE } from "@/lib/api";
@@ -19,6 +20,9 @@ interface DashboardStats {
   atendidos: number;
   concluidos: number;
   cancelados: number;
+  faltou: number;
+  reagendados: number;
+  confirmados: number;
   total_empresas: number;
   atendimentos_hoje: number;
   atendimentos_mes: number;
@@ -103,6 +107,14 @@ export default function DashboardPage() {
   const totalAtendimentos = stats?.total_atendimentos ?? atendimentos.length;
   const consultasHoje = stats?.atendimentos_hoje ?? countTodayAppointments(atendimentos);
   const concluidos = stats?.concluidos ?? atendimentos.filter(a => a.status === "Concluído").length;
+  const faltou = stats?.faltou ?? atendimentos.filter(a => a.status === "Faltou").length;
+  const cancelados = stats?.cancelados ?? atendimentos.filter(a => a.status === "Cancelado").length;
+  const reagendados = stats?.reagendados ?? atendimentos.filter(a => a.status === "Reagendado").length;
+  const atendidos = stats?.atendidos ?? atendimentos.filter(a => a.status === "Atendido").length;
+  const confirmados = stats?.confirmados ?? atendimentos.filter(a => a.status === "Confirmado").length;
+  const presencas = atendidos + concluidos + confirmados;
+  const taxaPresenca = totalAtendimentos > 0 ? Math.round((presencas / totalAtendimentos) * 100) : 0;
+  const taxaFaltas = totalAtendimentos > 0 ? Math.round((faltou / totalAtendimentos) * 100) : 0;
   const taxaConclusao = totalAtendimentos > 0 ? Math.round((concluidos / totalAtendimentos) * 100) : 0;
   const isFirstLoad = loadingState && !stats && atendimentos.length === 0;
   const insightPatient = upcomingConsultas[0]?.nome || "seus pacientes";
@@ -143,8 +155,11 @@ export default function DashboardPage() {
               Insight da IA
             </h4>
             <p className="text-xs text-[var(--text-label)] leading-relaxed">
-              Você tem <b className="text-white">{consultasHoje}</b> atendimentos hoje. Revise o laudo de{" "}
-              <b className="text-[var(--primary-bright)]">{insightPatient}</b>.
+              {faltou > 0 ? (
+                <>Atenção: <b className="text-amber-400">{faltou} faltas</b> ({taxaFaltas}%) no total. Taxa de presença: <b className="text-emerald-400">{taxaPresenca}%</b>.</>
+              ) : (
+                <>Você tem <b className="text-white">{consultasHoje}</b> atendimentos hoje. Revise o prontuário de <b className="text-[var(--primary-bright)]">{insightPatient}</b>.</>
+              )}
             </p>
           </div>
         </div>
@@ -184,14 +199,56 @@ export default function DashboardPage() {
               hoverClass="metric-card-purple"
             />
             <MetricCard
-              title="Taxa de Conclusão" value={taxaConclusao} suffix="%" change="Real"
-              tone="positive" icon={TrendingUp}
-              color="text-amber-400" bgColor="bg-amber-500/10" borderColor="border-amber-500/15"
-              hoverClass="metric-card-amber"
+              title="Taxa de Presença" value={taxaPresenca} suffix="%" change={taxaFaltas > 15 ? `${taxaFaltas}% faltas` : "Adesão"}
+              tone={taxaFaltas > 15 ? "warning" : "positive"} icon={UserCheck}
+              color={taxaFaltas > 15 ? "text-amber-400" : "text-emerald-400"} bgColor={taxaFaltas > 15 ? "bg-amber-500/10" : "bg-emerald-500/10"} borderColor={taxaFaltas > 15 ? "border-amber-500/15" : "border-emerald-500/15"}
+              hoverClass={taxaFaltas > 15 ? "metric-card-amber" : "metric-card-green"}
             />
           </>
         )}
       </div>
+
+      {/* ── Indicadores de Adesão (psicologia) ─────────────────── */}
+      {!isFirstLoad && totalAtendimentos > 0 && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 mb-6 fade-up-delay-1">
+          <div className="premium-surface rounded-2xl p-4 border border-red-500/15 hover:border-red-500/30 transition-colors">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold text-[var(--text-label)] uppercase tracking-wider">Faltas</span>
+              <span className="w-8 h-8 rounded-lg bg-red-500/10 border border-red-500/15 flex items-center justify-center"><AlertCircle size={14} className="text-red-400" /></span>
+            </div>
+            <div className="text-2xl font-extrabold text-white">{faltou}</div>
+            <div className="text-xs text-[var(--text-muted)] mt-1">{taxaFaltas}% do total • {faltou > 0 ? "atenção" : "ótimo"}</div>
+            <div className="mt-3 progress-bar h-1.5"><div className="progress-fill" style={{ width: `${taxaFaltas}%`, background: "#ef4444" }} /></div>
+          </div>
+          <div className="premium-surface rounded-2xl p-4 border border-amber-500/15 hover:border-amber-500/30 transition-colors">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold text-[var(--text-label)] uppercase tracking-wider">Cancelados</span>
+              <span className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/15 flex items-center justify-center"><XCircle size={14} className="text-amber-400" /></span>
+            </div>
+            <div className="text-2xl font-extrabold text-white">{cancelados}</div>
+            <div className="text-xs text-[var(--text-muted)] mt-1">{totalAtendimentos > 0 ? Math.round((cancelados/totalAtendimentos)*100) : 0}% do total</div>
+            <div className="mt-3 progress-bar h-1.5"><div className="progress-fill" style={{ width: `${totalAtendimentos>0?Math.round((cancelados/totalAtendimentos)*100):0}%`, background: "#f59e0b" }} /></div>
+          </div>
+          <div className="premium-surface rounded-2xl p-4 border border-blue-500/15 hover:border-blue-500/30 transition-colors">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold text-[var(--text-label)] uppercase tracking-wider">Reagendados</span>
+              <span className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/15 flex items-center justify-center"><RotateCcw size={14} className="text-blue-400" /></span>
+            </div>
+            <div className="text-2xl font-extrabold text-white">{reagendados}</div>
+            <div className="text-xs text-[var(--text-muted)] mt-1">Remarcações</div>
+            <div className="mt-3 progress-bar h-1.5"><div className="progress-fill" style={{ width: `${totalAtendimentos>0?Math.round((reagendados/totalAtendimentos)*100):0}%`, background: "#3b82f6" }} /></div>
+          </div>
+          <div className="premium-surface rounded-2xl p-4 border border-emerald-500/15 hover:border-emerald-500/30 transition-colors">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold text-[var(--text-label)] uppercase tracking-wider">Concluídos</span>
+              <span className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/15 flex items-center justify-center"><CalendarCheck size={14} className="text-emerald-400" /></span>
+            </div>
+            <div className="text-2xl font-extrabold text-white">{concluidos}</div>
+            <div className="text-xs text-[var(--text-muted)] mt-1">{taxaConclusao}% concluído</div>
+            <div className="mt-3 progress-bar h-1.5"><div className="progress-fill" style={{ width: `${taxaConclusao}%`, background: "#10b981" }} /></div>
+          </div>
+        </div>
+      )}
 
       {/* ── Chart + Upcoming ─────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 mb-6">

@@ -71,8 +71,8 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const { empresa, nome, modalidade, data, hora, status, paciente_id } = body;
 
-  if (!empresa || !nome || !modalidade || !data || !hora) {
-    return jsonError("Campos obrigatórios: empresa, nome, modalidade, data, hora.");
+  if (!nome || !modalidade || !data || !hora) {
+    return jsonError("Campos obrigatórios: nome, modalidade, data, hora. (empresa/convênio opcional para psico)");
   }
 
   try {
@@ -84,14 +84,14 @@ export async function POST(request: NextRequest) {
       if (existing.length > 0) {
         finalPacienteId = existing[0].id;
       } else {
-        const newPac = await sql`INSERT INTO pacientes (nome, slug, empresa) VALUES (${nome}, ${slug}, ${empresa || ""}) RETURNING id`;
+        const newPac = await sql`INSERT INTO pacientes (nome, slug, empresa) VALUES (${nome}, ${slug}, ${empresa || "Particular"}) RETURNING id`;
         finalPacienteId = newPac[0].id;
       }
     }
 
     const result = await sql`
       INSERT INTO atendimentos (empresa, nome, modalidade, data, hora, status, paciente_id)
-      VALUES (${empresa}, ${nome}, ${modalidade}, ${data}, ${hora}, ${status || "Agendado"}, ${finalPacienteId || null})
+      VALUES (${empresa || "Particular"}, ${nome}, ${modalidade}, ${data}, ${hora}, ${status || "Agendado"}, ${finalPacienteId || null})
       RETURNING id
     `;
 
