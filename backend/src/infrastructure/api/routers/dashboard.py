@@ -22,7 +22,9 @@ async def get_dashboard(
 ):
     """Retorna stats + atendimentos recentes em uma única chamada."""
     from core.entities.models import AtendimentoFilter
-    from core.repositories.repositories import paciente_repo
+    from core.repositories.repositories import paciente_repo, documento_repo
+    from infrastructure.connection import connection_scope
+    from utils.constants import TABLE_ATENDIMENTOS
 
     stats = await run_sync(atendimento_repo.get_stats)
     atendimentos = await run_sync(atendimento_repo.list_all, filters=AtendimentoFilter(limit=50))
@@ -35,6 +37,23 @@ async def get_dashboard(
             if foto:
                 fotos_map[pid] = foto
 
+    # Count documentos
+    documentos = await run_sync(documento_repo.list_all)
+    total_documentos = len(documentos)
+
+    # Count avaliações (atendimentos com avaliacao_pdf)
+    def _count_avaliacoes():
+        try:
+            with connection_scope(commit=False) as conn:
+                cur = conn.cursor()
+                cur.execute(f"SELECT COUNT(*) FROM {TABLE_ATENDIMENTOS} WHERE avaliacao_pdf IS NOT NULL")
+                row = cur.fetchone()
+                return row[0] if row else 0
+        except Exception:
+            return 0
+
+    total_avaliacoes = await run_sync(_count_avaliacoes)
+
     return {
         "stats": {
             "total_atendimentos": stats.total_atendimentos,
@@ -46,6 +65,8 @@ async def get_dashboard(
             "total_empresas": stats.total_empresas,
             "atendimentos_hoje": stats.atendimentos_hoje,
             "atendimentos_mes": stats.atendimentos_mes,
+            "total_documentos": total_documentos,
+            "total_avaliacoes": total_avaliacoes,
             "por_modalidade": stats.por_modalidade,
             "por_empresa": stats.por_empresa,
         },
