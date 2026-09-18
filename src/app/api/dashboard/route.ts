@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
         SELECT
           (SELECT COUNT(*) FROM atendimentos) as total_atendimentos,
           (SELECT COUNT(*) FROM pacientes) as total_pacientes,
-          (SELECT COUNT(*) FROM atendimentos WHERE status = 'Agendado') as agendados,
+          (SELECT COUNT(*) FROM atendimentos WHERE status = 'Agendado' OR status = '' OR status IS NULL) as agendados,
           (SELECT COUNT(*) FROM atendimentos WHERE status = 'Atendido') as atendidos,
           (SELECT COUNT(*) FROM atendimentos WHERE status IN ('Concluido','Concluído')) as concluidos,
           (SELECT COUNT(*) FROM atendimentos WHERE status = 'Cancelado') as cancelados,

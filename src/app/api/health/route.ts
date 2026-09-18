@@ -1,4 +1,3 @@
-import sql from "@/lib/db";
 import { jsonOk } from "@/lib/utils";
 
 export async function GET() {

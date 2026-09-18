@@ -85,15 +85,17 @@ function useCountUp(target: number, duration = 1200): number {
 export default function DashboardPage() {
   const [displayName, setDisplayName] = useState("Usuário");
 
-  const { data, isLoading: loading } = useSWR<{ stats: DashboardStats; atendimentos: AtendimentoResumo[] }>(
+  const { data, isLoading: loading, error } = useSWR<{ stats: DashboardStats; atendimentos: AtendimentoResumo[] }>(
     `${API_BASE}/dashboard`,
     swrFetcher,
     { revalidateOnFocus: false, dedupingInterval: 10000 }
   );
 
-  const stats = data?.stats ?? null;
-  const atendimentos = data?.atendimentos ?? [];
+  const stats = (data as any)?.stats ?? (Array.isArray(data) ? null : (data as any)?.stats ?? null);
+  // SWR error fallback: se API falha, data fica undefined e error preenchido
+  const atendimentos: AtendimentoResumo[] = (data as any)?.atendimentos ?? (Array.isArray(data) ? [] : []);
   const loadingState = loading && !data;
+  const hasError = !!error;
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -103,8 +105,10 @@ export default function DashboardPage() {
 
   const chartData = buildChartData(atendimentos);
   const upcomingConsultas = buildUpcomingConsultas(atendimentos);
-  const totalPacientes = stats?.total_pacientes ?? getUniquePatientsCount(atendimentos);
-  const totalAtendimentos = stats?.total_atendimentos ?? atendimentos.length;
+  // FIX: paciente zerado - fallback para contagem distinta se stats vier 0 mas atendimentos tem dados
+  const uniqueFromAtend = getUniquePatientsCount(atendimentos);
+  const totalPacientes = stats?.total_pacientes && stats.total_pacientes > 0 ? stats.total_pacientes : (uniqueFromAtend > 0 ? uniqueFromAtend : (stats?.total_pacientes ?? 0));
+  const totalAtendimentos = stats?.total_atendimentos && stats.total_atendimentos > 0 ? stats.total_atendimentos : (atendimentos.length > 0 ? atendimentos.length : (stats?.total_atendimentos ?? 0));
   const consultasHoje = stats?.atendimentos_hoje ?? countTodayAppointments(atendimentos);
   const concluidos = stats?.concluidos ?? atendimentos.filter(a => a.status === "Concluído").length;
   const faltou = stats?.faltou ?? atendimentos.filter(a => a.status === "Faltou").length;
@@ -165,6 +169,14 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* ── Erro de carregamento (evita mostrar 0 silencioso) ───── */}
+      {hasError && !loadingState && (
+        <div className="mb-6 bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-center gap-3 text-sm text-amber-200 animate-in fade-in">
+          <AlertCircle size={18} className="text-amber-400 flex-shrink-0" />
+          <span>Não foi possível sincronizar o dashboard. Exibindo cache local. <button onClick={() => window.location.reload()} className="underline font-semibold hover:text-white transition-colors">Recarregar</button></span>
+        </div>
+      )}
+
       {/* ── Metric Cards ─────────────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 mb-6">
         {isFirstLoad ? (
@@ -181,8 +193,8 @@ export default function DashboardPage() {
         ) : (
           <>
             <MetricCard
-              title="Pacientes Ativos" value={totalPacientes} suffix="" change="Banco"
-              tone="neutral" icon={Users}
+              title="Pacientes Ativos" value={totalPacientes} suffix="" change={hasError ? "cache local" : totalPacientes > 0 ? "sincronizado ✓" : "vazio"}
+              tone={totalPacientes > 0 ? "positive" : "warning"} icon={Users}
               color="text-blue-400" bgColor="bg-blue-500/10" borderColor="border-blue-500/15"
               hoverClass="metric-card-blue"
             />
@@ -369,6 +381,8 @@ function MetricCard({ title, value, suffix, change, tone = "neutral", icon: Icon
   const animated = useCountUp(value);
   return (
     <div className={`premium-surface rounded-2xl p-4 sm:p-5 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group overflow-hidden relative border ${borderColor} ${hoverClass} fade-up`}>
+      {/* Top accent line - estética psicologia premium */}
+      <div className="absolute top-0 left-4 right-4 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-60 group-hover:via-[var(--primary)]/30 transition-all duration-500" />
       {/* Corner glow */}
       <div className="absolute top-0 right-0 -mt-6 -mr-6 w-28 h-28 bg-gradient-to-br from-white/5 to-transparent rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
 
