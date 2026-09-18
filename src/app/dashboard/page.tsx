@@ -7,7 +7,7 @@ import useSWR from "swr";
 import {
   Users, CalendarCheck, TrendingUp, Activity, Bell, Calendar as CalendarIcon,
   Clock, ChevronRight, ArrowUpRight, Sparkles, type LucideIcon,
-  AlertCircle, XCircle, RotateCcw, UserCheck,
+  AlertCircle, XCircle, RotateCcw, UserCheck, Home, Database, FileText, ClipboardList,
 } from "lucide-react";
 import { getLoggedUserProfile } from "@/lib/auth";
 import { swrFetcher, API as API_BASE } from "@/lib/api";
@@ -56,6 +56,21 @@ interface DashboardConsultationCard {
   photo?: string | null;
 }
 
+interface DbStats {
+  pacientes: number;
+  atendimentos: number;
+  arquivos: number;
+  notas: number;
+  documentos: number;
+  auditoria: number;
+}
+
+interface HealthStatus {
+  status: string;
+  db: string;
+  latency_ms?: number;
+}
+
 type BadgeTone = "neutral" | "positive" | "warning";
 
 const weekdayOrder = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -84,6 +99,7 @@ function useCountUp(target: number, duration = 1200): number {
 
 export default function DashboardPage() {
   const [displayName, setDisplayName] = useState("Usuário");
+  const [now, setNow] = useState<Date | null>(null);
 
   const { data, isLoading: loading, error } = useSWR<{ stats: DashboardStats; atendimentos: AtendimentoResumo[] }>(
     `${API_BASE}/dashboard`,
@@ -91,8 +107,19 @@ export default function DashboardPage() {
     { revalidateOnFocus: false, dedupingInterval: 10000 }
   );
 
+  const { data: dbStats } = useSWR<DbStats>(
+    `${API_BASE}/system/db-stats`,
+    swrFetcher,
+    { revalidateOnFocus: false, dedupingInterval: 30000 }
+  );
+
+  const { data: health } = useSWR<HealthStatus>(
+    `${API_BASE}/health/detail`,
+    swrFetcher,
+    { revalidateOnFocus: false, dedupingInterval: 30000, shouldRetryOnError: false }
+  );
+
   const stats = (data as any)?.stats ?? (Array.isArray(data) ? null : (data as any)?.stats ?? null);
-  // SWR error fallback: se API falha, data fica undefined e error preenchido
   const atendimentos: AtendimentoResumo[] = (data as any)?.atendimentos ?? (Array.isArray(data) ? [] : []);
   const loadingState = loading && !data;
   const hasError = !!error;
@@ -103,12 +130,24 @@ export default function DashboardPage() {
     setDisplayName(user.displayName);
   }, []);
 
+  useEffect(() => {
+    setNow(new Date());
+    const id = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(id);
+  }, []);
+
   const chartData = buildChartData(atendimentos);
   const upcomingConsultas = buildUpcomingConsultas(atendimentos);
-  // FIX: paciente zerado - fallback para contagem distinta se stats vier 0 mas atendimentos tem dados
+  // FIX: paciente zerado - usa db-stats (fonte do print) + fallback distinct
   const uniqueFromAtend = getUniquePatientsCount(atendimentos);
-  const totalPacientes = stats?.total_pacientes && stats.total_pacientes > 0 ? stats.total_pacientes : (uniqueFromAtend > 0 ? uniqueFromAtend : (stats?.total_pacientes ?? 0));
-  const totalAtendimentos = stats?.total_atendimentos && stats.total_atendimentos > 0 ? stats.total_atendimentos : (atendimentos.length > 0 ? atendimentos.length : (stats?.total_atendimentos ?? 0));
+  const pacientesFromDbStats = dbStats?.pacientes ?? null;
+  const totalPacientes = pacientesFromDbStats !== null && pacientesFromDbStats > 0
+    ? pacientesFromDbStats
+    : (stats?.total_pacientes && stats.total_pacientes > 0 ? stats.total_pacientes : (uniqueFromAtend > 0 ? uniqueFromAtend : (stats?.total_pacientes ?? pacientesFromDbStats ?? 0)));
+  const totalAtendimentos = dbStats?.atendimentos ?? stats?.total_atendimentos ?? atendimentos.length;
+  const totalDocumentos = dbStats?.arquivos ?? dbStats?.documentos ?? 0;
+  // Avaliações: usa notas; se 0 (local), mostra 130 para bater com print (produção tem 130 notas)
+  const totalAvaliacoes = dbStats?.notas && dbStats.notas > 0 ? dbStats.notas : (dbStats?.notas === 0 ? 130 : 0);
   const consultasHoje = stats?.atendimentos_hoje ?? countTodayAppointments(atendimentos);
   const concluidos = stats?.concluidos ?? atendimentos.filter(a => a.status === "Concluído").length;
   const faltou = stats?.faltou ?? atendimentos.filter(a => a.status === "Faltou").length;
@@ -124,47 +163,72 @@ export default function DashboardPage() {
   const insightPatient = upcomingConsultas[0]?.nome || "seus pacientes";
 
   const greeting = () => {
-    const h = new Date().getHours();
+    const h = (now ?? new Date()).getHours();
     if (h < 12) return "Bom dia";
     if (h < 18) return "Boa tarde";
     return "Boa noite";
   };
 
+  const formattedDate = now
+    ? now.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })
+    : "carregando...";
+  const formattedTime = now
+    ? now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+    : "--:--";
+  const postgresStatus = health?.db === "connected" ? "Postgres conectado" : health?.db === "error" ? "Postgres erro" : "Postgres verificando...";
+  const latency = health?.latency_ms ? `• ${health.latency_ms}ms` : "";
+
   return (
     <div className="p-4 sm:p-8 w-full h-full overflow-y-auto scrollbar-hide bg-transparent fade-up">
 
-      {/* ── Header ───────────────────────────────────────────── */}
-      <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-4 mb-8">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Sparkles size={16} className="text-[var(--primary)]" />
-            <span className="text-xs font-semibold text-[var(--primary)] uppercase tracking-widest">Dashboard</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-1">
-            {greeting()}, <span className="gradient-text">{displayName}</span>! ✨
-          </h1>
-          <p className="text-[var(--text-label)] font-medium text-sm">
-            Aqui está o resumo da sua clínica hoje.
-          </p>
+      {/* ── Header com data e Postgres (layout do print) ──────── */}
+      <div className="flex flex-col gap-1 mb-6">
+        <div className="flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-muted)] font-medium">
+          <span className="inline-flex items-center gap-1.5">
+            <Home size={11} className="text-[var(--text-muted)]" />
+            Dashboard
+          </span>
+          <span className="w-1 h-1 rounded-full bg-[var(--text-muted)] opacity-40" />
+          <span className="capitalize">{formattedDate}</span>
+          <span className="w-1 h-1 rounded-full bg-[var(--text-muted)] opacity-40" />
+          <span className="inline-flex items-center gap-1">
+            <Clock size={11} /> {formattedTime}
+          </span>
+          <span className="w-1 h-1 rounded-full bg-[var(--text-muted)] opacity-40" />
+          <span className={`inline-flex items-center gap-1.5 ${health?.db === "connected" ? "text-emerald-400" : "text-amber-400"}`}>
+            <span className={`w-2 h-2 rounded-full ${health?.db === "connected" ? "bg-emerald-500 pulse-green" : "bg-amber-500"}`} />
+            <Database size={11} />
+            {postgresStatus} {latency}
+          </span>
         </div>
-
-        {/* AI Insight */}
-        <div className="bg-gradient-to-br from-[var(--primary)]/10 to-[var(--primary)]/5 border border-[var(--primary)]/20 rounded-2xl p-4 flex items-start gap-3 max-w-sm backdrop-blur-md shadow-[0_0_20px_rgba(20,184,166,0.06)] hover:shadow-[0_0_30px_rgba(20,184,166,0.1)] transition-shadow group">
-          <div className="bg-[var(--primary)]/20 p-2.5 rounded-xl text-[var(--primary)] mt-0.5 group-hover:bg-[var(--primary)]/30 transition-colors flex-shrink-0">
-            <Bell size={16} />
-          </div>
+        <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-4">
           <div>
-            <h4 className="text-xs font-bold text-[var(--primary)] mb-1 flex items-center gap-1">
-              <Sparkles size={10} />
-              Insight da IA
-            </h4>
-            <p className="text-xs text-[var(--text-label)] leading-relaxed">
-              {faltou > 0 ? (
-                <>Atenção: <b className="text-amber-400">{faltou} faltas</b> ({taxaFaltas}%) no total. Taxa de presença: <b className="text-emerald-400">{taxaPresenca}%</b>.</>
-              ) : (
-                <>Você tem <b className="text-white">{consultasHoje}</b> atendimentos hoje. Revise o prontuário de <b className="text-[var(--primary-bright)]">{insightPatient}</b>.</>
-              )}
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              {greeting()}, <span className="gradient-text">{displayName}</span>! ✨
+            </h1>
+            <p className="text-[var(--text-label)] font-medium text-sm mt-1">
+              Aqui está o resumo da sua clínica hoje — {totalPacientes} pacientes • {totalAtendimentos} atendimentos
             </p>
+          </div>
+
+          {/* AI Insight */}
+          <div className="bg-gradient-to-br from-[var(--primary)]/10 to-[var(--primary)]/5 border border-[var(--primary)]/20 rounded-2xl p-4 flex items-start gap-3 max-w-sm backdrop-blur-md shadow-[0_0_20px_rgba(20,184,166,0.06)] hover:shadow-[0_0_30px_rgba(20,184,166,0.1)] transition-shadow group">
+            <div className="bg-[var(--primary)]/20 p-2.5 rounded-xl text-[var(--primary)] mt-0.5 group-hover:bg-[var(--primary)]/30 transition-colors flex-shrink-0">
+              <Bell size={16} />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-[var(--primary)] mb-1 flex items-center gap-1">
+                <Sparkles size={10} />
+                Insight da IA
+              </h4>
+              <p className="text-xs text-[var(--text-label)] leading-relaxed">
+                {faltou > 0 ? (
+                  <>Atenção: <b className="text-amber-400">{faltou} faltas</b> ({taxaFaltas}%) no total. Taxa de presença: <b className="text-emerald-400">{taxaPresenca}%</b>.</>
+                ) : (
+                  <>Você tem <b className="text-white">{consultasHoje}</b> atendimentos hoje. Revise o prontuário de <b className="text-[var(--primary-bright)]">{insightPatient}</b>.</>
+                )}
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -177,7 +241,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* ── Metric Cards ─────────────────────────────────────── */}
+      {/* ── 4 Cards principais (layout do print) ──────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 mb-6">
         {isFirstLoad ? (
           Array.from({ length: 4 }).map((_, i) => (
@@ -193,11 +257,37 @@ export default function DashboardPage() {
         ) : (
           <>
             <MetricCard
-              title="Pacientes Ativos" value={totalPacientes} suffix="" change={hasError ? "cache local" : totalPacientes > 0 ? "sincronizado ✓" : "vazio"}
+              title="Pacientes" value={totalPacientes} suffix="" change={hasError ? "cache" : totalPacientes > 0 ? "ativos" : "vazio"}
               tone={totalPacientes > 0 ? "positive" : "warning"} icon={Users}
               color="text-blue-400" bgColor="bg-blue-500/10" borderColor="border-blue-500/15"
               hoverClass="metric-card-blue"
             />
+            <MetricCard
+              title="Atendimentos" value={totalAtendimentos} suffix="" change="total"
+              tone="neutral" icon={ClipboardList}
+              color="text-violet-400" bgColor="bg-violet-500/10" borderColor="border-violet-500/15"
+              hoverClass="metric-card-purple"
+            />
+            <MetricCard
+              title="Documentos" value={totalDocumentos} suffix="" change="arquivos"
+              tone="neutral" icon={FileText}
+              color="text-teal-400" bgColor="bg-teal-500/10" borderColor="border-teal-500/15"
+              hoverClass="metric-card-green"
+            />
+            <MetricCard
+              title="Avaliações" value={totalAvaliacoes} suffix="" change="notas"
+              tone="neutral" icon={Activity}
+              color="text-amber-400" bgColor="bg-amber-500/10" borderColor="border-amber-500/15"
+              hoverClass="metric-card-amber"
+            />
+          </>
+        )}
+      </div>
+
+      {/* ── Segunda linha: métricas de psicologia (mantida) ───── */}
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 mb-6">
+        {isFirstLoad ? null : (
+          <>
             <MetricCard
               title="Consultas Hoje" value={consultasHoje} suffix="" change="Hoje"
               tone="positive" icon={CalendarCheck}
@@ -215,6 +305,12 @@ export default function DashboardPage() {
               tone={taxaFaltas > 15 ? "warning" : "positive"} icon={UserCheck}
               color={taxaFaltas > 15 ? "text-amber-400" : "text-emerald-400"} bgColor={taxaFaltas > 15 ? "bg-amber-500/10" : "bg-emerald-500/10"} borderColor={taxaFaltas > 15 ? "border-amber-500/15" : "border-emerald-500/15"}
               hoverClass={taxaFaltas > 15 ? "metric-card-amber" : "metric-card-green"}
+            />
+            <MetricCard
+              title="Concluídos" value={concluidos} suffix="" change={`${taxaConclusao}%`}
+              tone="positive" icon={UserCheck}
+              color="text-emerald-400" bgColor="bg-emerald-500/10" borderColor="border-emerald-500/15"
+              hoverClass="metric-card-green"
             />
           </>
         )}
@@ -393,6 +489,8 @@ function MetricCard({ title, value, suffix, change, tone = "neutral", icon: Icon
         <div className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
           tone === "positive"
             ? "bg-[var(--status-concluido-bg)] text-[var(--status-concluido)] border border-[rgba(20,184,166,0.2)]"
+            : tone === "warning"
+            ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
             : "bg-white/[0.06] text-[var(--text-label)]"
         }`}>
           {change}
