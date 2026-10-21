@@ -45,7 +45,6 @@ interface AttendancePoint {
   atendimentos: number;
 }
 
-interface AttendanceChartProps { data: AttendancePoint[]; }
 interface DashboardConsultationCard {
   id: number;
   nome: string;
@@ -77,6 +76,10 @@ const weekdayOrder = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const AttendanceChart = dynamic(() => import("@/components/DashboardChart"), {
   ssr: false,
   loading: () => <div className="h-[280px] w-full flex items-center justify-center"><div className="skeleton w-full h-full rounded-xl" /></div>,
+});
+const EmpresaRanking = dynamic(() => import("@/components/EmpresaRanking"), {
+  ssr: false,
+  loading: () => <div className="lg:col-span-3 premium-surface rounded-2xl h-[350px] animate-pulse" />,
 });
 
 // ── Counter animation hook ─────────────────────────────────
@@ -119,8 +122,9 @@ export default function DashboardPage() {
     { revalidateOnFocus: false, dedupingInterval: 30000, shouldRetryOnError: false }
   );
 
-  const stats = (data as any)?.stats ?? (Array.isArray(data) ? null : (data as any)?.stats ?? null);
-  const atendimentos: AtendimentoResumo[] = (data as any)?.atendimentos ?? (Array.isArray(data) ? [] : []);
+  const payload = data && !Array.isArray(data) ? data : null;
+  const stats: DashboardStats | null = payload?.stats ?? null;
+  const atendimentos: AtendimentoResumo[] = payload?.atendimentos ?? [];
   const loadingState = loading && !data;
   const hasError = !!error;
 
@@ -161,6 +165,8 @@ export default function DashboardPage() {
   const taxaConclusao = totalAtendimentos > 0 ? Math.round((concluidos / totalAtendimentos) * 100) : 0;
   const isFirstLoad = loadingState && !stats && atendimentos.length === 0;
   const insightPatient = upcomingConsultas[0]?.nome || "seus pacientes";
+  const empresaEntries = (Object.entries(stats?.por_empresa ?? {}) ?? []) as Array<[string, number]>;
+  const totalPorEmpresa = empresaEntries.reduce((sum, [, v]) => sum + (Number(v) || 0), 0);
 
   const greeting = () => {
     const h = (now ?? new Date()).getHours();
@@ -426,6 +432,13 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* ── Pizza por empresa + Ranking pódio ─────────────────── */}
+      {!isFirstLoad && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 mb-6">
+          <EmpresaRanking entries={empresaEntries} total={totalPorEmpresa} />
+        </div>
+      )}
+
       {/* ── Modalidades Breakdown ─────────────────────────────── */}
       {stats && Object.keys(stats.por_modalidade).length > 0 && (
         <div className="premium-surface rounded-2xl p-6 fade-up-delay-3">
@@ -505,12 +518,21 @@ function MetricCard({ title, value, suffix, change, tone = "neutral", icon: Icon
 }
 
 // ── Helpers ───────────────────────────────────────────────────
+/* data "YYYY-MM-DD" + hora "HH:MM" ou "HH:MM:SS" (API devolve com segundos) */
+function toTimestamp(data: string, hora: string): number {
+  if (!data) return NaN;
+  const h = (hora || "").trim();
+  const time = /^\d{2}:\d{2}:\d{2}$/.test(h) ? h : /^\d{2}:\d{2}$/.test(h) ? `${h}:00` : "00:00:00";
+  const ts = new Date(`${data}T${time}`);
+  return isNaN(ts.getTime()) ? NaN : ts.getTime();
+}
+
 function buildChartData(atendimentos: AtendimentoResumo[]): AttendancePoint[] {
   const counts = new Map(weekdayOrder.map(d => [d, 0]));
   atendimentos.forEach(a => {
-    const date = new Date(`${a.data}T${a.hora}:00`);
-    if (!isNaN(date.getTime())) {
-      const d = weekdayOrder[date.getDay()];
+    const ts = toTimestamp(a.data, a.hora);
+    if (!isNaN(ts)) {
+      const d = weekdayOrder[new Date(ts).getDay()];
       counts.set(d, (counts.get(d) || 0) + 1);
     }
   });
@@ -520,14 +542,14 @@ function buildChartData(atendimentos: AtendimentoResumo[]): AttendancePoint[] {
 function buildUpcomingConsultas(atendimentos: AtendimentoResumo[]): DashboardConsultationCard[] {
   const now = new Date();
   return [...atendimentos]
-    .map(a => ({ ...a, timestamp: new Date(`${a.data}T${a.hora}:00`).getTime() }))
+    .map(a => ({ ...a, timestamp: toTimestamp(a.data, a.hora) }))
     .filter(a => a.status !== "Cancelado")
     .sort((a, b) => a.timestamp - b.timestamp)
     .filter(a => a.timestamp >= now.getTime() || isSameDay(a.timestamp, now.getTime()))
     .slice(0, 4)
     .map(a => ({
       id: a.id, nome: a.nome, modalidade: a.modalidade,
-      dataLabel: formatDateLabel(a.timestamp), horario: a.hora, status: a.status, photo: (a as unknown as { photo?: string }).photo,
+      dataLabel: formatDateLabel(a.timestamp), horario: a.hora.slice(0, 5), status: a.status, photo: (a as unknown as { photo?: string }).photo,
     }));
 }
 
@@ -550,7 +572,7 @@ function getUniquePatientsCount(atendimentos: AtendimentoResumo[]) {
 
 function countTodayAppointments(atendimentos: AtendimentoResumo[]) {
   const today = new Date();
-  return atendimentos.filter(a => isSameDay(new Date(`${a.data}T${a.hora}:00`).getTime(), today.getTime())).length;
+  return atendimentos.filter(a => isSameDay(toTimestamp(a.data, a.hora), today.getTime())).length;
 }
 
 function PatientAvatar({ name, photo }: { name: string; photo?: string | null }) {
