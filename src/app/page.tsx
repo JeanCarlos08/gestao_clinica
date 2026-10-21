@@ -286,11 +286,14 @@ export default function LoginPage() {
 
   return (
     <>
-      <style>{`
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         body.h-dvh { height: auto !important; overflow: visible !important; }
         body.app-premium-bg::before, body.app-premium-bg::after { display: none !important; }
+        main:has(.auth-root) { padding-top: 0 !important; }
 
         @property --auth-angle {
           syntax: '<angle>';
@@ -418,6 +421,16 @@ export default function LoginPage() {
           animation: authIn 0.7s cubic-bezier(0.16,1,0.3,1) var(--auth-t0) backwards;
           will-change: opacity, transform;
         }
+        /* Halo escuro atrás do card (legibilidade sobre o wallpaper) */
+        .auth-box::before {
+          content: "";
+          position: absolute;
+          inset: -56px -40px;
+          background: radial-gradient(ellipse at center, rgba(3,17,10,0.82) 0%, rgba(3,17,10,0.5) 45%, transparent 72%);
+          filter: blur(14px);
+          pointer-events: none;
+          z-index: -1;
+        }
         @keyframes authIn {
           0% { opacity: 0; transform: translateY(26px) scale(0.965); }
           100% { opacity: 1; transform: translateY(0) scale(1); }
@@ -438,17 +451,17 @@ export default function LoginPage() {
           padding: 36px clamp(22px, 4vw, 40px) 30px;
           overflow: hidden;
           background:
-            radial-gradient(130% 70% at 50% -12%, rgba(255,255,255,0.16), transparent 62%),
-            radial-gradient(90% 60% at 110% 110%, rgba(46,204,113,0.12), transparent 60%),
-            linear-gradient(155deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04) 55%, rgba(255,255,255,0.07));
+            radial-gradient(130% 70% at 50% -12%, rgba(255,255,255,0.15), transparent 62%),
+            radial-gradient(90% 60% at 110% 110%, rgba(46,204,113,0.16), transparent 60%),
+            linear-gradient(155deg, rgba(7,32,19,0.86) 0%, rgba(3,16,10,0.78) 55%, rgba(6,26,16,0.84) 100%);
           border: 1px solid rgba(255,255,255,0.17);
           box-shadow:
-            0 48px 100px rgba(0,0,0,0.55),
-            0 10px 28px rgba(0,0,0,0.35),
-            inset 0 1px 0 rgba(255,255,255,0.18),
-            inset 0 -1px 0 rgba(0,0,0,0.2);
-          backdrop-filter: blur(38px) saturate(155%) contrast(105%);
-          -webkit-backdrop-filter: blur(38px) saturate(155%) contrast(105%);
+            0 48px 100px rgba(0,0,0,0.6),
+            0 10px 28px rgba(0,0,0,0.4),
+            inset 0 1px 0 rgba(255,255,255,0.2),
+            inset 0 -1px 0 rgba(0,0,0,0.3);
+          backdrop-filter: blur(42px) saturate(150%) contrast(106%);
+          -webkit-backdrop-filter: blur(42px) saturate(150%) contrast(106%);
           transition: transform 0.45s cubic-bezier(0.16,1,0.3,1), box-shadow 0.45s ease;
         }
         .auth-card:hover {
@@ -777,7 +790,9 @@ export default function LoginPage() {
             transition-duration: 0.01ms !important;
           }
         }
-      `}</style>
+          `,
+        }}
+      />
 
       {/* ── FX de fundo ── */}
       <div className="auth-grain" aria-hidden="true" />

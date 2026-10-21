@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import { Bot, Send, Sparkles, Trash2, ChevronRight, ChevronLeft, Zap, X } from "lucide-react";
 
 type Message = { role: "user" | "assistant"; text: string };
@@ -19,6 +20,7 @@ export default function AISidebar() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [aiAvailable, setAiAvailable] = useState<boolean | null>(null);
+  const pathname = usePathname();
 
   // Desktop refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -49,12 +51,13 @@ export default function AISidebar() {
       } catch (e) { console.debug("AISidebar: AI availability check failed", e); setAiAvailable(false); }
     };
     // Idle defer: não trava TTI
-    const idle = (typeof window !== "undefined" && (window as any).requestIdleCallback)
-      ? (window as any).requestIdleCallback(() => checkAI(), { timeout: 2000 })
-      : setTimeout(checkAI, 1000);
+    const hasIdle = typeof window.requestIdleCallback === "function";
+    const idle = hasIdle
+      ? window.requestIdleCallback(() => { void checkAI(); }, { timeout: 2000 })
+      : window.setTimeout(() => { void checkAI(); }, 1000);
     return () => {
-      if (typeof idle === "number") clearTimeout(idle);
-      else if (idle) (window as any).cancelIdleCallback?.(idle);
+      if (hasIdle) window.cancelIdleCallback(idle);
+      else window.clearTimeout(idle);
     };
   }, [collapsed, mobileOpen]);
 
@@ -89,6 +92,25 @@ export default function AISidebar() {
       setLoading(false);
     }
   };
+
+  // Mantém sempre a versão mais recente de sendMessage p/ callbacks externos
+  const sendRef = useRef(sendMessage);
+  useEffect(() => { sendRef.current = sendMessage; });
+
+  /* Card IA da sidebar esquerda abre este painel (com pergunta opcional) */
+  useEffect(() => {
+    const onOpenAI = (e: Event) => {
+      const q = ((e as CustomEvent<string>).detail || "").trim();
+      setCollapsed(false);
+      if (typeof window !== "undefined" && window.innerWidth < 768) setMobileOpen(true);
+      window.setTimeout(() => {
+        if (q) sendRef.current(q);
+        else inputRef.current?.focus();
+      }, 180);
+    };
+    window.addEventListener("mvp:open-ai", onOpenAI);
+    return () => window.removeEventListener("mvp:open-ai", onOpenAI);
+  }, []);
 
   // ─── Shared JSX helpers ──────────────────────────────────────────────────
   const renderMessages = (endRef: React.RefObject<HTMLDivElement>) => (
@@ -253,6 +275,9 @@ export default function AISidebar() {
       </div>
     </div>
   );
+
+  /* Login é tela cheia — sem painel de IA */
+  if (pathname === "/") return null;
 
   return (
     <>
