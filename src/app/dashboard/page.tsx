@@ -212,7 +212,7 @@ export default function DashboardPage() {
           </div>
 
           {/* AI Insight */}
-          <div className="bg-gradient-to-br from-[var(--primary)]/10 to-[var(--primary)]/5 border border-[var(--primary)]/20 rounded-2xl p-4 flex items-start gap-3 max-w-sm backdrop-blur-md shadow-[0_0_20px_rgba(20,184,166,0.06)] hover:shadow-[0_0_30px_rgba(20,184,166,0.1)] transition-shadow group">
+          <div className="bg-gradient-to-br from-[var(--primary)]/10 to-[var(--primary)]/5 border border-[var(--primary)]/20 rounded-2xl p-4 flex items-start gap-3 max-w-sm backdrop-blur-md shadow-[0_0_20px_rgba(77,167,104,0.06)] hover:shadow-[0_0_30px_rgba(77,167,104,0.1)] transition-shadow group">
             <div className="bg-[var(--primary)]/20 p-2.5 rounded-xl text-[var(--primary)] mt-0.5 group-hover:bg-[var(--primary)]/30 transition-colors flex-shrink-0">
               <Bell size={16} />
             </div>
@@ -488,7 +488,7 @@ function MetricCard({ title, value, suffix, change, tone = "neutral", icon: Icon
         </div>
         <div className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
           tone === "positive"
-            ? "bg-[var(--status-concluido-bg)] text-[var(--status-concluido)] border border-[rgba(20,184,166,0.2)]"
+            ? "bg-[var(--status-concluido-bg)] text-[var(--status-concluido)] border border-[rgba(77,167,104,0.2)]"
             : tone === "warning"
             ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
             : "bg-white/[0.06] text-[var(--text-label)]"

@@ -148,7 +148,7 @@ export default function UploadPage() {
         onDrop={e => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files); }}
         onClick={() => inputRef.current?.click()}
         className={`premium-surface border-2 border-dashed rounded-3xl p-12 text-center cursor-pointer transition-all duration-300 mb-6 ${dragOver
-          ? "border-[var(--primary)] bg-[var(--primary)]/5 scale-[1.01] shadow-[0_0_30px_rgba(20,184,166,0.15)]"
+          ? "border-[var(--primary)] bg-[var(--primary)]/5 scale-[1.01] shadow-[0_0_30px_rgba(77,167,104,0.15)]"
           : "border-[var(--border)] hover:border-[var(--primary)]/40 hover:bg-[var(--card-hover)]"
           } ${uploading ? "pointer-events-none opacity-60" : ""}`}
       >
@@ -160,7 +160,7 @@ export default function UploadPage() {
           </div>
         ) : (
           <div className="flex flex-col items-center gap-4">
-            <div className={`p-5 rounded-full transition-colors duration-300 ${dragOver ? "bg-[var(--primary)]/20 shadow-[0_0_20px_rgba(20,184,166,0.3)]" : "bg-gradient-to-br from-[var(--card)] to-[var(--background)] border border-[var(--border)]"}`}>
+            <div className={`p-5 rounded-full transition-colors duration-300 ${dragOver ? "bg-[var(--primary)]/20 shadow-[0_0_20px_rgba(77,167,104,0.3)]" : "bg-gradient-to-br from-[var(--card)] to-[var(--background)] border border-[var(--border)]"}`}>
               <Upload size={36} className={dragOver ? "text-[var(--primary)]" : "text-[var(--text-muted)]"} />
             </div>
             <div>
@@ -172,7 +172,7 @@ export default function UploadPage() {
             <button
               type="button"
               onClick={e => { e.stopPropagation(); inputRef.current?.click(); }}
-              className="mt-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-8 py-3 rounded-xl text-sm transition-colors shadow-[0_0_20px_rgba(20,184,166,0.3)] hover:shadow-[0_0_30px_rgba(20,184,166,0.5)] flex items-center gap-2"
+              className="mt-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-8 py-3 rounded-xl text-sm transition-colors shadow-[0_0_20px_rgba(77,167,104,0.3)] hover:shadow-[0_0_30px_rgba(77,167,104,0.5)] flex items-center gap-2"
             >
               Selecionar Arquivos <ChevronRight size={16} />
             </button>

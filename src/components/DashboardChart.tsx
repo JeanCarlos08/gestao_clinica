@@ -20,7 +20,7 @@ export default function DashboardChart({ data }: { data: AttendancePoint[] }) {
           <Tooltip
             contentStyle={{
               backgroundColor: "rgba(8,15,9,0.95)",
-              borderColor: "rgba(20,184,166,0.2)",
+              borderColor: "rgba(77,167,104,0.2)",
               borderRadius: "12px",
               color: "#fff",
               boxShadow: "0 16px 48px rgba(0,0,0,0.6)",

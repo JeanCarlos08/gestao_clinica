@@ -223,7 +223,7 @@ export default function PacientesPage() {
             <span className="hidden sm:inline">Atualizar</span>
           </button>
           <button onClick={openNew}
-            className="flex items-center justify-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-[0_0_20px_rgba(20,184,166,0.3)]">
+            className="flex items-center justify-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-[0_0_20px_rgba(77,167,104,0.3)]">
             <Plus size={16} strokeWidth={2.5} /> Novo Paciente
           </button>
         </div>
@@ -436,7 +436,7 @@ export default function PacientesPage() {
                 <button type="button" onClick={() => setShowModal(false)}
                   className="px-5 py-2.5 text-sm font-bold text-[var(--text-muted)] hover:text-white transition-colors">Cancelar</button>
                 <button type="submit" disabled={saving}
-                  className="bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-colors shadow-[0_0_15px_rgba(20,184,166,0.25)] disabled:opacity-50 flex items-center gap-2">
+                  className="bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-colors shadow-[0_0_15px_rgba(77,167,104,0.25)] disabled:opacity-50 flex items-center gap-2">
                   {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
                   Salvar
                 </button>

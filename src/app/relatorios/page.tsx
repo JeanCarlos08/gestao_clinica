@@ -109,7 +109,7 @@ export default function RelatoriosPage() {
         </div>
         <button
           onClick={exportCSV}
-          className="flex items-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-4 py-2.5 rounded-xl text-sm transition-colors shadow-[0_0_20px_rgba(20,184,166,0.3)]"
+          className="flex items-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-4 py-2.5 rounded-xl text-sm transition-colors shadow-[0_0_20px_rgba(77,167,104,0.3)]"
         >
           <Download size={15} /> Exportar CSV
         </button>

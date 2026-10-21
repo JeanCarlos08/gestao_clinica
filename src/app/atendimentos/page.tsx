@@ -155,7 +155,7 @@ export default function AtendimentosPage() {
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Atendimentos</h1>
           <p className="text-[var(--text-muted)] text-sm mt-1">Gerencie consultas e avaliações clínicas</p>
         </div>
-        <button onClick={openNew} className="flex items-center justify-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-[0_0_20px_rgba(20,184,166,0.3)] hover:shadow-[0_0_30px_rgba(20,184,166,0.5)]">
+        <button onClick={openNew} className="flex items-center justify-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-[0_0_20px_rgba(77,167,104,0.3)] hover:shadow-[0_0_30px_rgba(77,167,104,0.5)]">
           <Plus size={16} strokeWidth={2.5} /> Novo Agendamento
         </button>
       </div>
@@ -411,7 +411,7 @@ export default function AtendimentosPage() {
               </div>
               <div className="pt-4 flex justify-end gap-3">
                 <button type="button" onClick={() => setShowModal(false)} className="px-5 py-2.5 text-sm font-bold text-[var(--text-muted)] hover:text-white transition-colors">Cancelar</button>
-                <button type="submit" className="bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-colors shadow-[0_0_15px_rgba(20,184,166,0.25)] hover:shadow-[0_0_25px_rgba(20,184,166,0.4)]">
+                <button type="submit" className="bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-colors shadow-[0_0_15px_rgba(77,167,104,0.25)] hover:shadow-[0_0_25px_rgba(77,167,104,0.4)]">
                   Salvar
                 </button>
               </div>
@@ -446,7 +446,7 @@ export default function AtendimentosPage() {
                   <div className="text-[11px] font-bold text-[var(--text-label)] uppercase tracking-wider mb-2">Resultado:</div>
                   <div className="bg-[var(--background)] border border-[var(--border)] p-4 rounded-xl text-sm text-white whitespace-pre-wrap max-h-60 overflow-y-auto mb-4">{aiResult}</div>
                   <div className="flex justify-end">
-                    <button onClick={copyAIParecer} className="bg-[var(--primary)] text-black font-bold px-6 py-2.5 rounded-xl text-sm shadow-[0_0_15px_rgba(20,184,166,0.25)] hover:shadow-[0_0_25px_rgba(20,184,166,0.4)]">
+                    <button onClick={copyAIParecer} className="bg-[var(--primary)] text-black font-bold px-6 py-2.5 rounded-xl text-sm shadow-[0_0_15px_rgba(77,167,104,0.25)] hover:shadow-[0_0_25px_rgba(77,167,104,0.4)]">
                       Copiar Parecer
                     </button>
                   </div>

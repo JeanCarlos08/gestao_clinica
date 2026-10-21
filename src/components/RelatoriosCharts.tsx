@@ -44,7 +44,7 @@ export default function RelatoriosCharts({ stats, total }: { stats: ReportStats;
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
                   <XAxis dataKey="name" stroke="#3d5554" tick={{ fill: "#6b8e8a", fontSize: 10 }} axisLine={false} tickLine={false} />
                   <YAxis stroke="#3d5554" tick={{ fill: "#6b8e8a", fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ backgroundColor: "rgba(8,15,9,0.95)", borderColor: "rgba(20,184,166,0.2)", borderRadius: "10px", color: "#fff" }} itemStyle={{ color: "#7BCF8A" }} />
+                  <Tooltip contentStyle={{ backgroundColor: "rgba(8,15,9,0.95)", borderColor: "rgba(77,167,104,0.2)", borderRadius: "10px", color: "#fff" }} itemStyle={{ color: "#7BCF8A" }} />
                   <Bar dataKey="value" fill="#4DA768" radius={[6, 6, 0, 0]} fillOpacity={0.85} name="Atendimentos" />
                 </BarChart>
               </ResponsiveContainer>
@@ -69,7 +69,7 @@ export default function RelatoriosCharts({ stats, total }: { stats: ReportStats;
                       <Cell key={entry.name} fill={STATUS_COLORS[entry.name] || COLORS[i % COLORS.length]} fillOpacity={0.9} />
                     ))}
                   </Pie>
-                  <Tooltip contentStyle={{ backgroundColor: "rgba(8,15,9,0.95)", borderColor: "rgba(20,184,166,0.2)", borderRadius: "10px", color: "#fff" }} />
+                  <Tooltip contentStyle={{ backgroundColor: "rgba(8,15,9,0.95)", borderColor: "rgba(77,167,104,0.2)", borderRadius: "10px", color: "#fff" }} />
                   <Legend iconType="circle" iconSize={8} formatter={(v) => <span style={{ color: "#98b8b2", fontSize: 11 }}>{v}</span>} />
                 </PieChart>
               </ResponsiveContainer>

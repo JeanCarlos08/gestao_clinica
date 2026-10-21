@@ -2,8 +2,8 @@
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   Agendado: { bg: "#fff3cd", text: "#856404" },
-  Atendido: { bg: "rgba(20,184,166,0.15)", text: "#4DA768" },
-  Concluído: { bg: "rgba(20,184,166,0.15)", text: "#4DA768" },
+  Atendido: { bg: "rgba(77,167,104,0.15)", text: "#4DA768" },
+  Concluído: { bg: "rgba(77,167,104,0.15)", text: "#4DA768" },
   Cancelado: { bg: "#f8d7da", text: "#842029" },
 };
 

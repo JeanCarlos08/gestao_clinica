@@ -111,7 +111,7 @@ export default function LoginPage() {
         }
         .auth-left-tag {
           display: inline-flex; align-items: center; gap: 6px;
-          background: rgba(20,184,166,0.12); border: 1px solid rgba(20,184,166,0.25);
+          background: rgba(77,167,104,0.12); border: 1px solid rgba(77,167,104,0.25);
           color: #7BCF8A; font-size: 11px; font-weight: 600; letter-spacing: 1.5px;
           text-transform: uppercase; padding: 6px 14px; border-radius: 100px; margin-bottom: 20px;
           backdrop-filter: blur(8px);
@@ -154,8 +154,8 @@ export default function LoginPage() {
           content: '';
           position: absolute; inset: 0;
           background:
-            radial-gradient(ellipse 600px 500px at 50% -10%, rgba(20,184,166,0.07) 0%, transparent 70%),
-            radial-gradient(ellipse 400px 300px at 110% 80%, rgba(20,184,166,0.04) 0%, transparent 60%);
+            radial-gradient(ellipse 600px 500px at 50% -10%, rgba(77,167,104,0.07) 0%, transparent 70%),
+            radial-gradient(ellipse 400px 300px at 110% 80%, rgba(77,167,104,0.04) 0%, transparent 60%);
           pointer-events: none;
         }
 
@@ -186,9 +186,9 @@ export default function LoginPage() {
         .auth-brand-icon {
           width: 56px; height: 56px; border-radius: 16px;
           background: linear-gradient(135deg, #0f766e 0%, #0d3a22 100%);
-          border: 1px solid rgba(45,212,191,0.2);
+          border: 1px solid rgba(123,207,138,0.2);
           display: flex; align-items: center; justify-content: center;
-          box-shadow: 0 0 32px rgba(20,184,166,0.2), 0 8px 24px rgba(0,0,0,0.4);
+          box-shadow: 0 0 32px rgba(77,167,104,0.2), 0 8px 24px rgba(0,0,0,0.4);
           font-size: 24px;
         }
         .auth-brand-name {
@@ -205,7 +205,7 @@ export default function LoginPage() {
           border-radius: 24px;
           padding: 32px;
           box-shadow:
-            0 0 0 1px rgba(20,184,166,0.06) inset,
+            0 0 0 1px rgba(77,167,104,0.06) inset,
             0 32px 64px rgba(0,0,0,0.5),
             0 8px 24px rgba(0,0,0,0.3);
           backdrop-filter: blur(20px);
@@ -266,9 +266,9 @@ export default function LoginPage() {
           outline: none; transition: all 0.2s; font-family: inherit;
         }
         .auth-input:focus {
-          border-color: rgba(45,212,191,0.4);
+          border-color: rgba(123,207,138,0.4);
           background: rgba(255,255,255,0.06);
-          box-shadow: 0 0 0 3px rgba(20,184,166,0.08);
+          box-shadow: 0 0 0 3px rgba(77,167,104,0.08);
         }
         .auth-input::placeholder { color: rgba(255,255,255,0.2); }
         .auth-input-pr { padding-right: 48px; }
@@ -297,7 +297,7 @@ export default function LoginPage() {
           cursor: pointer; font-family: inherit;
           display: flex; align-items: center; justify-content: center; gap: 8px;
           transition: all 0.2s;
-          box-shadow: 0 4px 20px rgba(20,184,166,0.35), 0 1px 0 rgba(255,255,255,0.1) inset;
+          box-shadow: 0 4px 20px rgba(77,167,104,0.35), 0 1px 0 rgba(255,255,255,0.1) inset;
           position: relative; overflow: hidden;
         }
         .auth-submit::before {
@@ -307,7 +307,7 @@ export default function LoginPage() {
         }
         .auth-submit:hover:not(:disabled) {
           transform: translateY(-2px);
-          box-shadow: 0 8px 28px rgba(20,184,166,0.5), 0 1px 0 rgba(255,255,255,0.1) inset;
+          box-shadow: 0 8px 28px rgba(77,167,104,0.5), 0 1px 0 rgba(255,255,255,0.1) inset;
         }
         .auth-submit:active:not(:disabled) { transform: translateY(0); }
         .auth-submit:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
@@ -500,10 +500,10 @@ export default function LoginPage() {
       {/* Modal de consentimento LGPD */}
       {consentModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-2xl bg-[#0e1f1d] border border-[rgba(20,184,166,0.2)] shadow-2xl p-6 flex flex-col gap-4">
+          <div className="w-full max-w-md rounded-2xl bg-[#0e1f1d] border border-[rgba(77,167,104,0.2)] shadow-2xl p-6 flex flex-col gap-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-[rgba(20,184,166,0.1)] border border-[rgba(20,184,166,0.2)] flex items-center justify-center flex-shrink-0">
+                <div className="w-9 h-9 rounded-xl bg-[rgba(77,167,104,0.1)] border border-[rgba(77,167,104,0.2)] flex items-center justify-center flex-shrink-0">
                   <Shield size={18} className="text-[#4DA768]" />
                 </div>
                 <div>

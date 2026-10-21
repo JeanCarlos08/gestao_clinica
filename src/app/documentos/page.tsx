@@ -169,7 +169,7 @@ export default function DocumentosPage() {
               {/* Action */}
               <button
                 onClick={() => openEditor(patient)}
-                className="w-full py-2.5 rounded-xl text-xs font-semibold bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/20 hover:bg-[var(--primary)]/20 hover:border-[var(--primary)]/40 transition-all flex items-center justify-center gap-2 group-hover:shadow-[0_0_16px_rgba(20,184,166,0.12)]"
+                className="w-full py-2.5 rounded-xl text-xs font-semibold bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/20 hover:bg-[var(--primary)]/20 hover:border-[var(--primary)]/40 transition-all flex items-center justify-center gap-2 group-hover:shadow-[0_0_16px_rgba(77,167,104,0.12)]"
               >
                 <FileEdit size={13} />
                 Abrir Editor
