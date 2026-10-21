@@ -21,10 +21,11 @@ export async function GET() {
     state,
   });
 
-  const response = Response.redirect(
-    `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`,
-    302
-  );
-  response.headers.set("Set-Cookie", `oauth_state=${state}; Path=/; HttpOnly; Max-Age=600; SameSite=Lax`);
-  return response;
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`,
+      "Set-Cookie": `oauth_state=${state}; Path=/; HttpOnly; Max-Age=600; SameSite=Lax`,
+    },
+  });
 }
