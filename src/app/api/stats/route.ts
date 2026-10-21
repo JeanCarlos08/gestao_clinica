@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import sql from "@/lib/db";
 import { requirePermission } from "@/lib/auth-helpers";
 import { PERM_VIEW_DASHBOARD } from "@/lib/constants";
-import { jsonOk, jsonError } from "@/lib/utils";
+import { jsonOk, jsonError, errMessage} from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
   const auth = await requirePermission(request, PERM_VIEW_DASHBOARD);
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
       por_modalidade: Object.fromEntries(porModalidade.map(r => [r.modalidade, parseInt(String(r.total))])),
       por_empresa: Object.fromEntries(porEmpresa.map(r => [r.empresa, parseInt(String(r.total))])),
     });
-  } catch (e: any) {
-    return jsonError("Erro ao carregar estatísticas: " + e.message, 500);
+  } catch (e) {
+    return jsonError("Erro ao carregar estatísticas: " + errMessage(e), 500);
   }
 }

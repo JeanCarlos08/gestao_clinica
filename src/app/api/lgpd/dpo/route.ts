@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import sql from "@/lib/db";
 import { config } from "@/lib/config";
-import { jsonOk, jsonError } from "@/lib/utils";
+import { jsonOk, jsonError, errMessage} from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
   const auth = request.headers.get("authorization");
@@ -10,15 +10,15 @@ export async function GET(request: NextRequest) {
   try {
     const cfg = await sql`SELECT chave, valor FROM lgpd_config`;
     const data: Record<string, string> = {};
-    cfg.forEach((r: any) => { data[r.chave] = r.valor; });
+    cfg.forEach((r) => { data[r.chave] = r.valor; });
 
     return jsonOk({
       dpo_nome: data.dpo_nome || config.dpoNome,
       dpo_email: data.dpo_email || config.dpoEmail,
       dpo_telefone: data.dpo_telefone || "",
     });
-  } catch (e: any) {
-    return jsonError("Erro: " + e.message, 500);
+  } catch (e) {
+    return jsonError("Erro: " + errMessage(e), 500);
   }
 }
 
@@ -35,7 +35,7 @@ export async function PUT(request: NextRequest) {
       `;
     }
     return jsonOk({ mensagem: "DPO atualizado com sucesso." });
-  } catch (e: any) {
-    return jsonError("Erro: " + e.message, 500);
+  } catch (e) {
+    return jsonError("Erro: " + errMessage(e), 500);
   }
 }

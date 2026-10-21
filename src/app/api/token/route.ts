@@ -15,7 +15,7 @@ async function ensureDb() {
   }
 }
 
-async function checkBruteForce(username: string, ip: string): Promise<boolean> {
+async function checkBruteForce(username: string): Promise<boolean> {
   try {
     const cutoff = new Date(Date.now() - config.loginBlockMinutes * 60 * 1000).toISOString();
     const attempts = await sql`
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     return jsonError("Usuário e senha são obrigatórios.", 400);
   }
 
-  if (await checkBruteForce(username, ip)) {
+  if (await checkBruteForce(username)) {
     return jsonError(
       `Conta temporariamente bloqueada por excesso de tentativas. Tente novamente em ${config.loginBlockMinutes} minutos.`,
       429

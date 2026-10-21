@@ -3,7 +3,7 @@ import sql from "@/lib/db";
 import { requirePermission } from "@/lib/auth-helpers";
 import { PERM_VIEW_DASHBOARD } from "@/lib/constants";
 import { config } from "@/lib/config";
-import { jsonOk, jsonError } from "@/lib/utils";
+import { jsonOk, jsonError, errMessage} from "@/lib/utils";
 
 export async function POST(request: NextRequest) {
   const auth = await requirePermission(request, PERM_VIEW_DASHBOARD);
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     });
 
     return jsonOk({ resposta: response.text || "Não obtive resposta da IA." });
-  } catch (e: any) {
-    return jsonError("Erro no chat: " + e.message, 500);
+  } catch (e) {
+    return jsonError("Erro no chat: " + errMessage(e), 500);
   }
 }

@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import sql from "@/lib/db";
 import { requirePermission } from "@/lib/auth-helpers";
 import { PERM_VIEW_DOCUMENTOS } from "@/lib/constants";
-import { buildGoogleDocEmbedUrl, jsonOk, jsonError } from "@/lib/utils";
+import { buildGoogleDocEmbedUrl, jsonOk, jsonError, errMessage} from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
   const auth = await requirePermission(request, PERM_VIEW_DOCUMENTOS);
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(Math.max(parseInt(url.searchParams.get("limit") || "50"), 1), 200);
     const offset = Math.max(parseInt(url.searchParams.get("offset") || "0"), 0);
     const docs = await sql`SELECT id, titulo, google_doc_id, tipo, atendimento_id, criado_em FROM documentos WHERE tipo = 'laudo' ORDER BY criado_em DESC LIMIT ${limit} OFFSET ${offset}`;
-    return jsonOk(docs.map((d: any) => ({
+    return jsonOk(docs.map((d) => ({
       id: d.google_doc_id,
       db_id: d.id,
       titulo: d.titulo,
@@ -24,8 +24,8 @@ export async function GET(request: NextRequest) {
       url: buildGoogleDocViewUrl(d.google_doc_id),
       embed_url: buildGoogleDocEmbedUrl(d.google_doc_id),
     })));
-  } catch (e: any) {
-    return jsonError("Erro: " + e.message, 500);
+  } catch (e) {
+    return jsonError("Erro: " + errMessage(e), 500);
   }
 }
 

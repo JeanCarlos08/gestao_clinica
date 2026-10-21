@@ -3,7 +3,7 @@ import sql from "@/lib/db";
 import { requirePermission } from "@/lib/auth-helpers";
 import { PERM_VIEW_DASHBOARD } from "@/lib/constants";
 import { config } from "@/lib/config";
-import { jsonError } from "@/lib/utils";
+import { jsonError, errMessage} from "@/lib/utils";
 
 export async function POST(request: NextRequest) {
   const auth = await requirePermission(request, PERM_VIEW_DASHBOARD);
@@ -39,8 +39,8 @@ export async function POST(request: NextRequest) {
           const text = response.text || "";
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text })}\n\n`));
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-        } catch (e: any) {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: e.message })}\n\n`));
+        } catch (e) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: errMessage(e) })}\n\n`));
         }
         controller.close();
       },
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
         Connection: "keep-alive",
       },
     });
-  } catch (e: any) {
-    return jsonError("Erro: " + e.message, 500);
+  } catch (e) {
+    return jsonError("Erro: " + errMessage(e), 500);
   }
 }

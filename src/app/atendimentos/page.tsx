@@ -4,8 +4,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import useSWR from "swr";
 import {
   CalendarDays, Clock, PlayCircle, Plus, Search,
-  XCircle, RefreshCw, Filter, Sparkles, Building2, User,
-  LayoutGrid, List, Kanban, MoreHorizontal, ChevronRight, CheckCircle2, AlertCircle, Calendar
+  XCircle, RefreshCw, Sparkles, Building2, User,
+  List, Kanban, MoreHorizontal, ChevronRight, Calendar
 } from "lucide-react";
 import AppointmentCalendar from "@/components/AppointmentCalendar";
 import EmptyIllustration from "@/components/EmptyIllustration";

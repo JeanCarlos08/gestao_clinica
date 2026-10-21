@@ -61,3 +61,10 @@ export function jsonOk(data: unknown, status = 200) {
 export function jsonError(message: string, status = 400) {
   return Response.json({ detail: message }, { status });
 }
+
+/** Extrai mensagem de erro de forma segura (aceita unknown no catch). */
+export function errMessage(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  if (typeof e === "string") return e;
+  try { return JSON.stringify(e); } catch { return String(e); }
+}

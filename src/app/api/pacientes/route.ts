@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import sql from "@/lib/db";
 import { requirePermission } from "@/lib/auth-helpers";
 import { PERM_VIEW_ATENDIMENTOS, PERM_CREATE_ATENDIMENTO } from "@/lib/constants";
-import { slugName, jsonOk, jsonError } from "@/lib/utils";
+import { slugName, jsonOk, jsonError, errMessage} from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
   const auth = await requirePermission(request, PERM_VIEW_ATENDIMENTOS);
@@ -69,10 +69,10 @@ export async function GET(request: NextRequest) {
       atualizado_em: p.atualizado_em,
       total_atendimentos: parseInt(String(p.total_atendimentos ?? "0")),
       ultimo_atendimento: p.ultimo_atendimento,
-      modalidades_distintas: parseInt(String((p as any).modalidades_cnt ?? "0")),
+      modalidades_distintas: parseInt(String(p.modalidades_cnt ?? "0")),
     })));
-  } catch (e: any) {
-    return jsonError("Erro ao listar pacientes: " + e.message, 500);
+  } catch (e) {
+    return jsonError("Erro ao listar pacientes: " + errMessage(e), 500);
   }
 }
 
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
     `;
 
     return jsonOk({ id: result[0].id, mensagem: "Paciente criado com sucesso." }, 201);
-  } catch (e: any) {
-    return jsonError("Erro ao criar paciente: " + e.message, 500);
+  } catch (e) {
+    return jsonError("Erro ao criar paciente: " + errMessage(e), 500);
   }
 }

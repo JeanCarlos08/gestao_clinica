@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import sql from "@/lib/db";
-import { jsonOk, jsonError } from "@/lib/utils";
+import { jsonOk } from "@/lib/utils";
 
 export async function GET(request: NextRequest, { params }: { params: { email: string } }) {
   const email = decodeURIComponent(params.email);

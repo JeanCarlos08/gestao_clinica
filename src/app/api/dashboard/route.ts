@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import sql from "@/lib/db";
 import { requirePermission } from "@/lib/auth-helpers";
 import { PERM_VIEW_DASHBOARD } from "@/lib/constants";
-import { jsonOk, jsonError } from "@/lib/utils";
+import { jsonOk, jsonError, errMessage} from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
   const auth = await requirePermission(request, PERM_VIEW_DASHBOARD);
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
         foto: a.foto,
       })),
     });
-  } catch (e: any) {
-    return jsonError("Erro ao carregar dashboard: " + e.message, 500);
+  } catch (e) {
+    return jsonError("Erro ao carregar dashboard: " + errMessage(e), 500);
   }
 }

@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import { config } from "@/lib/config";
 import { createAccessToken, createRefreshToken } from "@/lib/jwt";
-import { jsonError } from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
@@ -56,7 +55,7 @@ export async function GET(request: NextRequest) {
       `${config.frontendUrl}/auth/callback?token=${accessToken}&refresh=${refreshToken}&name=${encodeURIComponent(name)}`,
       302
     );
-  } catch (e) {
+  } catch {
     return Response.redirect(`${config.frontendUrl}/auth/callback?error=erro_interno`, 302);
   }
 }

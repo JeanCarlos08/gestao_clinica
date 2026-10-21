@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import sql from "@/lib/db";
 import { requirePermission } from "@/lib/auth-helpers";
 import { PERM_MANAGE_CONFIGURACOES } from "@/lib/constants";
-import { jsonOk, jsonError } from "@/lib/utils";
+import { jsonOk, jsonError, errMessage} from "@/lib/utils";
 
 export async function POST(request: NextRequest) {
   const auth = await requirePermission(request, PERM_MANAGE_CONFIGURACOES);
@@ -16,16 +16,16 @@ export async function POST(request: NextRequest) {
     const auditCutoff = new Date(Date.now() - auditDays * 86400000).toISOString();
     const loginCutoff = new Date(Date.now() - loginDays * 86400000).toISOString();
 
-    const auditResult = await sql`DELETE FROM auditoria WHERE criado_em < ${auditCutoff} RETURNING 1` as unknown as any[];
-    const loginResult = await sql`DELETE FROM login_attempts WHERE tentado_em < ${loginCutoff} RETURNING 1` as unknown as any[];
+    const auditResult = await sql`DELETE FROM auditoria WHERE criado_em < ${auditCutoff} RETURNING 1`;
+    const loginResult = await sql`DELETE FROM login_attempts WHERE tentado_em < ${loginCutoff} RETURNING 1`;
 
     return jsonOk({
-      audit_logs_removed: (auditResult as any[]).length,
-      login_attempts_removed: (loginResult as any[]).length,
+      audit_logs_removed: auditResult.length,
+      login_attempts_removed: loginResult.length,
       audit_retention_days: auditDays,
       login_retention_days: loginDays,
     });
-  } catch (e: any) {
-    return jsonError("Erro na limpeza: " + e.message, 500);
+  } catch (e) {
+    return jsonError("Erro na limpeza: " + errMessage(e), 500);
   }
 }

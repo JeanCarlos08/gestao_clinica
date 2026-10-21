@@ -3,7 +3,7 @@ import { requirePermission } from "@/lib/auth-helpers";
 import { PERM_VIEW_DOCUMENTOS } from "@/lib/constants";
 import { jsonError } from "@/lib/utils";
 
-export async function GET(request: NextRequest, { params }: { params: { docId: string } }) {
+export async function GET(request: NextRequest) {
   const auth = await requirePermission(request, PERM_VIEW_DOCUMENTOS);
   if (auth instanceof Response) return auth;
 

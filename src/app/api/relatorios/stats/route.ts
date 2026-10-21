@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import sql from "@/lib/db";
 import { requirePermission } from "@/lib/auth-helpers";
 import { PERM_VIEW_ATENDIMENTOS } from "@/lib/constants";
-import { jsonOk, jsonError } from "@/lib/utils";
+import { jsonOk, jsonError, errMessage} from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
   const auth = await requirePermission(request, PERM_VIEW_ATENDIMENTOS);
@@ -40,14 +40,14 @@ export async function GET(request: NextRequest) {
 
     return jsonOk({
       total: parseInt(total[0]?.cnt ?? "0"),
-      por_status: Object.fromEntries(porStatus.map((r: any) => [r.status, parseInt(String(r.total))])),
-      por_modalidade: Object.fromEntries(porModalidade.map((r: any) => [r.modalidade, parseInt(String(r.total))])),
-      por_empresa: Object.fromEntries(porEmpresa.map((r: any) => [r.empresa, parseInt(String(r.total))])),
-      por_mes: Object.fromEntries(porMes.map((r: any) => [r.mes, parseInt(String(r.total))])),
-      por_paciente: Object.fromEntries(porPaciente.map((r: any) => [r.paciente, parseInt(String(r.total))])),
+      por_status: Object.fromEntries(porStatus.map((r) => [r.status, parseInt(String(r.total))])),
+      por_modalidade: Object.fromEntries(porModalidade.map((r) => [r.modalidade, parseInt(String(r.total))])),
+      por_empresa: Object.fromEntries(porEmpresa.map((r) => [r.empresa, parseInt(String(r.total))])),
+      por_mes: Object.fromEntries(porMes.map((r) => [r.mes, parseInt(String(r.total))])),
+      por_paciente: Object.fromEntries(porPaciente.map((r) => [r.paciente, parseInt(String(r.total))])),
       periodo: { data_inicio: dataInicio, data_fim: dataFim },
     });
-  } catch (e: any) {
-    return jsonError("Erro: " + e.message, 500);
+  } catch (e) {
+    return jsonError("Erro: " + errMessage(e), 500);
   }
 }

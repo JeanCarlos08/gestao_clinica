@@ -1,8 +1,7 @@
-import { NextRequest } from "next/server";
 import { config } from "@/lib/config";
 import { jsonError } from "@/lib/utils";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   if (!config.microsoftOAuthClientId) {
     return jsonError("Login com Microsoft não configurado.", 503);
   }

@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import sql from "@/lib/db";
-import { getClientIp, jsonOk, jsonError } from "@/lib/utils";
+import { jsonOk, jsonError, errMessage} from "@/lib/utils";
 
 export async function POST(request: NextRequest) {
   const auth = request.headers.get("authorization");
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       auditoria_id: audit[0].id,
       sucesso: true,
     });
-  } catch (e: any) {
-    return jsonError("Erro ao executar esquecimento: " + e.message, 500);
+  } catch (e) {
+    return jsonError("Erro ao executar esquecimento: " + errMessage(e), 500);
   }
 }

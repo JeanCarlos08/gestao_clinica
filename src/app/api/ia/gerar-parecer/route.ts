@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { requirePermission } from "@/lib/auth-helpers";
 import { PERM_TRIGGER_AUTOMACOES } from "@/lib/constants";
 import { config } from "@/lib/config";
-import { jsonOk, jsonError } from "@/lib/utils";
+import { jsonOk, jsonError, errMessage} from "@/lib/utils";
 
 export async function POST(request: NextRequest) {
   const auth = await requirePermission(request, PERM_TRIGGER_AUTOMACOES);
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
 
     const text = response.text || "";
     return jsonOk({ texto: text.trim(), model: config.geminiModel });
-  } catch (e: any) {
-    return jsonError("Falha ao gerar texto com IA: " + e.message, 503);
+  } catch (e) {
+    return jsonError("Falha ao gerar texto com IA: " + errMessage(e), 503);
   }
 }

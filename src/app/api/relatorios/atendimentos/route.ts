@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import sql from "@/lib/db";
 import { requirePermission } from "@/lib/auth-helpers";
 import { PERM_VIEW_ATENDIMENTOS } from "@/lib/constants";
-import { jsonOk, jsonError } from "@/lib/utils";
+import { jsonOk, jsonError, errMessage} from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
   const auth = await requirePermission(request, PERM_VIEW_ATENDIMENTOS);
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
       `;
     }
 
-    return jsonOk(atendimentos.map((a: any) => ({
+    return jsonOk(atendimentos.map((a) => ({
       id: a.id,
       empresa: a.empresa,
       nome: a.nome,
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
       has_laudo: !!a.doc_id,
       has_avaliacao: false,
     })));
-  } catch (e: any) {
-    return jsonError("Erro: " + e.message, 500);
+  } catch (e) {
+    return jsonError("Erro: " + errMessage(e), 500);
   }
 }

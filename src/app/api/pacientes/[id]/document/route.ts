@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import sql from "@/lib/db";
 import { requirePermission } from "@/lib/auth-helpers";
 import { PERM_VIEW_ATENDIMENTOS } from "@/lib/constants";
-import { jsonOk, jsonError } from "@/lib/utils";
+import { jsonOk, jsonError, errMessage} from "@/lib/utils";
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   const auth = await requirePermission(request, PERM_VIEW_ATENDIMENTOS);
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     if (docs.length === 0) return jsonError("Documento não encontrado para esse paciente.", 404);
     return jsonOk({ google_doc_id: docs[0].google_doc_id, db_id: docs[0].db_id, titulo: docs[0].titulo });
-  } catch (e: any) {
-    return jsonError("Erro: " + e.message, 500);
+  } catch (e) {
+    return jsonError("Erro: " + errMessage(e), 500);
   }
 }

@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import sql from "@/lib/db";
 import { requirePermission } from "@/lib/auth-helpers";
 import { PERM_VIEW_LOGS } from "@/lib/constants";
-import { jsonOk, jsonError } from "@/lib/utils";
+import { jsonOk, jsonError, errMessage} from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
   const auth = await requirePermission(request, PERM_VIEW_LOGS);
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const logs = await sql`SELECT * FROM auditoria ORDER BY criado_em DESC LIMIT ${limit}`;
-    return jsonOk(logs.map((e: any) => ({
+    return jsonOk(logs.map((e) => ({
       id: e.id,
       acao: e.acao,
       entidade: e.entidade,
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
       usuario: e.usuario,
       criado_em: e.criado_em,
     })));
-  } catch (e: any) {
-    return jsonError("Erro: " + e.message, 500);
+  } catch (e) {
+    return jsonError("Erro: " + errMessage(e), 500);
   }
 }

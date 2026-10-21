@@ -1,10 +1,10 @@
 import { NextRequest } from "next/server";
 import sql from "@/lib/db";
-import { getClientIp, jsonOk, jsonError } from "@/lib/utils";
+import { getClientIp, jsonOk, jsonError, errMessage} from "@/lib/utils";
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { titular_nome, titular_email, finalidade, base_legal, provider } = body;
+  const { titular_nome, titular_email, finalidade, base_legal } = body;
   const ip = getClientIp(request);
   const userAgent = request.headers.get("user-agent") || "";
 
@@ -19,8 +19,8 @@ export async function POST(request: NextRequest) {
       RETURNING id
     `;
     return jsonOk({ sucesso: true, consentimento_id: result[0].id, mensagem: "Consentimento registrado." }, 201);
-  } catch (e: any) {
-    return jsonError("Erro: " + e.message, 500);
+  } catch (e) {
+    return jsonError("Erro: " + errMessage(e), 500);
   }
 }
 

@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import sql from "@/lib/db";
 import { requirePermission } from "@/lib/auth-helpers";
 import { PERM_VIEW_ATENDIMENTOS, PERM_CREATE_ATENDIMENTO } from "@/lib/constants";
-import { jsonOk, jsonError } from "@/lib/utils";
+import { jsonOk, jsonError, errMessage} from "@/lib/utils";
 
 // GET /api/notas?paciente_id=123&q=busca
 export async function GET(request: NextRequest) {
@@ -66,8 +66,8 @@ export async function GET(request: NextRequest) {
       atualizado_em: n.atualizado_em,
       paciente_id: n.tags?.startsWith("paciente:") ? parseInt(n.tags.split(":")[1]) : null,
     })));
-  } catch (e: any) {
-    return jsonError("Erro ao listar evoluções: " + e.message, 500);
+  } catch (e) {
+    return jsonError("Erro ao listar evoluções: " + errMessage(e), 500);
   }
 }
 
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
       atualizado_em: n.atualizado_em,
       paciente_id: n.tags?.startsWith("paciente:") ? parseInt(n.tags.split(":")[1]) : null,
     }, 201);
-  } catch (e: any) {
-    return jsonError("Erro ao criar evolução: " + e.message, 500);
+  } catch (e) {
+    return jsonError("Erro ao criar evolução: " + errMessage(e), 500);
   }
 }

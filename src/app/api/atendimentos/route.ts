@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import sql from "@/lib/db";
 import { requirePermission } from "@/lib/auth-helpers";
 import { PERM_VIEW_ATENDIMENTOS, PERM_CREATE_ATENDIMENTO } from "@/lib/constants";
-import { slugName, jsonOk, jsonError } from "@/lib/utils";
+import { slugName, jsonOk, jsonError, errMessage} from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
   const auth = await requirePermission(request, PERM_VIEW_ATENDIMENTOS);
@@ -59,8 +59,8 @@ export async function GET(request: NextRequest) {
       offset,
       has_more: offset + limit < total,
     });
-  } catch (e: any) {
-    return jsonError("Erro ao listar atendimentos: " + e.message, 500);
+  } catch (e) {
+    return jsonError("Erro ao listar atendimentos: " + errMessage(e), 500);
   }
 }
 
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
     `;
 
     return jsonOk({ id: result[0].id, mensagem: "Atendimento criado com sucesso." }, 201);
-  } catch (e: any) {
-    return jsonError("Erro ao criar atendimento: " + e.message, 500);
+  } catch (e) {
+    return jsonError("Erro ao criar atendimento: " + errMessage(e), 500);
   }
 }

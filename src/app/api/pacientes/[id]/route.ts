@@ -2,9 +2,9 @@ import { NextRequest } from "next/server";
 import sql from "@/lib/db";
 import { requirePermission } from "@/lib/auth-helpers";
 import { PERM_VIEW_ATENDIMENTOS, PERM_EDIT_ATENDIMENTO, PERM_DELETE_ATENDIMENTO } from "@/lib/constants";
-import { jsonOk, jsonError } from "@/lib/utils";
+import { jsonOk, jsonError, errMessage} from "@/lib/utils";
 
-function mapPaciente(p: any) {
+function mapPaciente(p: Record<string, unknown>) {
   return {
     id: p.id,
     nome: p.nome,
@@ -12,7 +12,7 @@ function mapPaciente(p: any) {
     cpf: p.cpf,
     telefone: p.telefone,
     email: p.email,
-    data_nascimento: p.data_nascimento ? new Date(p.data_nascimento).toISOString().split("T")[0] : null,
+    data_nascimento: p.data_nascimento ? new Date(String(p.data_nascimento)).toISOString().split("T")[0] : null,
     sexo: p.sexo,
     estado_civil: p.estado_civil,
     profissao: p.profissao,
@@ -74,8 +74,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     const updated = await sql`SELECT * FROM pacientes WHERE id = ${id}`;
     return jsonOk(mapPaciente(updated[0]));
-  } catch (e: any) {
-    return jsonError("Erro ao atualizar: " + e.message, 500);
+  } catch (e) {
+    return jsonError("Erro ao atualizar: " + errMessage(e), 500);
   }
 }
 
@@ -89,7 +89,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     const result = await sql`DELETE FROM pacientes WHERE id = ${id} RETURNING id`;
     if (result.length === 0) return jsonError("Paciente não encontrado.", 404);
     return jsonOk({ mensagem: "Paciente excluído com sucesso." });
-  } catch (e: any) {
-    return jsonError("Erro ao excluir: " + e.message, 500);
+  } catch (e) {
+    return jsonError("Erro ao excluir: " + errMessage(e), 500);
   }
 }

@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import sql from "@/lib/db";
 import { requirePermission } from "@/lib/auth-helpers";
 import { PERM_EDIT_ATENDIMENTO, PERM_DELETE_ATENDIMENTO } from "@/lib/constants";
-import { jsonOk, jsonError } from "@/lib/utils";
+import { jsonOk, jsonError, errMessage} from "@/lib/utils";
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   const auth = await requirePermission(request, PERM_EDIT_ATENDIMENTO);
@@ -24,8 +24,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     if (result.length === 0) return jsonError("Atendimento não encontrado.", 404);
     return jsonOk({ mensagem: "Atendimento atualizado com sucesso." });
-  } catch (e: any) {
-    return jsonError("Erro ao atualizar: " + e.message, 500);
+  } catch (e) {
+    return jsonError("Erro ao atualizar: " + errMessage(e), 500);
   }
 }
 
@@ -38,7 +38,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     const result = await sql`DELETE FROM atendimentos WHERE id = ${id} RETURNING id`;
     if (result.length === 0) return jsonError("Atendimento não encontrado.", 404);
     return jsonOk({ mensagem: "Atendimento excluído com sucesso." });
-  } catch (e: any) {
-    return jsonError("Erro ao excluir: " + e.message, 500);
+  } catch (e) {
+    return jsonError("Erro ao excluir: " + errMessage(e), 500);
   }
 }

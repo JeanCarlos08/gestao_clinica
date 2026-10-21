@@ -1,4 +1,4 @@
-import { neon } from "@neondatabase/serverless";
+import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
 
 const databaseUrl = process.env.DATABASE_URL;
 
@@ -6,21 +6,27 @@ if (!databaseUrl) {
   console.warn("[db] DATABASE_URL não configurada - queries falharão se chamadas");
 }
 
-// lazy: só cria conexão quando realmente chamada, evita crash em imports como /api/health
-const sqlClient = databaseUrl ? neon(databaseUrl) : null;
+// Tipagem fixa <false, false>: sql`...` retorna sempre Record<string, any>[]
+// (evita a union FullQueryResults que quebra TS em todas as rotas)
+type Sql = NeonQueryFunction<false, false>;
 
-function createStub(): ReturnType<typeof neon> {
-  const stub: any = (..._args: unknown[]) => {
+// lazy: só cria conexão quando realmente chamada, evita crash em imports como /api/health
+const sqlClient = databaseUrl ? (neon(databaseUrl) as Sql) : null;
+
+function createStub(): Sql {
+  const stub = (() => {
     throw new Error("DATABASE_URL não configurada");
-  };
+  }) as unknown as Sql;
   // Para chamadas como sql.query ou inspeções, retorna o próprio stub sem quebrar no import
   return new Proxy(stub, {
     get: () => stub,
-    apply: () => { throw new Error("DATABASE_URL não configurada"); },
+    apply: () => {
+      throw new Error("DATABASE_URL não configurada");
+    },
   });
 }
 
-const sql: ReturnType<typeof neon> = (sqlClient ?? createStub()) as ReturnType<typeof neon>;
+const sql: Sql = sqlClient ?? createStub();
 
 export default sql;
 

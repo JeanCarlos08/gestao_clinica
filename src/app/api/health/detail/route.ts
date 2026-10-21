@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import sql from "@/lib/db";
 import { verifyAccessToken } from "@/lib/jwt";
-import { jsonOk, jsonError } from "@/lib/utils";
+import { jsonOk, jsonError, errMessage} from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
   const auth = request.headers.get("authorization");
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     await sql`SELECT 1`;
     const latency = Date.now() - start;
     return jsonOk({ status: "healthy", db: "connected", latency_ms: latency });
-  } catch (e: any) {
-    return jsonOk({ status: "degraded", db: "error", error: e.message }, 503);
+  } catch (e) {
+    return jsonOk({ status: "degraded", db: "error", error: errMessage(e) }, 503);
   }
 }

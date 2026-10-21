@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import sql from "@/lib/db";
 import { requirePermission } from "@/lib/auth-helpers";
 import { PERM_VIEW_DOCUMENTOS, PERM_MANAGE_DOCUMENTOS } from "@/lib/constants";
-import { jsonOk, jsonError } from "@/lib/utils";
+import { jsonOk, jsonError, errMessage} from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
   const auth = await requirePermission(request, PERM_VIEW_DOCUMENTOS);
@@ -11,8 +11,8 @@ export async function GET(request: NextRequest) {
   try {
     const arquivos = await sql`SELECT id, filename, content_type, size, criado_em FROM arquivos ORDER BY criado_em DESC`;
     return jsonOk(arquivos);
-  } catch (e: any) {
-    return jsonError("Erro: " + e.message, 500);
+  } catch (e) {
+    return jsonError("Erro: " + errMessage(e), 500);
   }
 }
 
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       RETURNING id
     `;
     return jsonOk({ id: result[0].id, mensagem: "Arquivo enviado com sucesso." }, 201);
-  } catch (e: any) {
-    return jsonError("Erro ao salvar: " + e.message, 500);
+  } catch (e) {
+    return jsonError("Erro ao salvar: " + errMessage(e), 500);
   }
 }
