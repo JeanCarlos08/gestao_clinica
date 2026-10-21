@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-const PUBLIC_URL = "https://mvp-psicologia.vercel.app";
+const PUBLIC_URL = process.env.NEXT_PUBLIC_APP_URL || "https://gestao-clinica777.vercel.app";
 
 const TERMS = `# Termos de Serviço — MVP Psicologia
 
