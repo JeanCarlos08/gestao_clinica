@@ -75,10 +75,10 @@ export default function DocumentosPage() {
       <div className="flex items-start justify-between gap-4 mb-8">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <div className="w-8 h-8 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center">
-              <FileEdit size={16} className="text-teal-400" />
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+              <FileEdit size={16} className="text-emerald-400" />
             </div>
-            <span className="text-xs font-bold text-teal-400 uppercase tracking-widest">Documento</span>
+            <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest">Documento</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Editor de Documentos</h1>
           <p className="text-[var(--text-muted)] text-sm mt-1">Abra o Google Docs para cada paciente e edite diretamente</p>
@@ -185,9 +185,9 @@ export default function DocumentosPage() {
               const initials = patient.nome.split(" ").filter(Boolean).slice(0,2).map(p=>p[0]?.toUpperCase()).join("");
               return (
                 <div key={patient.id} className="group flex items-center gap-4 p-4 hover:bg-[var(--card-hover)] transition-colors">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-500/20 to-[var(--card)] border border-[var(--border)] group-hover:border-teal-500/30 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">{initials || <FileText size={14} />}</div>
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500/20 to-[var(--card)] border border-[var(--border)] group-hover:border-emerald-500/30 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">{initials || <FileText size={14} />}</div>
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-bold text-white truncate group-hover:text-teal-400 transition-colors">{patient.nome}</div>
+                    <div className="text-sm font-bold text-white truncate group-hover:text-emerald-400 transition-colors">{patient.nome}</div>
                     <div className="text-xs text-[var(--text-muted)] flex items-center gap-1 truncate"><Building2 size={10} /> {patient.empresa || "Sem empresa"}</div>
                     {docErrors[patient.id] && <div className="text-[10px] text-red-400 mt-1 flex items-center gap-1"><AlertCircle size={10} />{docErrors[patient.id]}</div>}
                   </div>

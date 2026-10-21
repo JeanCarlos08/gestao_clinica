@@ -11,11 +11,11 @@ interface ReportStats {
   por_mes: Record<string, number>;
 }
 const STATUS_COLORS: Record<string, string> = {
-  "Concluído": "#14b8a6", "Atendido": "#3b82f6",
+  "Concluído": "#4DA768", "Atendido": "#3b82f6",
   "Agendado": "#f59e0b", "Cancelado": "#ef4444",
   "Pendente": "#f97316", "Em andamento": "#a855f7",
 };
-const COLORS = ["#14b8a6", "#3b82f6", "#a855f7", "#f59e0b", "#ef4444", "#06b6d4", "#ec4899"];
+const COLORS = ["#4DA768", "#3b82f6", "#a855f7", "#f59e0b", "#ef4444", "#06b6d4", "#ec4899"];
 
 export default function RelatoriosCharts({ stats, total }: { stats: ReportStats; total: number }) {
   const mesData = Object.entries(stats.por_mes).map(([mes, c]) => {
@@ -44,8 +44,8 @@ export default function RelatoriosCharts({ stats, total }: { stats: ReportStats;
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
                   <XAxis dataKey="name" stroke="#3d5554" tick={{ fill: "#6b8e8a", fontSize: 10 }} axisLine={false} tickLine={false} />
                   <YAxis stroke="#3d5554" tick={{ fill: "#6b8e8a", fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ backgroundColor: "rgba(8,15,9,0.95)", borderColor: "rgba(20,184,166,0.2)", borderRadius: "10px", color: "#fff" }} itemStyle={{ color: "#2dd4bf" }} />
-                  <Bar dataKey="value" fill="#14b8a6" radius={[6, 6, 0, 0]} fillOpacity={0.85} name="Atendimentos" />
+                  <Tooltip contentStyle={{ backgroundColor: "rgba(8,15,9,0.95)", borderColor: "rgba(20,184,166,0.2)", borderRadius: "10px", color: "#fff" }} itemStyle={{ color: "#7BCF8A" }} />
+                  <Bar dataKey="value" fill="#4DA768" radius={[6, 6, 0, 0]} fillOpacity={0.85} name="Atendimentos" />
                 </BarChart>
               </ResponsiveContainer>
             </div>

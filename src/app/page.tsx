@@ -112,7 +112,7 @@ export default function LoginPage() {
         .auth-left-tag {
           display: inline-flex; align-items: center; gap: 6px;
           background: rgba(20,184,166,0.12); border: 1px solid rgba(20,184,166,0.25);
-          color: #2dd4bf; font-size: 11px; font-weight: 600; letter-spacing: 1.5px;
+          color: #7BCF8A; font-size: 11px; font-weight: 600; letter-spacing: 1.5px;
           text-transform: uppercase; padding: 6px 14px; border-radius: 100px; margin-bottom: 20px;
           backdrop-filter: blur(8px);
         }
@@ -121,7 +121,7 @@ export default function LoginPage() {
           letter-spacing: -1px; margin-bottom: 16px;
           text-shadow: 0 2px 20px rgba(0,0,0,0.5);
         }
-        .auth-left-title span { color: #2dd4bf; }
+        .auth-left-title span { color: #7BCF8A; }
         .auth-left-desc {
           font-size: 15px; color: rgba(255,255,255,0.6); line-height: 1.65; max-width: 340px; margin-bottom: 36px;
         }
@@ -132,7 +132,7 @@ export default function LoginPage() {
           display: flex; flex-direction: column;
         }
         .auth-stat-num {
-          font-size: 26px; font-weight: 800; color: #2dd4bf; letter-spacing: -0.5px;
+          font-size: 26px; font-weight: 800; color: #7BCF8A; letter-spacing: -0.5px;
         }
         .auth-stat-label {
           font-size: 11px; color: rgba(255,255,255,0.45); letter-spacing: 0.5px; margin-top: 2px;
@@ -185,7 +185,7 @@ export default function LoginPage() {
         }
         .auth-brand-icon {
           width: 56px; height: 56px; border-radius: 16px;
-          background: linear-gradient(135deg, #0f766e 0%, #134e4a 100%);
+          background: linear-gradient(135deg, #0f766e 0%, #0d3a22 100%);
           border: 1px solid rgba(45,212,191,0.2);
           display: flex; align-items: center; justify-content: center;
           box-shadow: 0 0 32px rgba(20,184,166,0.2), 0 8px 24px rgba(0,0,0,0.4);
@@ -292,7 +292,7 @@ export default function LoginPage() {
         /* Submit */
         .auth-submit {
           width: 100%; padding: 14px 20px; border-radius: 13px; border: none;
-          background: linear-gradient(135deg, #0d9488 0%, #134e4a 100%);
+          background: linear-gradient(135deg, #1E7A46 0%, #0d3a22 100%);
           color: #fff; font-size: 15px; font-weight: 700; letter-spacing: -0.2px;
           cursor: pointer; font-family: inherit;
           display: flex; align-items: center; justify-content: center; gap: 8px;
@@ -367,7 +367,7 @@ export default function LoginPage() {
             {/* Brand */}
             <div className="auth-brand">
               <div className="auth-brand-icon">
-                <Sparkles size={26} color="#2dd4bf" />
+                <Sparkles size={26} color="#7BCF8A" />
               </div>
               <div className="auth-brand-name">MVP Psicologia</div>
               <div className="auth-brand-tagline">Prontuário • Agenda • Evoluções</div>
@@ -504,7 +504,7 @@ export default function LoginPage() {
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-[rgba(20,184,166,0.1)] border border-[rgba(20,184,166,0.2)] flex items-center justify-center flex-shrink-0">
-                  <Shield size={18} className="text-[#14b8a6]" />
+                  <Shield size={18} className="text-[#4DA768]" />
                 </div>
                 <div>
                   <h2 className="text-white font-bold text-base leading-tight">Consentimento LGPD</h2>
@@ -537,7 +537,7 @@ export default function LoginPage() {
               </button>
               <button
                 onClick={() => handleSocialLogin(consentModal)}
-                className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-[#14b8a6] text-black hover:opacity-90 transition-opacity"
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-[#4DA768] text-black hover:opacity-90 transition-opacity"
               >
                 Aceitar e Continuar
               </button>

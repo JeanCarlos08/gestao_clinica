@@ -36,7 +36,7 @@ const STATUS_COLORS: Record<string, string> = {
   "Cancelado": "#ef4444", "Faltou": "#f97316",
   "Reagendado": "#6366f1", "Pendente": "#f97316", "Em andamento": "#a855f7",
 };
-const COLORS = ["#14b8a6", "#3b82f6", "#a855f7", "#f59e0b", "#ef4444", "#06b6d4", "#ec4899"];
+const COLORS = ["#4DA768", "#3b82f6", "#a855f7", "#f59e0b", "#ef4444", "#06b6d4", "#ec4899"];
 
 const Charts = dynamic(() => import("@/components/RelatoriosCharts"), {
   ssr: false,
@@ -167,11 +167,11 @@ export default function RelatoriosPage() {
               <div key={s} className="premium-surface border border-[var(--border)] rounded-2xl p-5 hover:-translate-y-0.5 transition-transform">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-[11px] text-[var(--text-label)] font-semibold uppercase tracking-wider truncate pr-2">{s}</span>
-                  <span style={{ color: STATUS_COLORS[s] || "#14b8a6" }}>
+                  <span style={{ color: STATUS_COLORS[s] || "#4DA768" }}>
                     {s === "Concluído" ? <CheckCircle2 size={15} /> : s === "Cancelado" ? <XCircle size={15} /> : s === "Agendado" ? <Clock size={15} /> : <AlertCircle size={15} />}
                   </span>
                 </div>
-                <div className="text-3xl font-extrabold" style={{ color: STATUS_COLORS[s] || "#14b8a6" }}>{c}</div>
+                <div className="text-3xl font-extrabold" style={{ color: STATUS_COLORS[s] || "#4DA768" }}>{c}</div>
                 <div className="text-xs text-[var(--text-muted)] mt-1">{total ? `${((c / total) * 100).toFixed(1)}%` : ""}</div>
               </div>
             ))}
@@ -232,7 +232,7 @@ export default function RelatoriosPage() {
                   <div className="p-3 space-y-3 max-h-[65vh] overflow-y-auto scrollbar-thin bg-[var(--background)]/30">
                     {filtered.map((a) => {
                       const initials = a.nome.split(" ").filter(Boolean).slice(0,2).map(p=>p[0]?.toUpperCase()).join("");
-                      const color = STATUS_COLORS[a.status] || "#14b8a6";
+                      const color = STATUS_COLORS[a.status] || "#4DA768";
                       return (
                         <div key={a.id} className="group bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 hover:border-[var(--primary)]/20 hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center gap-4">
                           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--primary)]/20 to-[var(--card)] border border-[var(--border)] group-hover:border-[var(--primary)]/30 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">{initials}</div>

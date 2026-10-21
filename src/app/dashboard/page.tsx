@@ -271,7 +271,7 @@ export default function DashboardPage() {
             <MetricCard
               title="Documentos" value={totalDocumentos} suffix="" change="arquivos"
               tone="neutral" icon={FileText}
-              color="text-teal-400" bgColor="bg-teal-500/10" borderColor="border-teal-500/15"
+              color="text-emerald-400" bgColor="bg-emerald-500/10" borderColor="border-emerald-500/15"
               hoverClass="metric-card-green"
             />
             <MetricCard
@@ -439,7 +439,7 @@ export default function DashboardPage() {
               .slice(0, 5)
               .map(([mod, count], i) => {
                 const pct = totalAtendimentos > 0 ? Math.round((count / totalAtendimentos) * 100) : 0;
-                const colors = ["#14b8a6", "#3b82f6", "#a855f7", "#f59e0b", "#06b6d4"];
+                const colors = ["#4DA768", "#3b82f6", "#a855f7", "#f59e0b", "#06b6d4"];
                 return (
                   <div key={mod}>
                     <div className="flex items-center justify-between text-xs mb-1.5">

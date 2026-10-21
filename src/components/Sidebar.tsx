@@ -26,7 +26,7 @@ const NAV_ITEMS = [
   { href: "/pacientes",     label: "Pacientes",    icon: Users,         color: "text-blue-400" },
   { href: "/atendimentos",  label: "Atendimentos", icon: ClipboardList, color: "text-violet-400" },
   { href: "/laudos",        label: "Laudos",       icon: FileText,      color: "text-amber-400" },
-  { href: "/documentos",    label: "Documento",    icon: FileEdit,      color: "text-teal-400" },
+  { href: "/documentos",    label: "Documento",    icon: FileEdit,      color: "text-emerald-400" },
   { href: "/relatorios",    label: "Relatórios",   icon: BarChart2,     color: "text-cyan-400" },
   { href: "/upload",        label: "Upload",       icon: Upload,        color: "text-pink-400" },
   { href: "/configuracoes", label: "Configurações",icon: Settings,      color: "text-slate-400" },
@@ -98,8 +98,8 @@ export default function Sidebar() {
           <div className="absolute inset-0 bg-gradient-to-br from-[rgba(20,184,166,0.06)] to-transparent pointer-events-none" />
 
           <div className="relative flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#0d9488] to-[#134e4a] border border-[rgba(45,212,191,0.25)] flex items-center justify-center shadow-[0_0_20px_rgba(20,184,166,0.25)] flex-shrink-0">
-              <Sparkles size={16} className="text-[#2dd4bf]" />
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#1E7A46] to-[#0d3a22] border border-[rgba(45,212,191,0.25)] flex items-center justify-center shadow-[0_0_20px_rgba(20,184,166,0.25)] flex-shrink-0">
+              <Sparkles size={16} className="text-[#7BCF8A]" />
             </div>
             <div>
               <div className="font-bold text-sm text-white tracking-tight leading-tight">MVP Psicologia</div>
@@ -121,7 +121,7 @@ export default function Sidebar() {
             {photoSrc ? (
               <Image src={photoSrc} alt="avatar" width={40} height={40} unoptimized className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-[#0d9488] to-[#134e4a] flex items-center justify-center">
+              <div className="w-full h-full bg-gradient-to-br from-[#1E7A46] to-[#0d3a22] flex items-center justify-center">
                 <span className="text-xs font-bold">{getUserInitials(profile.displayName)}</span>
               </div>
             )}
@@ -207,8 +207,8 @@ export default function Sidebar() {
           <Menu size={20} />
         </button>
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#0d9488] to-[#134e4a] flex items-center justify-center">
-            <Sparkles size={12} className="text-[#2dd4bf]" />
+          <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#1E7A46] to-[#0d3a22] flex items-center justify-center">
+            <Sparkles size={12} className="text-[#7BCF8A]" />
           </div>
           <span className="font-bold text-sm tracking-tight gradient-text">MVP Psicologia</span>
         </div>
