@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
-  BarChart2, Calendar, RefreshCw, Download, TrendingUp, Users,
+  BarChart2, Calendar, RefreshCw, Download, TrendingUp,
   CheckCircle2, Clock, XCircle, AlertCircle, Loader2, FileText, Building2,
 } from "lucide-react";
 import EmptyIllustration from "@/components/EmptyIllustration";
@@ -36,7 +36,6 @@ const STATUS_COLORS: Record<string, string> = {
   "Cancelado": "#ef4444", "Faltou": "#f97316",
   "Reagendado": "#6366f1", "Pendente": "#f97316", "Em andamento": "#a855f7",
 };
-const COLORS = ["#4DA768", "#3b82f6", "#a855f7", "#f59e0b", "#ef4444", "#06b6d4", "#ec4899"];
 
 const Charts = dynamic(() => import("@/components/RelatoriosCharts"), {
   ssr: false,
