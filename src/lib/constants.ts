@@ -90,6 +90,6 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
   ],
 };
 
-export const CLINIC_PREF_USER_PHOTO = "user_photo";
-export const CLINIC_PREF_LOGO = "clinic_logo";
+export const CLINIC_PREF_USER_PHOTO = "user_photo_base64";
+export const CLINIC_PREF_LOGO = "clinic_logo_base64";
 export const CLINIC_PREF_GOOGLE_DOC_ID = "clinic_google_doc_id";

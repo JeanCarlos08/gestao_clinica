@@ -76,44 +76,32 @@ body {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background-image: radial-gradient(rgba(255,255,255,0.018) 1px, transparent 1px);
-  background-size: 28px 28px;
+  background-image: radial-gradient(rgba(255,255,255,0.012) 1px, transparent 1px);
+  background-size: 34px 34px;
   z-index: 0;
 }
 
-/* ── Foto ambiental premium (bokeh esmeralda) ────────────── */
+/* ── Fundo ambiental premium (preto espaçoso) ────────────── */
 .app-bg-photo {
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background-image: radial-gradient(ellipse 120% 95% at 50% 20%, transparent 26%, rgba(4,18,13,0.88) 100%), url("/bg-bokeh.png");
+  /* Fundo preto premium, espaçoso: glows suaves só nas bordas, centro escuro e limpo */
+  background-image: radial-gradient(ellipse 130% 100% at 50% 22%, transparent 30%, rgba(3,7,6,0.85) 100%), url("/bg-dark.jpg");
   background-size: 100% 100%, cover;
   background-position: center;
   background-repeat: no-repeat;
-  mix-blend-mode: screen;
-  opacity: 0.3;
-  animation: bgPhotoBreathe 70s ease-in-out infinite alternate;
+  opacity: 0.9;
+  animation: bgPhotoBreathe 90s ease-in-out infinite alternate;
   will-change: opacity, transform;
 }
 @keyframes bgPhotoBreathe {
   from { transform: scale(1); }
-  to { transform: scale(1.08) translateY(-1.5%); }
+  to { transform: scale(1.05) translateY(-1%); }
 }
 [data-theme="light"] .app-bg-photo { display: none; }
-[data-accent="petroleo"] .app-bg-photo {
-  background-image: radial-gradient(ellipse 120% 90% at 50% 18%, transparent 30%, rgba(2,20,26,0.9) 100%), url("/bg-bokeh.png");
-  filter: hue-rotate(96deg);
-}
-[data-accent="vinho"] .app-bg-photo {
-  background-image: radial-gradient(ellipse 120% 90% at 50% 18%, transparent 30%, rgba(26,6,6,0.9) 100%), url("/bg-bokeh.png");
-  filter: hue-rotate(218deg);
-}
-[data-accent="dourado"] .app-bg-photo {
-  background-image: radial-gradient(ellipse 120% 90% at 50% 18%, transparent 30%, rgba(22,17,2,0.9) 100%), url("/bg-bokeh.png");
-  filter: hue-rotate(38deg);
-}
-[data-accent=""] .app-bg-photo { filter: none; }
+/* Accents: o fundo é neutro-escuro; cor vem das vars da UI (sem hue-rotate) */
 
 /* Subtle vignette */
 .app-premium-bg::after {

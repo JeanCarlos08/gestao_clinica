@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import EmptyIllustration from "@/components/EmptyIllustration";
 import { API as API_BASE } from "@/lib/api";
+import { mutate as globalMutate } from "swr";
 
 interface Clinica { id: number; name: string; document: string; }
 interface ClinicaConfig { clinic_name: string; clinic_logo_base64: string | null; user_photo_base64: string | null; }
@@ -23,6 +24,7 @@ export default function ConfigPage() {
 
   const [clinica, setClinica] = useState<Clinica | null>(null);
   const [config, setConfig] = useState<ClinicaConfig>({ clinic_name: "", clinic_logo_base64: null, user_photo_base64: null });
+  const [uploading, setUploading] = useState<"clinic_logo" | "user_photo" | null>(null);
   const [accent, setAccent] = useState<string>((() => {
     try { return localStorage.getItem("accent") || "esmeralda"; } catch { return "esmeralda"; }
   })());
@@ -103,17 +105,58 @@ export default function ConfigPage() {
     finally { setSaving(false); }
   };
 
-  const toBase64 = (f: File): Promise<string> => new Promise((res, rej) => {
-    const r = new FileReader(); r.readAsDataURL(f);
-    r.onload = () => res(r.result as string); r.onerror = e => rej(e);
+  /* Redimensiona a imagem no navegador (logos ficam leves) e dá upload instantâneo
+     no endpoint dedicado /api/configuracoes/photo — logo marca e foto de perfil são
+     opções independentes, cada uma salva na própria chave. */
+  const compressImage = (f: File, maxSide: number): Promise<string> => new Promise((resolve, reject) => {
+    const img = new window.Image();
+    const url = URL.createObjectURL(f);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const sc = Math.min(1, maxSide / Math.max(img.width, img.height));
+      const cv = document.createElement("canvas");
+      cv.width = Math.max(1, Math.round(img.width * sc));
+      cv.height = Math.max(1, Math.round(img.height * sc));
+      const ctx = cv.getContext("2d");
+      if (!ctx) return reject(new Error("ctx"));
+      ctx.drawImage(img, 0, 0, cv.width, cv.height);
+      const mime = f.type === "image/png" ? "image/png" : "image/jpeg";
+      resolve(cv.toDataURL(mime, 0.88));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("img")); };
+    img.src = url;
   });
 
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>, field: "clinic_logo_base64" | "user_photo_base64") => {
-    const f = e.target.files?.[0]; if (!f) return;
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: "clinic_logo" | "user_photo") => {
+    const f = e.target.files?.[0];
+    if (f) e.target.value = "";
+    if (!f) return;
+    if (!f.type.startsWith("image/")) { showMsg("error", "Envie um arquivo de imagem (PNG ou JPG)."); return; }
+    const stateKey = field === "clinic_logo" ? "clinic_logo_base64" : "user_photo_base64";
+    setUploading(field);
     try {
-      const b64 = await toBase64(f);
-      setConfig(prev => ({ ...prev, [field]: b64 }));
-    } catch { showMsg("error", "Falha ao ler imagem."); }
+      const b64 = await compressImage(f, field === "clinic_logo" ? 640 : 400);
+      const tk = getToken();
+      if (!tk) throw new Error("auth");
+      const blob = await (await fetch(b64)).blob();
+      const fd = new FormData();
+      fd.append("field", field);
+      fd.append("file", new File([blob], field === "clinic_logo" ? "logo.png" : "perfil.png", { type: blob.type }));
+      const res = await fetch(`${API_BASE}/configuracoes/photo`, { method: "POST", headers: { Authorization: `Bearer ${tk}` }, body: fd });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d?.detail || "Falha no upload.");
+      }
+      setConfig(prev => ({ ...prev, [stateKey]: b64 }));
+      showMsg("success", field === "clinic_logo" ? "Logo da marca atualizada." : "Foto de perfil atualizada.");
+      globalMutate(`${API_BASE}/configuracoes`);
+    } catch (err: unknown) {
+      showMsg("error", err instanceof Error && err.message !== "auth" ? err.message : "Falha ao enviar imagem.");
+    } finally { setUploading(null); }
+  };
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>, field: "clinic_logo_base64" | "user_photo_base64") => {
+    await handleUpload(e as unknown as React.ChangeEvent<HTMLInputElement>, field === "clinic_logo_base64" ? "clinic_logo" : "user_photo");
   };
 
   return (
@@ -182,7 +225,9 @@ export default function ConfigPage() {
                   <div className="p-6 sm:p-8 border-b border-[var(--border)] flex flex-col gap-8">
                     <div className="flex items-center gap-6">
                       <div className="w-24 h-24 rounded-2xl border-2 border-dashed border-[var(--border)] hover:border-[var(--primary)]/50 transition-colors bg-[var(--card)] flex items-center justify-center overflow-hidden cursor-pointer group relative shadow-inner" onClick={() => logoRef.current?.click()}>
-                        {config.clinic_logo_base64 ? (
+                        {uploading === "clinic_logo" ? (
+                          <RefreshCw size={22} className="animate-spin text-[var(--primary)]" />
+                        ) : config.clinic_logo_base64 ? (
                           <>
                             <Image src={config.clinic_logo_base64} alt="Logo" width={96} height={96} unoptimized className="w-full h-full object-cover" />
                             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
@@ -192,14 +237,14 @@ export default function ConfigPage() {
                         ) : (
                           <div className="text-center group-hover:text-[var(--primary)] transition-colors">
                             <Building2 size={28} className="mx-auto mb-1 opacity-50" />
-                            <span className="text-[10px] uppercase font-bold tracking-wider opacity-50">Upload Logo</span>
+                            <span className="text-[10px] uppercase font-bold tracking-wider opacity-50">Adicionar logo</span>
                           </div>
                         )}
-                        <input type="file" accept="image/*" ref={logoRef} className="hidden" onChange={e => handleFile(e, "clinic_logo_base64")} />
+                        <input type="file" accept="image/*" ref={logoRef} className="hidden" onChange={e => handleUpload(e, "clinic_logo")} />
                       </div>
                       <div>
                         <h2 className="text-lg font-bold text-white mb-1">Identidade Visual da Clínica</h2>
-                        <p className="text-sm text-[var(--text-muted)] max-w-md">Esta logo será utilizada nos laudos gerados (PDF e Docs) e no cabeçalho do sistema.</p>
+                        <p className="text-sm text-[var(--text-muted)] max-w-md">Clique no quadro para adicionar a foto da logo marca da sua clínica. Ela aparece no menu lateral, no login e no papel timbrado dos laudos — salva na hora, sem precisar de Salvar.</p>
                         <div className="mt-3">
                           <label className="block text-[10px] font-bold text-[var(--text-label)] uppercase tracking-wider mb-2">Cor de identidade (accent)</label>
                           <div className="flex items-center gap-2 flex-wrap">
@@ -248,7 +293,9 @@ export default function ConfigPage() {
                   <div className="p-6 sm:p-8 border-b border-[var(--border)] flex flex-col gap-8">
                     <div className="flex items-center gap-6">
                       <div className="w-24 h-24 rounded-full border-2 border-[var(--border)] hover:border-[var(--primary)]/50 transition-colors bg-[var(--card)] flex items-center justify-center overflow-hidden cursor-pointer group relative shadow-[0_0_20px_rgba(0,0,0,0.5)]" onClick={() => photoRef.current?.click()}>
-                        {config.user_photo_base64 ? (
+                        {uploading === "user_photo" ? (
+                          <RefreshCw size={22} className="animate-spin text-[var(--primary)]" />
+                        ) : config.user_photo_base64 ? (
                           <>
                             <Image src={config.user_photo_base64} alt="Avatar" width={96} height={96} unoptimized className="w-full h-full object-cover" />
                             <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-full">
@@ -260,7 +307,7 @@ export default function ConfigPage() {
                             <UserCircle size={32} className="mx-auto mb-1 opacity-50" />
                           </div>
                         )}
-                        <input type="file" accept="image/*" ref={photoRef} className="hidden" onChange={e => handleFile(e, "user_photo_base64")} />
+                        <input type="file" accept="image/*" ref={photoRef} className="hidden" onChange={e => handleUpload(e, "user_photo")} />
                       </div>
                       <div>
                         <h2 className="text-lg font-bold text-white mb-1">Foto de Perfil</h2>
