@@ -17,31 +17,19 @@ export async function GET(request: NextRequest) {
   const offset = Math.max(parseInt(url.searchParams.get("offset") || "0"), 0);
 
   try {
-    let atendimentos;
+    const start = dataInicio || "1900-01-01";
+    const end = dataFim || "2099-12-31";
 
-    if (dataInicio || dataFim || status || modalidade) {
-      const start = dataInicio || "1900-01-01";
-      const end = dataFim || "2099-12-31";
-
-      atendimentos = await sql`
-        SELECT a.id, a.empresa, a.nome, a.modalidade, a.data, a.hora, a.status, a.paciente_id, d.id as doc_id
-        FROM atendimentos a
-        LEFT JOIN documentos d ON d.atendimento_id = a.id
-        WHERE a.data >= ${start} AND a.data <= ${end}
-        ${status ? sql`AND a.status = ${status}` : sql``}
-        ${modalidade ? sql`AND a.modalidade = ${modalidade}` : sql``}
-        ORDER BY a.data DESC, a.hora DESC
-        LIMIT ${limit} OFFSET ${offset}
-      `;
-    } else {
-      atendimentos = await sql`
-        SELECT a.id, a.empresa, a.nome, a.modalidade, a.data, a.hora, a.status, a.paciente_id, d.id as doc_id
-        FROM atendimentos a
-        LEFT JOIN documentos d ON d.atendimento_id = a.id
-        ORDER BY a.data DESC, a.hora DESC
-        LIMIT ${limit} OFFSET ${offset}
-      `;
-    }
+    const atendimentos = await sql`
+      SELECT a.id, a.empresa, a.nome, a.modalidade, a.data, a.hora, a.status, a.paciente_id, d.id as doc_id
+      FROM atendimentos a
+      LEFT JOIN documentos d ON d.atendimento_id = a.id
+      WHERE a.data >= ${start} AND a.data <= ${end}
+        AND (${status}::text IS NULL OR a.status = ${status})
+        AND (${modalidade}::text IS NULL OR a.modalidade = ${modalidade})
+      ORDER BY a.data DESC, a.hora DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `;
 
     return jsonOk(atendimentos.map((a) => ({
       id: a.id,

@@ -47,6 +47,7 @@ export default function RelatoriosPage() {
   const [stats, setStats] = useState<ReportStats | null>(null);
   const [atendimentos, setAtendimentos] = useState<AtendimentoRelatorio[]>([]);
   const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
   const [activeTab, setActiveTab] = useState<"visao" | "lista">("visao");
@@ -68,9 +69,20 @@ export default function RelatoriosPage() {
         fetch(`${API_BASE}/relatorios/atendimentos${qs}`, { headers: hdrs }),
       ]);
       if (sr.status === 401) { localStorage.removeItem("token"); router.push("/"); return; }
-      setStats(await sr.json());
-      setAtendimentos(await lr.json());
-    } catch (e) { console.debug("Erro ao carregar relatórios:", e); }
+      const statsJson = await sr.json();
+      const listJson = await lr.json();
+      if (!sr.ok || !lr.ok) {
+        throw new Error(
+          (lr.ok ? statsJson?.detail : listJson?.detail) || "Erro ao carregar relatórios."
+        );
+      }
+      setStats(Array.isArray(statsJson) ? null : statsJson);
+      setAtendimentos(Array.isArray(listJson) ? listJson : []);
+      setErro(null);
+    } catch (e) {
+      console.debug("Erro ao carregar relatórios:", e);
+      setErro(e instanceof Error ? e.message : "Erro ao carregar relatórios.");
+    }
     finally { setLoading(false); }
   }, [dataInicio, dataFim, router]);
 
@@ -144,12 +156,19 @@ export default function RelatoriosPage() {
         </div>
       </div>
 
+      {erro && !loading && (
+        <div className="mb-6 flex items-center gap-2 text-sm text-amber-300 bg-amber-500/10 border border-amber-500/25 rounded-xl px-4 py-3">
+          <AlertCircle size={15} className="flex-shrink-0" />
+          <span>{erro}</span>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex items-center justify-center h-64 text-[var(--text-muted)]">
           <Loader2 size={32} className="animate-spin mr-3" /> Carregando relatórios...
         </div>
       ) : !stats ? (
-        <div className="text-center text-[var(--text-muted)] py-20">Erro ao carregar dados.</div>
+        <div className="text-center text-[var(--text-muted)] py-20">{erro || "Erro ao carregar dados."}</div>
       ) : (
         <>
           {/* KPI Cards */}
