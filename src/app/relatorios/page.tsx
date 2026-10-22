@@ -8,6 +8,7 @@ import {
   CheckCircle2, Clock, XCircle, AlertCircle, Loader2, FileText, Building2,
 } from "lucide-react";
 import EmptyIllustration from "@/components/EmptyIllustration";
+import StatusBadge from "@/components/StatusBadge";
 import { API as API_BASE } from "@/lib/api";
 
 interface ReportStats {
@@ -120,7 +121,7 @@ export default function RelatoriosPage() {
         </div>
         <button
           onClick={exportCSV}
-          className="flex items-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-4 py-2.5 rounded-xl text-sm transition-colors shadow-[0_0_20px_rgba(77,167,104,0.3)]"
+          className="btn-motion flex items-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-4 py-2.5 rounded-xl text-sm shadow-[0_0_20px_rgba(77,167,104,0.3)]"
         >
           <Download size={15} /> Exportar CSV
         </button>
@@ -144,7 +145,7 @@ export default function RelatoriosPage() {
           ))}
           <button
             onClick={fetchData} disabled={loading}
-            className="flex items-center gap-2 bg-[var(--card-hover)] border border-[var(--border)] hover:border-[var(--primary)]/40 text-white px-4 py-2 rounded-lg text-sm transition-colors disabled:opacity-50"
+            className="btn-motion flex items-center gap-2 bg-[var(--card-hover)] border border-[var(--border)] hover:border-[var(--primary)]/40 text-white px-4 py-2 rounded-lg text-sm disabled:opacity-50"
           >
             <RefreshCw size={13} className={loading ? "animate-spin" : ""} /> Aplicar
           </button>
@@ -164,8 +165,27 @@ export default function RelatoriosPage() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center h-64 text-[var(--text-muted)]">
-          <Loader2 size={32} className="animate-spin mr-3" /> Carregando relatórios...
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="premium-surface rounded-2xl p-5 border border-[var(--border)]">
+                <div className="h-3 w-28 skeleton mb-4" />
+                <div className="h-8 w-20 skeleton rounded-lg" />
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <div key={i} className="premium-surface rounded-2xl p-5 border border-[var(--border)] h-72">
+                <div className="h-4 w-40 skeleton mb-6" />
+                <div className="h-48 skeleton rounded-xl" />
+              </div>
+            ))}
+          </div>
+          <div className="premium-surface rounded-2xl p-5 border border-[var(--border)] h-80">
+            <div className="h-4 w-32 skeleton mb-6" />
+            <div className="h-60 skeleton rounded-xl" />
+          </div>
         </div>
       ) : !stats ? (
         <div className="text-center text-[var(--text-muted)] py-20">{erro || "Erro ao carregar dados."}</div>
@@ -250,14 +270,13 @@ export default function RelatoriosPage() {
                   <div className="p-3 space-y-3 max-h-[65vh] overflow-y-auto scrollbar-thin bg-[var(--background)]/30">
                     {filtered.map((a) => {
                       const initials = a.nome.split(" ").filter(Boolean).slice(0,2).map(p=>p[0]?.toUpperCase()).join("");
-                      const color = STATUS_COLORS[a.status] || "#4DA768";
                       return (
                         <div key={a.id} className="group bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 hover:border-[var(--primary)]/20 hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center gap-4">
                           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--primary)]/20 to-[var(--card)] border border-[var(--border)] group-hover:border-[var(--primary)]/30 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">{initials}</div>
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2 mb-1">
                               <span className="text-sm font-bold text-white truncate group-hover:text-[var(--primary)] transition-colors">{a.nome}</span>
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border flex-shrink-0" style={{ background: `${color}14`, color, borderColor: `${color}30` }}><span className="w-1.5 h-1.5 rounded-full mr-1.5 flex-shrink-0" style={{ background: color }} />{a.status}</span>
+                              <StatusBadge status={a.status} />
                               {a.has_laudo && <span className="bg-blue-500/15 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full text-[10px] font-bold">Laudo</span>}
                             </div>
                             <div className="text-xs text-[var(--text-muted)] flex flex-wrap items-center gap-2">

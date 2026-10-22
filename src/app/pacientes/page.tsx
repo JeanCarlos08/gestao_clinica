@@ -335,7 +335,7 @@ export default function PacientesPage() {
       {/* Modal Form */}
       {showModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-[0_32px_64px_rgba(0,0,0,0.7)] animate-in fade-in zoom-in duration-200">
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-[0_32px_64px_rgba(0,0,0,0.7)] animate-in fade-in zoom-in duration-200 modal-glass modal-in">
             <div className="p-5 border-b border-[var(--border)] flex items-center justify-between sticky top-0 bg-[var(--card)] z-10">
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 {editingId ? <><Edit3 size={18} className="text-[var(--primary)]" /> Editar Paciente</> : <><Plus size={18} className="text-[var(--primary)]" /> Novo Paciente</>}
@@ -449,7 +449,7 @@ export default function PacientesPage() {
       {/* Modal Prontuário / Evoluções - reaproveita tabela notas */}
       {showProntuario && prontPaciente && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-[0_32px_64px_rgba(0,0,0,0.7)] animate-in fade-in zoom-in duration-200">
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-[0_32px_64px_rgba(0,0,0,0.7)] animate-in fade-in zoom-in duration-200 modal-glass modal-in">
             <div className="p-5 border-b border-[var(--border)] flex items-center justify-between sticky top-0 bg-[var(--card)] z-10 rounded-t-2xl">
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 <NotebookPen size={18} className="text-emerald-400" /> Prontuário — {prontPaciente.nome}
@@ -488,11 +488,11 @@ export default function PacientesPage() {
                     <p className="text-xs text-[var(--text-muted)] mt-1">A primeira evolução cria o prontuário do paciente.</p>
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="timeline-rail space-y-4 pl-5">
                     {evolucoes.map(evo => (
-                      <div key={evo.id} className="bg-[var(--background)] border border-[var(--border)] rounded-xl p-4 hover:border-[var(--border-light)] transition-colors group">
+                      <div key={evo.id} className="timeline-item bg-[var(--background)] border border-[var(--border)] rounded-xl p-4 hover:border-[var(--primary)]/30 hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200 group empty-in">
                         <div className="flex items-start justify-between gap-2 mb-2">
-                          <div className="text-xs font-bold text-white flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" /> {evo.titulo}</div>
+                          <div className="text-xs font-bold text-white flex items-center gap-2"><Star size={12} className="text-emerald-400 flex-shrink-0" /> {evo.titulo}</div>
                           <div className="flex items-center gap-1">
                             {evo.favorita && <Star size={12} className="text-amber-400 fill-amber-400" />}
                             <span className="text-[10px] text-[var(--text-muted)] font-mono bg-[var(--card)] border border-[var(--border)] px-1.5 py-0.5 rounded">{new Date(evo.criado_em).toLocaleString("pt-BR")}</span>

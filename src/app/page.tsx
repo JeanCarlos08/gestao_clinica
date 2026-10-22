@@ -234,7 +234,7 @@ export default function LoginPage() {
       const data = await response.json();
       localStorage.setItem("token", data.access_token);
       if (data.refresh_token) localStorage.setItem("refresh_token", data.refresh_token);
-      router.push("/atendimentos");
+      router.push("/dashboard");
     } catch (err: unknown) {
       if (err instanceof TypeError) {
         setError("Falha de conexão. Verifique sua internet.");
@@ -968,7 +968,7 @@ export default function LoginPage() {
       {/* Modal de consentimento LGPD */}
       {consentModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-2xl bg-[#0a1c12] border border-[rgba(77,167,104,0.2)] shadow-2xl p-6 flex flex-col gap-4">
+          <div className="w-full max-w-md rounded-2xl bg-[#0a1c12] border border-[rgba(77,167,104,0.2)] shadow-2xl p-6 flex flex-col gap-4 modal-glass modal-in">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-[rgba(77,167,104,0.1)] border border-[rgba(77,167,104,0.2)] flex items-center justify-center flex-shrink-0">

@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import AppointmentCalendar from "@/components/AppointmentCalendar";
 import EmptyIllustration from "@/components/EmptyIllustration";
+import StatusBadge from "@/components/StatusBadge";
 import { swrFetcher, API as API_BASE } from "@/lib/api";
 import { MODALIDADES } from "@/lib/constants";
 
@@ -248,7 +249,7 @@ export default function AtendimentosPage() {
                         </div>
                         <div className="flex items-center justify-between text-xs">
                           <span className="flex items-center gap-1 text-[var(--text-muted)]"><CalendarDays size={10} /> {a.data.split("-").reverse().join("/")} <Clock size={10} className="ml-1" /> {a.hora}</span>
-                          <span className={`w-2 h-2 rounded-full ${s.dot}`} />
+                          <StatusBadge status={a.status} />
                         </div>
                         <button onClick={(e)=>{ e.stopPropagation(); setAiPrompt(`Gere um parecer para ${a.nome} da empresa ${a.empresa}.`); setAiResult(null); setShowAI(true); }} className="mt-3 w-full py-1.5 rounded-lg bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 border border-violet-500/20 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors">
                           <Sparkles size={12} /> Parecer IA
@@ -305,7 +306,7 @@ export default function AtendimentosPage() {
       {/* Modal CRUD */}
       {showModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl w-full max-w-lg shadow-[0_32px_64px_rgba(0,0,0,0.7)] animate-in fade-in zoom-in duration-200">
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl w-full max-w-lg shadow-[0_32px_64px_rgba(0,0,0,0.7)] animate-in fade-in zoom-in duration-200 modal-glass modal-in">
             <div className="p-5 border-b border-[var(--border)] flex items-center justify-between">
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 {editingId ? <><CalendarDays size={18} className="text-[var(--primary)]" /> Editar Atendimento</> : <><Plus size={18} className="text-[var(--primary)]" /> Novo Atendimento</>}
@@ -423,7 +424,7 @@ export default function AtendimentosPage() {
       {/* Modal IA */}
       {showAI && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl w-full max-w-2xl shadow-[0_32px_64px_rgba(0,0,0,0.7)]">
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl w-full max-w-2xl shadow-[0_32px_64px_rgba(0,0,0,0.7)] modal-glass modal-in">
             <div className="p-5 border-b border-[var(--border)] flex items-center justify-between">
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 <Sparkles size={18} className="text-violet-400" /> Parecer IA (Gemini)

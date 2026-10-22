@@ -8,17 +8,19 @@ export default function PageTransition({ children }: { children: ReactNode }) {
       {children}
       <style>{`
         .animate-page-in {
-          animation: pageIn 0.15s cubic-bezier(0.22, 1, 0.36, 1) both;
-          will-change: opacity, transform;
+          animation: pageIn 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+          will-change: opacity, transform, filter;
         }
         @keyframes pageIn {
           from {
             opacity: 0;
-            transform: translateY(4px);
+            transform: translateY(8px) scale(0.995);
+            filter: blur(6px);
           }
           to {
             opacity: 1;
-            transform: translateY(0);
+            transform: translateY(0) scale(1);
+            filter: blur(0);
           }
         }
         @media (prefers-reduced-motion: reduce) {

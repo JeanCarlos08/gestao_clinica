@@ -44,7 +44,7 @@ function CallbackContent() {
     setStatus("success");
     setMsg(`Bem-vindo${name ? `, ${decodeURIComponent(name)}` : ""}!`);
 
-    const t = setTimeout(() => router.replace("/atendimentos"), 1200);
+    const t = setTimeout(() => router.replace("/dashboard"), 1200);
     return () => clearTimeout(t);
   }, [params, router]);
 

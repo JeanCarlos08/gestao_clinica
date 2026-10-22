@@ -20,8 +20,8 @@ export default function EmptyState({
   onAction,
 }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-      <EmptyIllustration variant={variant} size={140} />
+    <div className="empty-in flex flex-col items-center justify-center py-16 px-6 text-center">
+      <div className="empty-float"><EmptyIllustration variant={variant} size={140} /></div>
       <h3 className="text-base font-bold text-white mt-5 mb-1.5">{title}</h3>
       <p className="text-sm text-[var(--text-muted)] max-w-xs leading-relaxed">{message}</p>
       {actionLabel && onAction && (
