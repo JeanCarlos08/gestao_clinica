@@ -17,6 +17,7 @@ export default function DocEditorPage() {
   const [docId, setDocId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [noDoc, setNoDoc] = useState(false);
 
   // Permission controls
   const [tempMinutes, setTempMinutes] = useState(30);
@@ -36,7 +37,10 @@ export default function DocEditorPage() {
         const res = await fetch(API(`/pacientes/${id}/document`), {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (res.status === 404) throw new Error("Nenhum documento associado a esse paciente.");
+        if (res.status === 404) {
+          if (mounted) setNoDoc(true);
+          return;
+        }
         if (!res.ok) {
           const j = await res.json().catch(() => ({}));
           throw new Error(j.detail || "Falha ao buscar documento");
@@ -211,6 +215,24 @@ export default function DocEditorPage() {
             <div>
               <p className="text-sm font-semibold text-white mb-1">Documento não encontrado</p>
               <p className="text-xs text-red-400 max-w-sm">{error}</p>
+            </div>
+            <button
+              onClick={() => router.back()}
+              className="text-xs font-semibold px-4 py-2 rounded-xl bg-[var(--primary)] text-black hover:opacity-90 transition-opacity"
+            >
+              Voltar
+            </button>
+          </div>
+        ) : noDoc ? (
+          <div className="flex flex-col items-center justify-center h-full gap-4 px-6 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-[var(--primary)]/10 border border-[var(--primary)]/20 flex items-center justify-center">
+              <FileText size={24} className="text-[var(--primary)]" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-white mb-1">Nenhum documento vinculado</p>
+              <p className="text-xs text-[var(--text-muted)] max-w-sm">
+                Este paciente ainda não tem um documento no editor. Gere o documento na página do paciente para começar.
+              </p>
             </div>
             <button
               onClick={() => router.back()}
