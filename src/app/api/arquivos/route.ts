@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   if (auth instanceof Response) return auth;
 
   try {
-    const arquivos = await sql`SELECT id, filename, content_type, size, criado_em FROM arquivos ORDER BY criado_em DESC`;
+    const arquivos = await sql`SELECT id, filename, content_type, size, (size::float8 / 1024.0) as size_kb, criado_em FROM arquivos ORDER BY criado_em DESC`;
     return jsonOk(arquivos);
   } catch (e) {
     return jsonError("Erro: " + errMessage(e), 500);

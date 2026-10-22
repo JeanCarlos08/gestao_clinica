@@ -15,7 +15,7 @@ interface Arquivo {
   filename: string;
   content_type: string;
   size: number;
-  size_kb: number;
+  size_kb?: number;
   criado_em: string | null;
 }
 
@@ -93,7 +93,7 @@ export default function UploadPage() {
     finally { setDeletingId(null); }
   };
 
-  const totalKB = arquivos.reduce((s, a) => s + a.size_kb, 0);
+  const totalKB = arquivos.reduce((s, a) => s + (a.size_kb ?? 0), 0);
 
   return (
     <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-8 scrollbar-hide fade-up">
@@ -220,7 +220,7 @@ export default function UploadPage() {
                   <td className="p-4 text-xs text-[var(--text-muted)]">
                     <span className="bg-[var(--background)] border border-[var(--border)] px-2 py-1 rounded text-[10px] font-mono">{a.content_type}</span>
                   </td>
-                  <td className="p-4 text-sm text-[var(--text-muted)]">{formatSize(a.size_kb)}</td>
+                  <td className="p-4 text-sm text-[var(--text-muted)]">{formatSize(a.size_kb ?? 0)}</td>
                   <td className="p-4 text-xs text-[var(--text-muted)]">{formatDate(a.criado_em)}</td>
                   <td className="p-4">
                     <button
