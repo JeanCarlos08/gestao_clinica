@@ -6,9 +6,11 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Home, ClipboardList, BarChart2, Upload, Settings, LogOut, FileText, Users,
-  Menu, X, Sparkles, ChevronRight, FileEdit, Bot, Send, Camera, Loader2,
+  Menu, X, Sparkles, ChevronRight, FileEdit, Bot, Send, Camera, Loader2, Sun, Moon,
 } from "lucide-react";
 import { buildDisplayName, getLoggedUserProfile, getUserInitials } from "@/lib/auth";
+import AiMarkdown from "@/components/AiMarkdown";
+import { useTheme } from "@/components/ThemeProvider";
 
 const Clock = memo(function Clock() {
   const [time, setTime] = useState("");
@@ -35,6 +37,7 @@ const NAV_ITEMS = [
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { theme, toggle: toggleTheme } = useTheme();
   const [open, setOpen] = useState(false);
   const [profile, setProfile] = useState({ displayName: "Usuário", role: "" });
   const [photoSrc, setPhotoSrc] = useState<string | null>(null);
@@ -248,19 +251,18 @@ export default function Sidebar() {
               {aiMessages.map((m, i) => (
                 <div
                   key={i}
-                  className={`text-[11px] leading-snug rounded-lg px-2 py-1.5 whitespace-pre-wrap break-words ${
+                  className={`msg-in rounded-lg px-2 py-1.5 break-words ${
                     m.role === "user"
-                      ? "self-end max-w-[92%] bg-[rgba(77,167,104,0.32)] text-white border border-[rgba(142,227,154,0.4)]"
-                      : "self-start max-w-[96%] bg-[rgba(8,18,13,0.7)] text-[#d7ece0] border border-[rgba(255,255,255,0.1)]"
+                      ? "self-end max-w-[92%] text-[11px] leading-snug whitespace-pre-wrap bg-[rgba(77,167,104,0.32)] text-white border border-[rgba(142,227,154,0.4)]"
+                      : "self-start max-w-[100%] min-w-[70%] bg-[rgba(8,18,13,0.7)] text-[#d7ece0] border border-[rgba(255,255,255,0.1)]"
                   }`}
                 >
-                  {m.text}
+                  {m.role === "user" ? m.text : <AiMarkdown text={m.text} />}
                 </div>
               ))}
               {aiLoading && (
-                <div className="self-start flex items-center gap-1.5 text-[10px] text-[#a8e8b7] bg-[rgba(8,18,13,0.7)] border border-[rgba(255,255,255,0.1)] rounded-lg px-2 py-1.5">
-                  <Loader2 size={11} className="animate-spin" />
-                  Pensando…
+                <div className="msg-in self-start flex items-center gap-1.5 text-[#a8e8b7] bg-[rgba(8,18,13,0.7)] border border-[rgba(255,255,255,0.1)] rounded-lg px-2.5 py-2">
+                  <span className="typing-dots"><i/><i/><i/></span>
                 </div>
               )}
             </div>
@@ -292,8 +294,17 @@ export default function Sidebar() {
       <div className="flex-shrink-0 border-t border-[rgba(255,255,255,0.09)] p-3 space-y-1 bg-[rgba(0,0,0,0.18)] backdrop-blur-sm">
         <button
           type="button"
+          onClick={toggleTheme}
+          aria-label="Alterna tema claro/escuro"
+          className="theme-btn"
+        >
+          {theme === "dark" ? <Sun size={12} /> : <Moon size={13} />}
+          {theme === "dark" ? "Tema claro" : "Tema escuro"}
+        </button>
+        <button
+          type="button"
           onClick={handleLogout}
-          className="flex items-center gap-3 w-full px-3 py-2.5 text-sm font-semibold text-[#9cbbaa] hover:text-[#ffd0d6] hover:bg-[rgba(255,80,80,0.16)] border border-transparent hover:border-[rgba(255,80,80,0.28)] rounded-xl transition-all duration-200 group"
+          className="btn-motion flex items-center gap-3 w-full px-3 py-2.5 text-sm font-semibold text-[#9cbbaa] hover:text-[#ffd0d6] hover:bg-[rgba(255,80,80,0.16)] border border-transparent hover:border-[rgba(255,80,80,0.28)] rounded-xl transition-all duration-200 group"
         >
           <LogOut size={15} strokeWidth={2} className="group-hover:rotate-12 group-hover:text-[#ff8f9b] transition-transform duration-200" />
           Encerrar sessão
