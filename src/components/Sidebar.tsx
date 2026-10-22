@@ -78,8 +78,11 @@ export default function Sidebar() {
     setProfile({ displayName: user.displayName, role: user.role });
 
     // Tenta carregar foto do cache local primeiro (evita request a cada navegação)
-    const cached = localStorage.getItem("sidebar_photo_cache");
-    const cachedTime = localStorage.getItem("sidebar_photo_time");
+    // Foto de perfil ≠ logo da clínica: o avatar usa SOMENTE user_photo_base64
+    localStorage.removeItem("sidebar_photo_cache");
+    localStorage.removeItem("sidebar_photo_time");
+    const cached = localStorage.getItem("sidebar_user_photo_cache");
+    const cachedTime = localStorage.getItem("sidebar_user_photo_time");
     const now = Date.now();
     if (cached && cachedTime && now - parseInt(cachedTime) < 300000) {
       setPhotoSrc(cached);
@@ -94,11 +97,13 @@ export default function Sidebar() {
         });
         if (!res.ok) return;
         const data = await res.json();
-        const photo = data.clinica.user_photo_base64 || data.clinica.clinic_logo_base64 || null;
+        const photo = data.clinica.user_photo_base64 || null;
         if (photo) {
           setPhotoSrc(photo);
-          localStorage.setItem("sidebar_photo_cache", photo);
-          localStorage.setItem("sidebar_photo_time", now.toString());
+          localStorage.setItem("sidebar_user_photo_cache", photo);
+          localStorage.setItem("sidebar_user_photo_time", now.toString());
+        } else {
+          setPhotoSrc(null);
         }
       } catch (e) { console.debug("Erro ao carregar foto do sidebar:", e); }
     })();
