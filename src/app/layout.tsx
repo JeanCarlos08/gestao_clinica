@@ -4,10 +4,7 @@ import Sidebar from "@/components/Sidebar";
 import { ToastProvider } from "@/components/Toast";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import PageTransition from "@/components/PageTransition";
-import dynamic from "next/dynamic";
 import "./globals.css";
-
-const AISidebar = dynamic(() => import("@/components/AISidebar"), { ssr: false, loading: () => null });
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -57,9 +54,6 @@ export default function RootLayout({
             </ErrorBoundary>
           </ToastProvider>
         </main>
-        <ErrorBoundary>
-          <AISidebar />
-        </ErrorBoundary>
       </body>
     </html>
   );

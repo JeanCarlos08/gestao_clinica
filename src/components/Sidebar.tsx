@@ -1,12 +1,12 @@
 "use client";
 
-import { memo, useState, useEffect } from "react";
+import { memo, useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Home, ClipboardList, BarChart2, Upload, Settings, LogOut, FileText, Users,
-  Menu, X, Sparkles, ChevronRight, FileEdit, Bot, Send, Camera,
+  Menu, X, Sparkles, ChevronRight, FileEdit, Bot, Send, Camera, Loader2,
 } from "lucide-react";
 import { buildDisplayName, getLoggedUserProfile, getUserInitials } from "@/lib/auth";
 
@@ -39,6 +39,13 @@ export default function Sidebar() {
   const [profile, setProfile] = useState({ displayName: "Usuário", role: "" });
   const [photoSrc, setPhotoSrc] = useState<string | null>(null);
   const [aiQuery, setAiQuery] = useState("");
+  const [aiMessages, setAiMessages] = useState<{ role: "user" | "assistant"; text: string }[]>([]);
+  const [aiLoading, setAiLoading] = useState(false);
+  const aiListRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (aiListRef.current) aiListRef.current.scrollTop = aiListRef.current.scrollHeight;
+  }, [aiMessages, aiLoading]);
 
   useEffect(() => { setOpen(false); }, [pathname]);
 
@@ -83,12 +90,31 @@ export default function Sidebar() {
   const isActive = (href: string) =>
     pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
 
-  /* Abre o painel da IA (direita) e, se houver texto, envia como pergunta */
-  const openAI = (query: string) => {
-    const q = query.trim();
-    window.dispatchEvent(new CustomEvent("mvp:open-ai", { detail: q }));
-    setOpen(false);
+  /* Mini-chat da IA: envia /api/ia/chat e exibe a conversa no próprio card */
+  const sendAI = async (text?: string) => {
+    const q = (text ?? aiQuery).trim();
+    if (!q || aiLoading) return;
     setAiQuery("");
+    setAiMessages((prev) => [...prev, { role: "user", text: q }]);
+    setAiLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch((process.env.NEXT_PUBLIC_API_URL || "/api") + "/ia/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ pergunta: q }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Erro ao consultar IA");
+      setAiMessages((prev) => [...prev, { role: "assistant", text: data.resposta }]);
+    } catch (err: unknown) {
+      setAiMessages((prev) => [
+        ...prev,
+        { role: "assistant", text: `Erro: ${err instanceof Error ? err.message : "falha ao consultar a IA"}` },
+      ]);
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   const handleLogout = () => {
@@ -199,28 +225,64 @@ export default function Sidebar() {
               <div className="text-xs font-extrabold text-white leading-none">IA Assistente</div>
               <div className="text-[9px] text-[#a8e8b7] mt-0.5">Gemini · dados da clínica</div>
             </div>
-            <span className="ml-auto text-[8px] font-black uppercase tracking-[1px] text-[#c8f5d0] bg-white/10 border border-white/10 rounded-full px-1.5 py-[3px] flex-shrink-0">
-              Beta
-            </span>
+            {aiMessages.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setAiMessages([])}
+                aria-label="Limpar conversa da IA"
+                className="ml-auto w-5 h-5 rounded-full bg-white/10 border border-white/10 flex items-center justify-center text-[#a8e8b7] hover:text-white hover:bg-white/20 flex-shrink-0 transition-colors"
+              >
+                <X size={10} strokeWidth={3} />
+              </button>
+            ) : (
+              <span className="ml-auto text-[8px] font-black uppercase tracking-[1px] text-[#c8f5d0] bg-white/10 border border-white/10 rounded-full px-1.5 py-[3px] flex-shrink-0">
+                Beta
+              </span>
+            )}
           </div>
+          {aiMessages.length > 0 && (
+            <div
+              ref={aiListRef}
+              className="flex flex-col gap-1.5 mb-2 max-h-44 overflow-y-auto scrollbar-hide"
+            >
+              {aiMessages.map((m, i) => (
+                <div
+                  key={i}
+                  className={`text-[11px] leading-snug rounded-lg px-2 py-1.5 whitespace-pre-wrap break-words ${
+                    m.role === "user"
+                      ? "self-end max-w-[92%] bg-[rgba(77,167,104,0.32)] text-white border border-[rgba(142,227,154,0.4)]"
+                      : "self-start max-w-[96%] bg-[rgba(8,18,13,0.7)] text-[#d7ece0] border border-[rgba(255,255,255,0.1)]"
+                  }`}
+                >
+                  {m.text}
+                </div>
+              ))}
+              {aiLoading && (
+                <div className="self-start flex items-center gap-1.5 text-[10px] text-[#a8e8b7] bg-[rgba(8,18,13,0.7)] border border-[rgba(255,255,255,0.1)] rounded-lg px-2 py-1.5">
+                  <Loader2 size={11} className="animate-spin" />
+                  Pensando…
+                </div>
+              )}
+            </div>
+          )}
           <form
-            onSubmit={(e) => { e.preventDefault(); openAI(aiQuery); }}
+            onSubmit={(e) => { e.preventDefault(); sendAI(); }}
             className="flex items-center gap-1.5"
           >
             <input
               value={aiQuery}
               onChange={(e) => setAiQuery(e.target.value)}
-              placeholder="Ex: resumo de hoje"
+              placeholder={aiMessages.length ? "Pergunte à IA…" : "Ex: resumo de hoje"}
               aria-label="Perguntar à IA"
               className="flex-1 min-w-0 text-xs text-white placeholder:text-[rgba(255,255,255,0.4)] bg-[rgba(8,18,13,0.6)] border border-[rgba(255,255,255,0.14)] rounded-lg px-2.5 py-2 outline-none focus:border-[rgba(142,227,154,0.6)] focus:shadow-[0_0_0_3px_rgba(77,167,104,0.16)] transition-all"
             />
             <button
               type="submit"
-              disabled={!aiQuery.trim()}
+              disabled={!aiQuery.trim() || aiLoading}
               aria-label="Enviar para a IA"
               className="w-7 h-7 rounded-lg bg-[linear-gradient(135deg,#4DA768,#1E7A46)] text-[#052417] flex items-center justify-center flex-shrink-0 disabled:opacity-35 hover:shadow-[0_0_12px_rgba(77,167,104,0.5)] transition-all"
             >
-              <Send size={12} strokeWidth={2.5} />
+              {aiLoading ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} strokeWidth={2.5} />}
             </button>
           </form>
         </div>

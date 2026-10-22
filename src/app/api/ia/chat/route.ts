@@ -30,12 +30,24 @@ export async function POST(request: NextRequest) {
 
     const prompt = `Você é a 'IA Assistente', assistente de gestão clínica. Com base nos dados abaixo (JSON), responda à pergunta do usuário.\n\nDados atuais:\n${context}\n\nPergunta: ${pergunta}\n\nSeja prestativa, use tabelas Markdown se necessário. Cite nomes ou empresas se presentes nos dados. Responda em Português do Brasil.`;
 
-    const response = await genai.models.generateContent({
-      model: config.geminiModel,
-      contents: prompt,
-    });
+    const models = [
+      config.geminiModel,
+      ...config.geminiFallbackModels.filter((m) => m && m !== config.geminiModel),
+    ];
 
-    return jsonOk({ resposta: response.text || "Não obtive resposta da IA." });
+    let lastErr: unknown;
+    for (const model of models) {
+      try {
+        const response = await genai.models.generateContent({
+          model,
+          contents: prompt,
+        });
+        return jsonOk({ resposta: response.text || "Não obtive resposta da IA." });
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    throw lastErr instanceof Error ? lastErr : new Error("Falha ao consultar a IA.");
   } catch (e) {
     return jsonError("Erro no chat: " + errMessage(e), 500);
   }
