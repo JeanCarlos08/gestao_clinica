@@ -121,7 +121,7 @@ export default function RelatoriosPage() {
         </div>
         <button
           onClick={exportCSV}
-          className="btn-motion flex items-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-4 py-2.5 rounded-xl text-sm shadow-[0_0_20px_rgba(77,167,104,0.3)]"
+          className="btn-motion btn-shine flex items-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-4 py-2.5 rounded-xl text-sm shadow-[0_0_20px_rgba(77,167,104,0.3)]"
         >
           <Download size={15} /> Exportar CSV
         </button>
@@ -268,10 +268,10 @@ export default function RelatoriosPage() {
                   </div>
                 ) : (
                   <div className="p-3 space-y-3 max-h-[65vh] overflow-y-auto scrollbar-thin bg-[var(--background)]/30">
-                    {filtered.map((a) => {
+                    {filtered.map((a, li) => {
                       const initials = a.nome.split(" ").filter(Boolean).slice(0,2).map(p=>p[0]?.toUpperCase()).join("");
                       return (
-                        <div key={a.id} className="group bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 hover:border-[var(--primary)]/20 hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center gap-4">
+                        <div key={a.id} style={{ animationDelay: `${Math.min(li,15)*45}ms` }} className="list-pop group bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 hover:border-[var(--primary)]/20 hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center gap-4">
                           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--primary)]/20 to-[var(--card)] border border-[var(--border)] group-hover:border-[var(--primary)]/30 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">{initials}</div>
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2 mb-1">

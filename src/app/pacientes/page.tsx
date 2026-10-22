@@ -223,7 +223,7 @@ export default function PacientesPage() {
             <span className="hidden sm:inline">Atualizar</span>
           </button>
           <button onClick={openNew}
-            className="flex items-center justify-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-[0_0_20px_rgba(77,167,104,0.3)]">
+            className="btn-motion btn-shine flex items-center justify-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-[0_0_20px_rgba(77,167,104,0.3)]">
             <Plus size={16} strokeWidth={2.5} /> Novo Paciente
           </button>
         </div>
@@ -299,10 +299,10 @@ export default function PacientesPage() {
       ) : (
         <div className="premium-surface border border-[var(--border)] rounded-2xl overflow-hidden">
           <div className="divide-y divide-[var(--border)]">
-            {pacientes.map(paciente => {
+            {pacientes.map((paciente, idx) => {
               const initials = paciente.nome.split(" ").filter(Boolean).slice(0,2).map(p=>p[0]?.toUpperCase()).join("");
               return (
-                <div key={paciente.id} className="group flex items-center gap-4 p-4 hover:bg-[var(--card-hover)] transition-colors">
+                <div key={paciente.id} style={{ animationDelay: `${Math.min(idx,15)*40}ms` }} className="row-pop group flex items-center gap-4 p-4 hover:bg-[var(--card-hover)] transition-colors">
                   <div className="w-10 h-10 rounded-full border-2 border-[var(--border)] group-hover:border-[var(--primary)]/30 bg-gradient-to-br from-[var(--primary)]/20 to-[var(--card)] flex items-center justify-center text-white font-bold text-xs flex-shrink-0 overflow-hidden">
                     {paciente.foto ? <Image src={paciente.foto} alt={paciente.nome} width={40} height={40} unoptimized className="w-full h-full object-cover" /> : initials}
                   </div>

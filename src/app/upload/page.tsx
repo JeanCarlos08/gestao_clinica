@@ -154,8 +154,8 @@ export default function UploadPage() {
           { label: "Total de Arquivos", value: arquivos.length, icon: <File size={16} />, color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/15" },
           { label: "Espaço Utilizado", value: formatSize(totalKB), icon: <HardDrive size={16} />, color: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/15" },
           { label: "Último Upload", value: arquivos[0]?.criado_em ? formatDate(arquivos[0].criado_em) : "—", icon: <Clock size={16} />, color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/15" },
-        ].map(({ label, value, icon, color, bg, border }) => (
-          <div key={label} className={`premium-surface rounded-2xl p-5 border ${border} hover:-translate-y-0.5 transition-transform`}>
+        ].map(({ label, value, icon, color, bg, border }, st_i) => (
+          <div key={label} style={{ animationDelay: `${st_i * 70}ms` }} className={`list-pop premium-surface rounded-2xl p-5 border ${border} hover:-translate-y-0.5 transition-transform`}>
             <div className="flex items-center justify-between mb-3">
               <span className="text-[11px] text-[var(--text-label)] font-semibold uppercase tracking-wider">{label}</span>
               <span className={`${color} ${bg} p-1.5 rounded-lg border border-white/5`}>{icon}</span>
@@ -173,7 +173,7 @@ export default function UploadPage() {
         onClick={() => inputRef.current?.click()}
         className={`premium-surface border-2 border-dashed rounded-3xl p-12 text-center cursor-pointer transition-all duration-300 mb-6 ${dragOver
           ? "border-[var(--primary)] bg-[var(--primary)]/5 scale-[1.01] shadow-[0_0_30px_rgba(77,167,104,0.15)]"
-          : "border-[var(--border)] hover:border-[var(--primary)]/40 hover:bg-[var(--card-hover)]"
+          : "border-[var(--border)] hover:border-[var(--primary)]/40 hover:bg-[var(--card-hover)] dz-breath"
           } ${uploading ? "pointer-events-none opacity-60" : ""}`}
       >
         <input ref={inputRef} type="file" multiple className="hidden" onChange={e => handleFiles(e.target.files)} />
@@ -185,7 +185,7 @@ export default function UploadPage() {
         ) : (
           <div className="flex flex-col items-center gap-4">
             <div className={`p-5 rounded-full transition-colors duration-300 ${dragOver ? "bg-[var(--primary)]/20 shadow-[0_0_20px_rgba(77,167,104,0.3)]" : "bg-gradient-to-br from-[var(--card)] to-[var(--background)] border border-[var(--border)]"}`}>
-              <Upload size={36} className={dragOver ? "text-[var(--primary)]" : "text-[var(--text-muted)]"} />
+              <Upload size={36} className={dragOver ? "text-[var(--primary)]" : "text-[var(--text-muted)] float-soft"} />
             </div>
             <div>
               <p className="font-bold text-white text-xl mb-1.5">
@@ -196,7 +196,7 @@ export default function UploadPage() {
             <button
               type="button"
               onClick={e => { e.stopPropagation(); inputRef.current?.click(); }}
-              className="btn-motion mt-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-8 py-3 rounded-xl text-sm shadow-[0_0_20px_rgba(77,167,104,0.3)] hover:shadow-[0_0_30px_rgba(77,167,104,0.5)] flex items-center gap-2"
+              className="btn-motion btn-shine mt-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-8 py-3 rounded-xl text-sm shadow-[0_0_20px_rgba(77,167,104,0.3)] hover:shadow-[0_0_30px_rgba(77,167,104,0.5)] flex items-center gap-2"
             >
               Selecionar Arquivos <ChevronRight size={16} />
             </button>
@@ -233,7 +233,7 @@ export default function UploadPage() {
               {arquivos.map((a, i) => {
                 const glyph = fileGlyph(a.content_type);
                 return (
-                  <tr key={a.id} className="border-b border-[var(--border)] hover:bg-[var(--card-hover)] transition-colors group">
+                  <tr key={a.id} style={{ animationDelay: `${Math.min(i,15) * 40 }ms` }} className="row-pop border-b border-[var(--border)] hover:bg-[var(--card-hover)] transition-colors group">
                     <td className="p-4 text-xs text-[var(--text-muted)]">{i + 1}</td>
                     <td className="p-4">
                       <div className="flex items-center gap-3">

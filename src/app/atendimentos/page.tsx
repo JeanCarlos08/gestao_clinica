@@ -156,7 +156,7 @@ export default function AtendimentosPage() {
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Atendimentos</h1>
           <p className="text-[var(--text-muted)] text-sm mt-1">Gerencie consultas e avaliações clínicas</p>
         </div>
-        <button onClick={openNew} className="flex items-center justify-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-[0_0_20px_rgba(77,167,104,0.3)] hover:shadow-[0_0_30px_rgba(77,167,104,0.5)]">
+        <button onClick={openNew} className="btn-motion btn-shine flex items-center justify-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-[0_0_20px_rgba(77,167,104,0.3)] hover:shadow-[0_0_30px_rgba(77,167,104,0.5)]">
           <Plus size={16} strokeWidth={2.5} /> Novo Agendamento
         </button>
       </div>
@@ -231,11 +231,11 @@ export default function AtendimentosPage() {
                 <div className="flex-1 p-3 space-y-3 overflow-y-auto scrollbar-thin max-h-[65vh]">
                   {cols.length===0 ? (
                     <div className="text-center py-8 text-xs text-[var(--text-muted)]">Vazio</div>
-                  ) : cols.map(a => {
+                  ) : cols.map((a, ci) => {
                     const s = getStatusColor(a.status);
                     const initials = a.nome.split(" ").filter(Boolean).slice(0,2).map(p=>p[0]?.toUpperCase()).join("");
                     return (
-                      <div key={a.id} onClick={() => { setEditingId(a.id); setEmpresa(a.empresa); setNome(a.nome); setModalidade(a.modalidade); setData(a.data); setHora(a.hora); setStatus(a.status); setSelectedPacienteId(a.paciente_id||null); setPacienteSearch(""); setShowPacienteDropdown(false); setShowModal(true); }} className="group bg-[var(--card)] border border-[var(--border)] rounded-xl p-3 hover:border-[var(--primary)]/30 hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer">
+                      <div key={a.id} onClick={() => { setEditingId(a.id); setEmpresa(a.empresa); setNome(a.nome); setModalidade(a.modalidade); setData(a.data); setHora(a.hora); setStatus(a.status); setSelectedPacienteId(a.paciente_id||null); setPacienteSearch(""); setShowPacienteDropdown(false); setShowModal(true); }} style={{ animationDelay: `${Math.min(ci,9)*55}ms` }} className="list-pop group bg-[var(--card)] border border-[var(--border)] rounded-xl p-3 hover:border-[var(--primary)]/30 hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer">
                         <div className="flex items-start gap-2 mb-2">
                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--primary)]/20 to-[var(--card)] border border-[var(--border)] flex items-center justify-center text-white font-bold text-[10px] flex-shrink-0">{initials}</div>
                           <div className="min-w-0 flex-1">
