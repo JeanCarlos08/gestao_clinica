@@ -192,6 +192,15 @@ export default function LoginPage() {
   const [clock, setClock] = useState("--:--:--");
   const router = useRouter();
 
+  /* Já logado: ao entrar no app, a primeira tela é o Dashboard */
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("token")) router.replace("/dashboard");
+    } catch {
+      /* localStorage indisponível — mantém a tela de login */
+    }
+  }, [router]);
+
   /* Intro em 2 tempos: 0.9s só na primeira visita; depois nunca repete */
   useEffect(() => {
     try {
