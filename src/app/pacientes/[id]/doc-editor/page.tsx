@@ -6,6 +6,8 @@ import {
   ArrowLeft, ExternalLink, Shield, ShieldOff, Clock, Loader2, FileText,
 } from "lucide-react";
 import GoogleDocsIframe from "@/components/GoogleDocsIframe";
+import Image from "next/image";
+import { useClinicaMarca } from "@/hooks/useClinicaMarca";
 
 const API = (path: string) => (process.env.NEXT_PUBLIC_API_URL || "/api") + path;
 
@@ -14,6 +16,7 @@ export default function DocEditorPage() {
   const router = useRouter();
   const id = params?.id as string | undefined;
 
+  const { clinicName, clinicLogo } = useClinicaMarca();
   const [docId, setDocId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -114,6 +117,16 @@ export default function DocEditorPage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden fade-up">
+      {/* ── Papel timbrado (identidade da clínica) ──────────── */}
+      <div className="flex items-center gap-2 px-4 sm:px-6 py-2 bg-gradient-to-r from-[var(--primary)]/12 via-transparent to-transparent border-b border-[var(--border)] flex-shrink-0 empty-in">
+        <div className="w-6 h-6 rounded-lg bg-[var(--card)] border border-[var(--border)] flex items-center justify-center overflow-hidden flex-shrink-0">
+          {clinicLogo
+            ? <Image src={clinicLogo} alt="" width={24} height={24} unoptimized className="w-full h-full object-cover" />
+            : <FileText size={12} className="text-[var(--primary)]" />}
+        </div>
+        <span className="text-[11px] font-bold text-white truncate">{clinicName}</span>
+        <span className="text-[10px] text-[var(--text-muted)] hidden sm:inline">· Documento confidencial · {new Date().toLocaleDateString("pt-BR")}</span>
+      </div>
       {/* ── Toolbar ─────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-[var(--border)] bg-[var(--card)] flex-shrink-0">
         <div className="flex items-center gap-3 min-w-0">

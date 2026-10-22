@@ -81,6 +81,40 @@ body {
   z-index: 0;
 }
 
+/* ── Foto ambiental premium (bokeh esmeralda) ────────────── */
+.app-bg-photo {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: radial-gradient(ellipse 120% 95% at 50% 20%, transparent 26%, rgba(4,18,13,0.88) 100%), url("/bg-bokeh.png");
+  background-size: 100% 100%, cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  mix-blend-mode: screen;
+  opacity: 0.3;
+  animation: bgPhotoBreathe 70s ease-in-out infinite alternate;
+  will-change: opacity, transform;
+}
+@keyframes bgPhotoBreathe {
+  from { transform: scale(1); }
+  to { transform: scale(1.08) translateY(-1.5%); }
+}
+[data-theme="light"] .app-bg-photo { display: none; }
+[data-accent="petroleo"] .app-bg-photo {
+  background-image: radial-gradient(ellipse 120% 90% at 50% 18%, transparent 30%, rgba(2,20,26,0.9) 100%), url("/bg-bokeh.png");
+  filter: hue-rotate(96deg);
+}
+[data-accent="vinho"] .app-bg-photo {
+  background-image: radial-gradient(ellipse 120% 90% at 50% 18%, transparent 30%, rgba(26,6,6,0.9) 100%), url("/bg-bokeh.png");
+  filter: hue-rotate(218deg);
+}
+[data-accent="dourado"] .app-bg-photo {
+  background-image: radial-gradient(ellipse 120% 90% at 50% 18%, transparent 30%, rgba(22,17,2,0.9) 100%), url("/bg-bokeh.png");
+  filter: hue-rotate(38deg);
+}
+[data-accent=""] .app-bg-photo { filter: none; }
+
 /* Subtle vignette */
 .app-premium-bg::after {
   content: "";
@@ -372,7 +406,7 @@ main {
 
 /* ── Gradient text ──────────────────────────────────────── */
 .gradient-text {
-  background: linear-gradient(135deg, #7BCF8A 0%, #4DA768 50%, #1E7A46 100%);
+  background: linear-gradient(135deg, var(--primary, #7BCF8A) 0%, var(--primary-hover, #4DA768) 50%, var(--primary-strong, #1E7A46) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -704,6 +738,11 @@ a:focus-visible {
 [data-theme="light"] .modal-glass::after { background: linear-gradient(90deg, transparent, rgba(29,139,68,0.55), transparent); }
 @media (prefers-reduced-motion: reduce) { .modal-in { animation: none; } }
 
+/* ── Accent da clinica (personalizacao) ── */
+[data-accent="petroleo"] { --primary: #2E86AB; --primary-hover: #2a7695; --primary-strong: #1f6d8f; }
+[data-accent="vinho"] { --primary: #C05650; --primary-hover: #a8453f; --primary-strong: #8f3531; }
+[data-accent="dourado"] { --primary: #C99A27; --primary-hover: #a88618; --primary-strong: #8a6d10; }
+
 /* ── Micro-animacoes v6.1 ── */
 @keyframes riseIn {
   0% { opacity: 0; transform: translate3d(0,12px,0) scale(0.985); filter: blur(3px); }
@@ -742,7 +781,7 @@ a:focus-visible {
 }
 .dz-breath { animation: dzBreath 2.6s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
-  .list-pop, .row-pop, .float-soft, .dz-breath, .app-premium-bg::before, .btn-shine::after { animation: none !important; }
+  .list-pop, .row-pop, .float-soft, .dz-breath, .app-premium-bg::before, .btn-shine::after, .app-bg-photo { animation: none !important; }
 }
 [data-theme="light"] .table-premium tbody tr:hover { background: rgba(29,139,68,0.06); }
 [data-theme="light"] .gradient-text {

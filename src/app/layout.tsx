@@ -3,6 +3,7 @@ import { Manrope, Inter } from "next/font/google";
 import Sidebar from "@/components/Sidebar";
 import { ToastProvider } from "@/components/Toast";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import TitleSync from "@/components/TitleSync";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import PageTransition from "@/components/PageTransition";
 import "./globals.css";
@@ -47,8 +48,10 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className={`${manrope.variable} ${inter.variable}`}>
       <body className={`font-sans bg-[var(--background)] text-[var(--foreground)] antialiased flex h-dvh overflow-hidden app-premium-bg`} style={{ fontFamily: "var(--font-inter), var(--font-manrope), system-ui, sans-serif" }}>
-        <script dangerouslySetInnerHTML={{ __html: "(function(){try{var t=localStorage.getItem('theme');if(!t){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();" }} />
+        <script dangerouslySetInnerHTML={{ __html: "(function(){try{var t=localStorage.getItem('theme');if(!t){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}document.documentElement.setAttribute('data-theme',t);var a=localStorage.getItem('accent');if(a)document.documentElement.setAttribute('data-accent',a);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();" }} />
         <ThemeProvider>
+          <TitleSync />
+          <div className="app-bg-photo" aria-hidden="true" />
           <Sidebar />
           <main className="flex-1 flex flex-col h-full overflow-hidden bg-[var(--background)] pt-14 md:pt-0">
             <ToastProvider>

@@ -23,6 +23,9 @@ export default function ConfigPage() {
 
   const [clinica, setClinica] = useState<Clinica | null>(null);
   const [config, setConfig] = useState<ClinicaConfig>({ clinic_name: "", clinic_logo_base64: null, user_photo_base64: null });
+  const [accent, setAccent] = useState<string>((() => {
+    try { return localStorage.getItem("accent") || "esmeralda"; } catch { return "esmeralda"; }
+  })());
   const [logs, setLogs] = useState<AuditLog[]>([]);
 
   const logoRef = useRef<HTMLInputElement>(null);
@@ -45,6 +48,8 @@ export default function ConfigPage() {
           const d = await cRes.json();
           setClinica(d.clinica);
           setConfig(d.clinica || { clinic_name: "", clinic_logo_base64: null, user_photo_base64: null });
+          const acc = (d.clinica as unknown as { accent_color?: string })?.accent_color;
+          if (acc) { setAccent(acc); document.documentElement.setAttribute("data-accent", acc); localStorage.setItem("accent", acc); }
         }
         if (logsRes.ok) setLogs(await logsRes.json());
       } catch (e) { console.debug("Erro ao carregar configurações:", e); }
@@ -56,6 +61,29 @@ export default function ConfigPage() {
   const showMsg = (t: "success" | "error", text: string) => {
     setMsg({ type: t, text });
     setTimeout(() => setMsg(null), 4000);
+  };
+
+  const ACCENTS: { id: string; nome: string; hex: string }[] = [
+    { id: "esmeralda", nome: "Esmeralda", hex: "#4DA768" },
+    { id: "petroleo", nome: "Azul-petróleo", hex: "#2E86AB" },
+    { id: "vinho", nome: "Vinho", hex: "#C05650" },
+    { id: "dourado", nome: "Dourado", hex: "#C99A27" },
+  ];
+
+  const applyAccent = async (id: string) => {
+    setAccent(id);
+    document.documentElement.setAttribute("data-accent", id === "esmeralda" ? "" : id);
+    if (id === "esmeralda") document.documentElement.removeAttribute("data-accent");
+    try { localStorage.setItem("accent", id === "esmeralda" ? "" : id); } catch {}
+    const tk = getToken();
+    if (!tk) return;
+    try {
+      await fetch(`${API_BASE}/configuracoes`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${tk}` },
+        body: JSON.stringify({ accent_color: id === "esmeralda" ? "" : id }),
+      });
+    } catch { /* silencioso — visual já aplicado */ }
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -172,6 +200,25 @@ export default function ConfigPage() {
                       <div>
                         <h2 className="text-lg font-bold text-white mb-1">Identidade Visual da Clínica</h2>
                         <p className="text-sm text-[var(--text-muted)] max-w-md">Esta logo será utilizada nos laudos gerados (PDF e Docs) e no cabeçalho do sistema.</p>
+                        <div className="mt-3">
+                          <label className="block text-[10px] font-bold text-[var(--text-label)] uppercase tracking-wider mb-2">Cor de identidade (accent)</label>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {ACCENTS.map(a => (
+                              <button
+                                key={a.id}
+                                type="button"
+                                onClick={() => applyAccent(a.id)}
+                                title={a.nome}
+                                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-[11px] font-bold transition-all btn-motion ${accent === a.id ? "border-[var(--border-light)] bg-[var(--card-hover)] text-white shadow-md" : "border-[var(--border)] text-[var(--text-muted)] hover:text-white hover:bg-[var(--card-hover)]"}`}
+                              >
+                                <span className="w-3.5 h-3.5 rounded-full border border-black/20" style={{ background: a.hex }} />
+                                {a.nome}
+                                {accent === a.id && <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary)]" />}
+                              </button>
+                            ))}
+                          </div>
+                          <p className="text-[10px] text-[var(--text-muted)] mt-2">Aplica na hora na área de conteúdo do sistema (login e menu permanecem na marca esmeralda).</p>
+                        </div>
                       </div>
                     </div>
 

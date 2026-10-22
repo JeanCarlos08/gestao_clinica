@@ -31,6 +31,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    const accent = localStorage.getItem("accent");
+    if (accent) document.documentElement.setAttribute("data-accent", accent);
+  }, []);
+
+  useEffect(() => {
     // escreve apenas em mudanças do usuário; no mount antiflash já definiu o attr
     if (!mounted.current) {
       mounted.current = true;

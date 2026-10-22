@@ -7,10 +7,11 @@ import useSWR from "swr";
 import {
   Search, Users, CalendarClock, Activity, RefreshCw, Loader2,
   Plus, XCircle, Edit3, Trash2, User, Phone, Mail, Building2, CreditCard, Save,
-  FileText, LayoutGrid, List, NotebookPen, Star, Sparkles, Send, Clock3,
+  FileText, LayoutGrid, List, NotebookPen, Star, Sparkles, Send, Clock3, Printer,
 } from "lucide-react";
 import EmptyIllustration from "@/components/EmptyIllustration";
 import { swrFetcher, API as API_BASE } from "@/lib/api";
+import { useClinicaMarca } from "@/hooks/useClinicaMarca";
 
 interface PacienteResumo {
   id: number;
@@ -168,6 +169,41 @@ export default function PacientesPage() {
       if (res.ok) setEvolucoes(await res.json());
     } catch (e) { console.debug("fetchEvolucoes", e); }
     finally { setEvoLoading(false); }
+  };
+  const { clinicName: marcaClinica, clinicLogo: marcaLogo } = useClinicaMarca();
+
+  const imprimirEvolucaoTimbrada = (evo: { titulo: string; conteudo: string; criado_em: string }, pacienteNome: string) => {
+    const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const w = window.open("", "_blank", "width=820,height=940");
+    if (!w) return;
+    w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(evo.titulo)}</title>
+      <style>
+        @page { margin: 0; }
+        body { font-family: "Segoe UI", Arial, sans-serif; color: #132a1d; margin: 0; padding: 0; }
+        .sheet { max-width: 760px; margin: 0 auto; padding: 48px 56px 120px; position: relative; min-height: 96vh; box-sizing: border-box; }
+        .lh { display: flex; align-items: center; gap: 16px; border-bottom: 3px solid #4DA768; padding-bottom: 16px; }
+        .lh img { width: 64px; height: 64px; object-fit: cover; border-radius: 12px; border: 2px solid rgba(77,167,104,0.35); }
+        .lh .c { font-size: 20px; font-weight: 800; letter-spacing: 0.2px; }
+        .lh .t { font-size: 11px; color: #5f7a6c; margin-top: 3px; text-transform: uppercase; letter-spacing: 2.4px; }
+        .meta { display: flex; justify-content: space-between; margin-top: 20px; font-size: 12px; color: #4c6b5b; }
+        h1 { font-size: 17px; margin: 26px 0 10px; }
+        .content { font-size: 13px; line-height: 1.75; white-space: pre-wrap; }
+        .foot { position: fixed; bottom: 24px; left: 56px; right: 56px; font-size: 9.5px; color: #748f81; border-top: 1px solid #d8e5dd; padding-top: 8px; display: flex; justify-content: space-between; }
+        @media print { .sheet { padding-bottom: 60px; } .foot { position: absolute; bottom: 16px; } }
+      </style></head><body>
+      <div class="sheet">
+        <div class="lh">
+          ${marcaLogo ? `<img src="${marcaLogo}" alt="Logo da clínica" />` : `<div class="lh-none"></div>`}
+          <div><div class="c">${esc(marcaClinica)}</div><div class="t">Prontuário Psicológico · Registro Evolutivo</div></div>
+        </div>
+        <div class="meta"><div><strong>Paciente:</strong> ${esc(pacienteNome)}</div><div><strong>Data:</strong> ${new Date(evo.criado_em).toLocaleString("pt-BR")}</div></div>
+        <h1>${esc(evo.titulo)}</h1>
+        <div class="content">${esc(evo.conteudo)}</div>
+        <div class="foot"><span>${esc(marcaClinica)} — Documento confidencial (LGPD)</span><span>Impresso em ${new Date().toLocaleString("pt-BR")}</span></div>
+      </div>
+      </body></html>`);
+    w.document.close();
+    setTimeout(() => { w.focus(); w.print(); }, 350);
   };
   const openProntuario = (p: PacienteResumo) => {
     setProntPaciente(p); setNovaEvo(""); setShowProntuario(true); fetchEvolucoes(p.id);
@@ -496,6 +532,7 @@ export default function PacientesPage() {
                           <div className="flex items-center gap-1">
                             {evo.favorita && <Star size={12} className="text-amber-400 fill-amber-400" />}
                             <span className="text-[10px] text-[var(--text-muted)] font-mono bg-[var(--card)] border border-[var(--border)] px-1.5 py-0.5 rounded">{new Date(evo.criado_em).toLocaleString("pt-BR")}</span>
+                            <button onClick={() => imprimirEvolucaoTimbrada(evo, prontPaciente.nome)} title="Imprimir timbrado" className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-[var(--primary)]/10 text-[var(--primary)] transition-all btn-motion"><Printer size={12} /></button>
                             <button onClick={() => deletarEvolucao(evo.id)} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-500/10 text-red-400 transition-all"><Trash2 size={12} /></button>
                           </div>
                         </div>
