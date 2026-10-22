@@ -169,7 +169,8 @@ export default function DashboardPage() {
   const totalPorEmpresa = empresaEntries.reduce((sum, [, v]) => sum + (Number(v) || 0), 0);
 
   const greeting = () => {
-    const h = (now ?? new Date()).getHours();
+    if (!now) return "Olá";
+    const h = now.getHours();
     if (h < 12) return "Bom dia";
     if (h < 18) return "Boa tarde";
     return "Boa noite";
