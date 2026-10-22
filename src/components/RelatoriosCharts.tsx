@@ -1,5 +1,5 @@
 "use client";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, Label } from "recharts";
 import EmptyIllustration from "@/components/EmptyIllustration";
 import EmpresaRanking from "@/components/EmpresaRanking";
 import { TrendingUp, Users, FileText } from "lucide-react";
@@ -30,8 +30,8 @@ const tooltipStyle = {
 
 function EmptyBox({ title, hint }: { title: string; hint?: string }) {
   return (
-    <div className="text-center py-10">
-      <EmptyIllustration variant="report" size={80} />
+    <div className="empty-in text-center py-10">
+      <div className="empty-float flex justify-center"><EmptyIllustration variant="report" size={80} /></div>
       <p className="text-[var(--text-muted)] text-sm mt-3">{title}</p>
       {hint && <p className="text-[var(--text-muted)] text-xs mt-1 opacity-70">{hint}</p>}
     </div>
@@ -63,11 +63,17 @@ export default function RelatoriosCharts({ stats, total }: { stats: ReportStats;
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={mesData} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
+                  <defs>
+                    <linearGradient id="barMesGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#7BCF8A" />
+                      <stop offset="100%" stopColor="#1E7A46" />
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
                   <XAxis dataKey="name" stroke="#3d5554" tick={{ fill: "#6b8e8a", fontSize: 10 }} axisLine={false} tickLine={false} />
                   <YAxis stroke="#3d5554" tick={{ fill: "#6b8e8a", fontSize: 10 }} axisLine={false} tickLine={false} />
                   <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: "#7BCF8A" }} cursor={{ fill: "rgba(77,167,104,0.06)" }} />
-                  <Bar dataKey="value" fill="#4DA768" radius={[6, 6, 0, 0]} fillOpacity={0.85} name="Atendimentos" />
+                  <Bar dataKey="value" fill="url(#barMesGrad)" radius={[6, 6, 0, 0]} fillOpacity={0.92} name="Atendimentos" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -84,10 +90,25 @@ export default function RelatoriosCharts({ stats, total }: { stats: ReportStats;
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={statusData} cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={3} dataKey="value" stroke="rgba(2,16,11,0.85)">
+                  <Pie data={statusData} cx="50%" cy="50%" innerRadius={58} outerRadius={82} paddingAngle={3} dataKey="value" stroke="rgba(2,16,11,0.85)">
                     {statusData.map((entry, i) => (
                       <Cell key={entry.name} fill={STATUS_COLORS[entry.name] || GREENS[i % GREENS.length]} fillOpacity={0.9} />
                     ))}
+                    <Label
+                      content={(props) => {
+                        const vb = props.viewBox as { cx?: number; cy?: number } | undefined;
+                        return vb && vb.cx != null && vb.cy != null ? (
+                          <text x={vb.cx} y={vb.cy} textAnchor="middle" dominantBaseline="middle">
+                            <tspan x={vb.cx} dy="-0.35em" style={{ fill: "#fff", fontSize: 20, fontWeight: 800 }}>
+                              {total}
+                            </tspan>
+                            <tspan x={vb.cx} dy="1.25em" style={{ fill: "#6b8e8a", fontSize: 9, fontWeight: 600 }}>
+                              sessões
+                            </tspan>
+                          </text>
+                        ) : null;
+                      }}
+                    />
                   </Pie>
                   <Tooltip contentStyle={tooltipStyle} />
                   <Legend iconType="circle" iconSize={8} formatter={(v) => <span style={{ color: "#98b8b2", fontSize: 11 }}>{v}</span>} />
