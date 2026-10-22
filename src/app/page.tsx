@@ -345,7 +345,7 @@ export default function LoginPage() {
             linear-gradient(rgba(255,255,255,0.024) 1px, transparent 1px),
             linear-gradient(90deg, rgba(255,255,255,0.024) 1px, transparent 1px),
             linear-gradient(160deg, rgba(30,92,53,0.55) 0%, rgba(16,52,30,0.68) 100%),
-            url('/login-bg.jpg');
+            url('/bg-clinic.jpg');
           background-size: 100% 100%, 56px 56px, 56px 56px, 100% 100%, cover;
           background-position: center;
           background-repeat: no-repeat;

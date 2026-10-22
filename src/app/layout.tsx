@@ -53,7 +53,7 @@ export default function RootLayout({
           <TitleSync />
           <div className="app-bg-photo" aria-hidden="true" />
           <Sidebar />
-          <main className="flex-1 flex flex-col h-full overflow-hidden bg-[var(--background)] pt-14 md:pt-0">
+          <main className="flex-1 flex flex-col h-full overflow-hidden pt-14 md:pt-0">
             <ToastProvider>
               <ErrorBoundary>
                 <PageTransition>{children}</PageTransition>

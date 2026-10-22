@@ -87,12 +87,14 @@ body {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  /* Fundo preto premium, espaçoso: glows suaves só nas bordas, centro escuro e limpo */
-  background-image: radial-gradient(ellipse 130% 100% at 50% 22%, transparent 30%, rgba(3,7,6,0.85) 100%), url("/bg-dark.jpg");
+  /* Fundo preto premium: interior de clínica sob scrim escuro (cena sutil, texto legível) */
+  background-image:
+    radial-gradient(ellipse 150% 120% at 50% 25%, rgba(4,10,8,0.80) 0%, rgba(4,10,8,0.90) 65%, rgba(3,7,6,0.95) 100%),
+    url("/bg-clinic.jpg");
   background-size: 100% 100%, cover;
   background-position: center;
   background-repeat: no-repeat;
-  opacity: 0.9;
+  opacity: 1;
   animation: bgPhotoBreathe 90s ease-in-out infinite alternate;
   will-change: opacity, transform;
 }
@@ -101,6 +103,8 @@ body {
   to { transform: scale(1.05) translateY(-1%); }
 }
 [data-theme="light"] .app-bg-photo { display: none; }
+/* Sem foto no light: <main> volta a ter fundo opaco */
+[data-theme="light"] main { background-color: var(--background); }
 /* Accents: o fundo é neutro-escuro; cor vem das vars da UI (sem hue-rotate) */
 
 /* Subtle vignette */
