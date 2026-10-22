@@ -11,6 +11,7 @@ import {
 import { buildDisplayName, getLoggedUserProfile, getUserInitials } from "@/lib/auth";
 import AiMarkdown from "@/components/AiMarkdown";
 import { useTheme } from "@/components/ThemeProvider";
+import { useClinicaMarca } from "@/hooks/useClinicaMarca";
 
 const Clock = memo(function Clock() {
   const [time, setTime] = useState("");
@@ -38,6 +39,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { theme, toggle: toggleTheme } = useTheme();
+  const { clinicName, clinicLogo } = useClinicaMarca();
   const [open, setOpen] = useState(false);
   const [profile, setProfile] = useState({ displayName: "Usuário", role: "" });
   const [photoSrc, setPhotoSrc] = useState<string | null>(null);
@@ -49,6 +51,18 @@ export default function Sidebar() {
   useEffect(() => {
     if (aiListRef.current) aiListRef.current.scrollTop = aiListRef.current.scrollHeight;
   }, [aiMessages, aiLoading]);
+
+  useEffect(() => {
+    if (clinicLogo) {
+      let link = document.querySelector<HTMLLinkElement>("link[rel='icon']");
+      if (!link) {
+        link = document.createElement("link");
+        link.rel = "icon";
+        document.head.appendChild(link);
+      }
+      link.href = clinicLogo;
+    }
+  }, [clinicLogo]);
 
   useEffect(() => { setOpen(false); }, [pathname]);
 
@@ -136,11 +150,13 @@ export default function Sidebar() {
           <div className="absolute inset-0 bg-gradient-to-br from-[rgba(77,167,104,0.08)] to-transparent pointer-events-none" />
 
           <div className="relative flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#4DA768] to-[#0d3a22] border border-[rgba(168,232,183,0.3)] flex items-center justify-center shadow-[0_0_24px_rgba(77,167,104,0.35),inset_0_1px_0_rgba(255,255,255,0.35)] flex-shrink-0">
-              <Sparkles size={17} className="text-[#eafff1]" />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#4DA768] to-[#0d3a22] border border-[rgba(168,232,183,0.3)] flex items-center justify-center shadow-[0_0_24px_rgba(77,167,104,0.35),inset_0_1px_0_rgba(255,255,255,0.35)] flex-shrink-0 overflow-hidden">
+              {clinicLogo
+                ? <Image src={clinicLogo} alt="Logo da clínica" width={40} height={40} unoptimized className="w-full h-full object-cover" />
+                : <Sparkles size={17} className="text-[#eafff1]" />}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="font-extrabold text-sm text-white tracking-tight leading-tight">MVP Psicologia</div>
+              <div className="font-extrabold text-sm text-white tracking-tight leading-tight truncate">{clinicName}</div>
               <div className="text-[10px] text-[#9cbbaa] tracking-wide">Prontuário • Agenda</div>
               <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-[rgba(123,207,138,0.35)] bg-[rgba(77,167,104,0.16)] px-2 py-[3px] shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#4ade80] pulse-green" />
@@ -310,7 +326,7 @@ export default function Sidebar() {
           Encerrar sessão
         </button>
         <div className="px-3 pt-1 text-center">
-          <span className="text-[9px] text-[#6f917c] whitespace-nowrap">v3.0 · MVP Psicologia</span>
+          <span className="text-[9px] text-[#6f917c] whitespace-nowrap">v3.0 · {clinicName}</span>
         </div>
         <div className="px-3 flex items-center justify-center gap-2">
           <Link href="/privacy" className="text-[9px] text-[#6f917c] hover:text-[#a8e8b7] transition-colors">Privacidade</Link>
@@ -343,7 +359,7 @@ export default function Sidebar() {
           <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#1E7A46] to-[#0d3a22] flex items-center justify-center">
             <Sparkles size={12} className="text-[#7BCF8A]" />
           </div>
-          <span className="font-bold text-sm tracking-tight gradient-text">MVP Psicologia</span>
+          <span className="font-bold text-sm tracking-tight gradient-text truncate max-w-[140px]">{clinicName}</span>
         </div>
         <div className="w-9" />
       </header>

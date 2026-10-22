@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Loader2, Shield, Sparkles, X } from "lucide-react";
+import Image from "next/image";
+import { fetchMarcaPublica } from "@/hooks/useClinicaMarca";
 import { API as API_BASE } from "@/lib/api";
 
 const API = API_BASE;
@@ -170,6 +172,22 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [attempts, setAttempts] = useState(0);
   const [consentModal, setConsentModal] = useState<null | "google" | "microsoft" | "apple">(null);
+  const [marca, setMarca] = useState<{ name: string; logo: string | null }>({ name: "MVP Psicologia", logo: null });
+
+  useEffect(() => {
+    let alive = true;
+    fetchMarcaPublica().then((m) => {
+      if (alive && (m.clinic_logo_base64 || m.clinic_name !== "MVP Psicologia")) {
+        setMarca({ name: m.clinic_name, logo: m.clinic_logo_base64 });
+        if (m.clinic_logo_base64) {
+          let link = document.querySelector<HTMLLinkElement>("link[rel='icon']");
+          if (!link) { link = document.createElement("link"); link.rel = "icon"; document.head.appendChild(link); }
+          link.href = m.clinic_logo_base64;
+        }
+      }
+    });
+    return () => { alive = false; };
+  }, []);
   const [introDelay, setIntroDelay] = useState("0.9s");
   const [clock, setClock] = useState("--:--:--");
   const router = useRouter();
@@ -819,10 +837,12 @@ export default function LoginPage() {
           <div className="auth-card">
             {/* Brand */}
             <div className="auth-brand">
-              <div className="auth-brand-icon">
-                <Sparkles size={26} color="#eafff1" />
+              <div className="auth-brand-icon overflow-hidden">
+                {marca.logo
+                  ? <Image src={marca.logo} alt="Logo da clínica" width={26} height={26} unoptimized className="w-full h-full object-cover" />
+                  : <Sparkles size={26} color="#eafff1" />}
               </div>
-              <div className="auth-brand-name">MVP Psicologia</div>
+              <div className="auth-brand-name truncate max-w-[220px]">{marca.name}</div>
               <div className="auth-brand-tagline">Prontuário • Agenda • Evoluções</div>
             </div>
 
