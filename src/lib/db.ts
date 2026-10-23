@@ -181,6 +181,14 @@ export async function ensureSchema() {
       atualizado_em TIMESTAMPTZ DEFAULT NOW()
     )`;
 
+  // Migração idempotente: instâncias antigas da tabela notas não têm carimbos de data
+  // e guardavam 'favorita' como integer (0/1) — normaliza para o shape esperado pela API.
+  await sql`ALTER TABLE notas ADD COLUMN IF NOT EXISTS criado_em TIMESTAMPTZ DEFAULT NOW()`;
+  await sql`ALTER TABLE notas ADD COLUMN IF NOT EXISTS atualizado_em TIMESTAMPTZ DEFAULT NOW()`;
+  await sql`ALTER TABLE notas ALTER COLUMN favorita DROP DEFAULT`;
+  await sql`ALTER TABLE notas ALTER COLUMN favorita TYPE BOOLEAN USING favorita::int::boolean`;
+  await sql`ALTER TABLE notas ALTER COLUMN favorita SET DEFAULT FALSE`;
+
   // ── Índices para performance (P0) ──
   await sql`CREATE INDEX IF NOT EXISTS idx_atend_paciente ON atendimentos(paciente_id)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_atend_data_hora ON atendimentos(data DESC, hora DESC)`;
