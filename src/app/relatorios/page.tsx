@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
   BarChart2, Calendar, RefreshCw, Download, TrendingUp,
-  CheckCircle2, Clock, XCircle, AlertCircle, Loader2, FileText, Building2,
+  CheckCircle2, Clock, XCircle, AlertCircle, FileText, Building2,
 } from "lucide-react";
 import EmptyIllustration from "@/components/EmptyIllustration";
 import StatusBadge from "@/components/StatusBadge";

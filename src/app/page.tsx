@@ -10,6 +10,8 @@ import { API as API_BASE } from "@/lib/api";
 const API = API_BASE;
 
 /* ── Partículas em canvas (rede de pontos) ───────────────── */
+const PHRASES = ["Cuidamos de histórias, não só de horários.", "Seu espaço seguro para crescer e evoluir.", "Rotina clínica organizada, sem esforço.", "Bem-vindo(a) de volta. Bom trabalho!"];
+
 function ParticleNetwork() {
   const ref = useRef<HTMLCanvasElement>(null);
 
@@ -171,6 +173,11 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [attempts, setAttempts] = useState(0);
+  const [phraseIdx, setPhraseIdx] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setPhraseIdx((i) => (i + 1) % PHRASES.length), 6000);
+    return () => clearInterval(id);
+  }, []);
   const [consentModal, setConsentModal] = useState<null | "google" | "microsoft" | "apple">(null);
   const [marca, setMarca] = useState<{ name: string; logo: string | null }>({ name: "MVP Psicologia", logo: null });
 
@@ -463,6 +470,9 @@ export default function LoginPage() {
           100% { opacity: 1; transform: translateY(0) scale(1); }
         }
         @keyframes authUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        .auth-phrase { position: relative; margin-top: 9px; height: 15px; overflow: hidden; }
+        .auth-phrase span { display: inline-block; font-size: 11px; letter-spacing: .2px; color: rgba(215,245,225,0.75); animation: phraseIn .65s cubic-bezier(.16,1,.3,1) both; }
+        @keyframes phraseIn { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: none; } }
         @keyframes authSweep { 0% { transform: translateX(-120%) skewX(-18deg); } 100% { transform: translateX(240%) skewX(-18deg); } }
         @keyframes authPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(74,222,128,0.5); } 60% { box-shadow: 0 0 0 9px rgba(74,222,128,0); } }
         @keyframes authFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
@@ -853,6 +863,7 @@ export default function LoginPage() {
               </div>
               <div className="auth-brand-name truncate max-w-[220px]">{marca.name}</div>
               <div className="auth-brand-tagline">Prontuário • Agenda • Evoluções</div>
+              <div className="auth-phrase" aria-hidden="true"><span key={phraseIdx}>{PHRASES[phraseIdx]}</span></div>
             </div>
 
             <div className="auth-form-head">

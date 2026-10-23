@@ -55,11 +55,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         {toasts.map((t) => (
           <div
             key={t.id}
-            className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium shadow-lg animate-in slide-in-from-right duration-300 ${colors[t.type]}`}
+            className={`pointer-events-auto relative overflow-hidden flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium shadow-lg animate-in slide-in-from-right duration-300 ${colors[t.type]}`}
             onClick={() => dismiss(t.id)}
           >
-            {icons[t.type]}
+            <span className="toast-pop inline-flex">{icons[t.type]}</span>
             <span>{t.message}</span>
+            <span className="toast-bar" aria-hidden="true" />
           </div>
         ))}
       </div>

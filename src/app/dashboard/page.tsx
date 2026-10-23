@@ -165,6 +165,9 @@ export default function DashboardPage() {
   const taxaConclusao = totalAtendimentos > 0 ? Math.round((concluidos / totalAtendimentos) * 100) : 0;
   const isFirstLoad = loadingState && !stats && atendimentos.length === 0;
   const insightPatient = upcomingConsultas[0]?.nome || "seus pacientes";
+  const agendaHoje = atendimentos
+    .filter((x) => isSameDay(toTimestamp(x.data, x.hora), Date.now()))
+    .sort((x, y) => toTimestamp(x.data, x.hora) - toTimestamp(y.data, y.hora));
   const empresaEntries = (Object.entries(stats?.por_empresa ?? {}) ?? []) as Array<[string, number]>;
   const totalPorEmpresa = empresaEntries.reduce((sum, [, v]) => sum + (Number(v) || 0), 0);
 
@@ -433,6 +436,37 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* ── Agenda de Hoje: linha do tempo horizontal ─────────── */}
+      {agendaHoje.length > 0 && !isFirstLoad && (
+        <div className="premium-surface rounded-2xl p-6 mb-6 fade-up-delay-2">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <CalendarCheck size={16} className="text-[var(--primary)]" />
+              Agenda de Hoje
+            </h3>
+            <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[var(--status-concluido-bg)] text-[var(--status-concluido)] border border-[rgba(77,167,104,0.2)]">
+              {agendaHoje.length} {agendaHoje.length === 1 ? "sessão" : "sessões"}
+            </span>
+          </div>
+          <div className="flex gap-2.5 overflow-x-auto scrollbar-hide pt-1 pb-1">
+            {agendaHoje.map((x) => {
+              const meta = AGENDA_STATUS[x.status] ?? { dot: "bg-slate-500" };
+              return (
+                <div key={x.id} className="flex items-center gap-2.5 py-2 px-3 rounded-xl border border-[var(--border)] bg-[var(--card-hover)] min-w-[218px] flex-shrink-0 hover:border-[var(--primary)]/40 transition-colors">
+                  <span className="text-xs font-extrabold text-[var(--primary)] whitespace-nowrap">{(x.hora || "").slice(0, 5)}</span>
+                  <span className="w-px h-8 bg-[var(--border)] flex-shrink-0" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-xs font-semibold text-white truncate">{x.nome}</span>
+                    <span className="block text-[10px] text-[var(--text-muted)] truncate">{x.modalidade}</span>
+                  </span>
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${meta.dot} ${meta.pulse ? "pulse-green" : ""}`} title={x.status} />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* ── Pizza por empresa + Ranking pódio ─────────────────── */}
       {!isFirstLoad && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 mb-6">
@@ -570,6 +604,15 @@ function formatDateLabel(ts: number) {
 function getUniquePatientsCount(atendimentos: AtendimentoResumo[]) {
   return new Set(atendimentos.map(a => a.nome.trim().toLowerCase())).size;
 }
+
+const AGENDA_STATUS: Record<string, { dot: string; pulse?: boolean }> = {
+  "Concluído": { dot: "bg-emerald-500" },
+  "Atendido": { dot: "bg-emerald-500" },
+  "Confirmado": { dot: "bg-[var(--primary)]", pulse: true },
+  "Faltou": { dot: "bg-red-500" },
+  "Cancelado": { dot: "bg-amber-500" },
+  "Reagendado": { dot: "bg-blue-500" },
+};
 
 function countTodayAppointments(atendimentos: AtendimentoResumo[]) {
   const today = new Date();

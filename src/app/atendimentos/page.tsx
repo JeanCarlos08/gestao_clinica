@@ -232,7 +232,6 @@ export default function AtendimentosPage() {
                   {cols.length===0 ? (
                     <div className="text-center py-8 text-xs text-[var(--text-muted)]">Vazio</div>
                   ) : cols.map((a, ci) => {
-                    const s = getStatusColor(a.status);
                     const initials = a.nome.split(" ").filter(Boolean).slice(0,2).map(p=>p[0]?.toUpperCase()).join("");
                     return (
                       <div key={a.id} onClick={() => { setEditingId(a.id); setEmpresa(a.empresa); setNome(a.nome); setModalidade(a.modalidade); setData(a.data); setHora(a.hora); setStatus(a.status); setSelectedPacienteId(a.paciente_id||null); setPacienteSearch(""); setShowPacienteDropdown(false); setShowModal(true); }} style={{ animationDelay: `${Math.min(ci,9)*55}ms` }} className="list-pop group bg-[var(--card)] border border-[var(--border)] rounded-xl p-3 hover:border-[var(--primary)]/30 hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer">

@@ -814,3 +814,79 @@ a:focus-visible {
   border-color: rgba(142,227,154,0.3);
 }
 .theme-btn:active { transform: scale(0.97); }
+
+
+/* ── Onda visual: ambiente filmico ─────────────────────────── */
+/* Grão de filme sobre a foto (sutil, some no light junto do pai) */
+.app-bg-photo::before {
+  content: "";
+  position: absolute; inset: -6%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  background-size: 240px 240px;
+  opacity: 0.05;
+  pointer-events: none;
+  animation: grainShift 1.1s steps(3) infinite;
+}
+@keyframes grainShift {
+  0% { transform: translate(0, 0); }
+  33% { transform: translate(-1.6%, 1.2%); }
+  66% { transform: translate(1.1%, -1.8%); }
+  100% { transform: translate(-0.8%, 0.9%); }
+}
+/* Halo suave tingido pelo accent escolhido */
+.app-bg-photo::after {
+  content: "";
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(56% 40% at 82% 92%, color-mix(in srgb, var(--primary) 13%, transparent) 0%, transparent 62%),
+    radial-gradient(46% 34% at 6% 94%, color-mix(in srgb, var(--primary) 10%, transparent) 0%, transparent 58%);
+  pointer-events: none;
+  animation: haloBreath 18s ease-in-out infinite alternate;
+}
+@keyframes haloBreath { from { opacity: 0.55; } to { opacity: 1; } }
+/* Vinheta respira devagar */
+.app-premium-bg::after { animation: vigBreath 45s ease-in-out infinite alternate; }
+@keyframes vigBreath { from { opacity: 0.72; } to { opacity: 1; } }
+
+/* Faixa da foto da clínica desfocada no topo da sidebar */
+.sidebar-premium::after {
+  content: "";
+  position: absolute; top: 0; left: 0; right: 0; height: 150px;
+  background: url("/bg-clinic.jpg") center 28% / cover no-repeat;
+  filter: blur(24px) saturate(1.05);
+  opacity: 0.14;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0%, transparent 100%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Toast: barra de tempo + ícone com pop */
+.toast-bar {
+  position: absolute; left: 14px; right: 14px; bottom: 5px; height: 2px;
+  border-radius: 2px; background: currentColor; opacity: 0.35;
+  transform-origin: left center;
+  animation: toastbar 4s linear forwards;
+}
+@keyframes toastbar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.toast-pop { animation: toastPop .3s cubic-bezier(.34,1.56,.64,1) both; }
+@keyframes toastPop { from { transform: scale(0.2); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+/* Prévia ao vivo do accent (configurações) */
+.accent-preview {
+  margin-top: 10px; padding: 10px 12px; border-radius: 14px;
+  border: 1px solid var(--border); background: rgba(255,255,255,0.03);
+}
+.accent-preview-label { display: block; font-size: 9px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-label); margin-bottom: 7px; }
+.accent-preview-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.accent-preview-btn { color: #fff; font-size: 11px; font-weight: 700; padding: 6px 12px; border-radius: 10px; box-shadow: 0 6px 16px -6px var(--primary); }
+.accent-preview-chip { font-size: 10px; font-weight: 700; border: 1px solid; padding: 4px 9px; border-radius: 999px; background: transparent; }
+.accent-preview-ball { width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.25); }
+.accent-preview-bar { height: 3px; width: 64px; border-radius: 99px; display: inline-block; }
+
+/* Números alinhados (KPIs, horários, tabelas) */
+body { font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+  .app-bg-photo::before, .app-bg-photo::after, .app-premium-bg::after, .toast-pop { animation: none !important; }
+}

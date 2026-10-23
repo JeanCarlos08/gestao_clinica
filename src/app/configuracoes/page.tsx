@@ -155,10 +155,6 @@ export default function ConfigPage() {
     } finally { setUploading(null); }
   };
 
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>, field: "clinic_logo_base64" | "user_photo_base64") => {
-    await handleUpload(e as unknown as React.ChangeEvent<HTMLInputElement>, field === "clinic_logo_base64" ? "clinic_logo" : "user_photo");
-  };
-
   return (
     <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-8 scrollbar-hide fade-up">
       {/* Header */}
@@ -263,6 +259,15 @@ export default function ConfigPage() {
                             ))}
                           </div>
                           <p className="text-[10px] text-[var(--text-muted)] mt-2">Aplica na hora na área de conteúdo do sistema (login e menu permanecem na marca esmeralda).</p>
+                        <div className="accent-preview">
+                          <span className="accent-preview-label">Prévia ao vivo</span>
+                          <div className="accent-preview-row">
+                            <span className="accent-preview-btn" style={{ background: "var(--primary)" }}>Botão primário</span>
+                            <span className="accent-preview-chip" style={{ color: "var(--primary)", borderColor: "var(--primary)" }}>Badge ativa</span>
+                            <span className="accent-preview-ball" style={{ background: "var(--primary)" }} />
+                            <span className="accent-preview-bar" style={{ background: "linear-gradient(90deg, transparent, var(--primary), transparent)" }} />
+                          </div>
+                        </div>
                         </div>
                       </div>
                     </div>
