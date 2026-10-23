@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, createContext, useContext } from "react";
-import { CheckCircle2, XCircle, Info } from "lucide-react";
+import { CheckCircle2, XCircle, Info, X } from "lucide-react";
 
 type ToastType = "success" | "error" | "info";
 
@@ -59,7 +59,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             onClick={() => dismiss(t.id)}
           >
             <span className="toast-pop inline-flex">{icons[t.type]}</span>
-            <span>{t.message}</span>
+            <span className="flex-1">{t.message}</span>
+            <button onClick={(e) => { e.stopPropagation(); dismiss(t.id); }} aria-label="Fechar aviso" className="opacity-40 hover:opacity-100 transition-opacity p-0.5"><X size={14} /></button>
             <span className="toast-bar" aria-hidden="true" />
           </div>
         ))}

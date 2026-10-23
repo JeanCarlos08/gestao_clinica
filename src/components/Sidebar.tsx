@@ -81,6 +81,17 @@ export default function Sidebar() {
 
   useEffect(() => { setCmdSel(0); }, [cmdQuery]);
 
+  // Dica única da busca rápida (uma vez por navegador)
+  const [cmdHint, setCmdHint] = useState(false);
+  useEffect(() => {
+    if (localStorage.getItem("cmd_hint_seen") !== "1") {
+      setCmdHint(true);
+      localStorage.setItem("cmd_hint_seen", "1");
+      const t = setTimeout(() => setCmdHint(false), 9000);
+      return () => clearTimeout(t);
+    }
+  }, []);
+
   const runCmd = (item: (typeof cmdItems)[number]) => {
     setCmdOpen(false);
     if (item.type === "page") router.push(item.href);
@@ -504,6 +515,18 @@ export default function Sidebar() {
         </button>
         {navContent}
       </aside>
+
+      {/* Dica única da busca rápida */}
+      {cmdHint && (
+        <button
+          onClick={() => { setCmdHint(false); setCmdOpen(true); }}
+          className="hidden md:flex fixed bottom-5 left-72 z-40 items-center gap-2.5 px-4 py-3 rounded-2xl border border-[rgba(142,227,154,0.3)] bg-[color-mix(in_srgb,var(--card)_92%,transparent)] shadow-[0_18px_44px_rgba(0,0,0,0.5)] text-sm font-semibold text-white empty-in btn-motion"
+        >
+          <Command size={15} className="text-[var(--primary)]" />
+          Dica: <kbd className="text-[10px] font-black tracking-wider bg-[rgba(142,227,154,0.12)] border border-[rgba(142,227,154,0.3)] rounded-md px-1.5 py-0.5 text-[#a8e8b7]">Ctrl+K</kbd> para buscar em qualquer página
+          <X size={13} className="ml-1 opacity-40" />
+        </button>
+      )}
 
       {/* Command palette (Ctrl+K / ⌘K) */}
       {cmdOpen && (

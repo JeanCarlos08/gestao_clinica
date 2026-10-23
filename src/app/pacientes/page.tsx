@@ -595,7 +595,7 @@ function PatientCard({ paciente, onPhoto, onEdit, onDelete, onViewDocs, onProntu
         <div className="relative flex-shrink-0">
           <div className="w-12 h-12 rounded-full border-2 border-[var(--border)] group-hover:border-[var(--primary)]/30 transition-colors overflow-hidden bg-gradient-to-br from-[var(--primary)]/20 to-[var(--card)] flex items-center justify-center">
             {paciente.foto ? (
-              <Image src={paciente.foto} alt={paciente.nome} width={48} height={48} unoptimized className="w-full h-full object-cover" />
+              <Image src={paciente.foto} alt={paciente.nome} width={48} height={48} unoptimized className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
             ) : (
               <span className="text-white font-bold text-sm">{initials}</span>
             )}

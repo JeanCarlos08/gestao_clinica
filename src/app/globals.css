@@ -1067,3 +1067,11 @@ body { font-variant-numeric: tabular-nums; }
   0% { transform: translateX(-120%); }
   100% { transform: translateX(320%); }
 }
+
+/* Impressão: ocultar chrome do app durante a impressão de relatórios */
+@media print {
+  aside, .sidebar-premium, .command-overlay, .toast-bar, .app-bg-photo { display: none !important; }
+  body { background: #fff !important; color: #111 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .premium-surface { background: #fff !important; border: 1px solid #ccc !important; box-shadow: none !important; }
+  svg rect, .recharts-surface { shape-rendering: crispEdges; }
+}
