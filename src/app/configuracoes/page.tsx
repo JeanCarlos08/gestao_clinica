@@ -379,11 +379,9 @@ export default function ConfigPage() {
                           <button type="button" onClick={() => logoRef.current?.click()} className="btn-motion inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--card-hover)] text-[11px] font-bold text-white hover:border-[var(--primary)]/60 transition-all">
                             <UploadIcon size={12} /> {config.clinic_logo_base64 ? "Adicionar nova" : "Adicionar foto"}
                           </button>
-                          {config.clinic_logo_base64 && (
-                            <button type="button" onClick={() => removePhoto("clinic_logo")} disabled={removing === "clinic_logo"} className="btn-motion inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-500/30 bg-red-500/10 text-[11px] font-bold text-red-300 hover:bg-red-500/20 disabled:opacity-50 transition-all">
-                              {removing === "clinic_logo" ? <RefreshCw size={12} className="animate-spin" /> : <Trash2 size={12} />} Remover
-                            </button>
-                          )}
+                          <button type="button" onClick={() => removePhoto("clinic_logo")} disabled={!config.clinic_logo_base64 || removing === "clinic_logo"} className="btn-motion inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-500/30 bg-red-500/10 text-[11px] font-bold text-red-300 hover:bg-red-500/20 disabled:opacity-40 transition-all" title={!config.clinic_logo_base64 ? "Não há foto para remover no lugar" : "Remove a foto (fica guardada na biblioteca)"}>
+                            {removing === "clinic_logo" ? <RefreshCw size={12} className="animate-spin" /> : <Trash2 size={12} />} Remover
+                          </button>
                           {!config.clinic_logo_base64 && !!(config as Record<string, string | null>).clinic_logo_stored_base64 && (
                             <button type="button" onClick={() => restorePhoto("clinic_logo")} className="btn-motion inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--primary)]/40 bg-[var(--primary)]/10 text-[11px] font-bold text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-all">
                               <History size={12} /> Restaurar última
@@ -460,11 +458,9 @@ export default function ConfigPage() {
                           <button type="button" onClick={() => bgRef.current?.click()} disabled={bgUploading} className="btn-motion inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--card-hover)] text-[11px] font-bold text-white hover:border-[var(--primary)]/60 disabled:opacity-50 transition-all">
                             {bgUploading ? <RefreshCw size={12} className="animate-spin" /> : <UploadIcon size={12} />} {appBg === "custom" ? "Adicionar nova" : "Adicionar foto"}
                           </button>
-                          {appBg === "custom" && (
-                            <button type="button" onClick={() => removePhoto("app_background")} disabled={removing === "app_background"} className="btn-motion inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-500/30 bg-red-500/10 text-[11px] font-bold text-red-300 hover:bg-red-500/20 disabled:opacity-50 transition-all">
-                              {removing === "app_background" ? <RefreshCw size={12} className="animate-spin" /> : <Trash2 size={12} />} Remover
-                            </button>
-                          )}
+                          <button type="button" onClick={() => removePhoto("app_background")} disabled={appBg !== "custom" || removing === "app_background"} className="btn-motion inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-500/30 bg-red-500/10 text-[11px] font-bold text-red-300 hover:bg-red-500/20 disabled:opacity-40 transition-all" title={appBg !== "custom" ? "Não há fundo próprio ativo para remover" : "Remove o fundo próprio (fica guardado na biblioteca)"}>
+                            {removing === "app_background" ? <RefreshCw size={12} className="animate-spin" /> : <Trash2 size={12} />} Remover
+                          </button>
                           {appBg !== "custom" && !!(config as Record<string, string | null>).app_bg_stored && (
                             <button type="button" onClick={() => restorePhoto("app_background")} className="btn-motion inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--primary)]/40 bg-[var(--primary)]/10 text-[11px] font-bold text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-all">
                               <History size={12} /> Restaurar última
@@ -509,11 +505,9 @@ export default function ConfigPage() {
                         <h2 className="text-lg font-bold text-white mb-1">Foto de Perfil</h2>
                         <p className="text-sm text-[var(--text-muted)] max-w-md">Personalize seu avatar que aparece na barra lateral e em anotações.</p>
                         <div className="mt-3 flex items-center gap-2 flex-wrap">
-                          {config.user_photo_base64 && (
-                            <button type="button" onClick={() => removePhoto("user_photo")} disabled={removing === "user_photo"} className="btn-motion inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-500/30 bg-red-500/10 text-[11px] font-bold text-red-300 hover:bg-red-500/20 disabled:opacity-50 transition-all">
-                              {removing === "user_photo" ? <RefreshCw size={12} className="animate-spin" /> : <Trash2 size={12} />} Remover
-                            </button>
-                          )}
+                          <button type="button" onClick={() => removePhoto("user_photo")} disabled={!config.user_photo_base64 || removing === "user_photo"} className="btn-motion inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-500/30 bg-red-500/10 text-[11px] font-bold text-red-300 hover:bg-red-500/20 disabled:opacity-40 transition-all" title={!config.user_photo_base64 ? "Não há foto para remover no lugar" : "Remove a foto (fica guardada na biblioteca)"}>
+                            {removing === "user_photo" ? <RefreshCw size={12} className="animate-spin" /> : <Trash2 size={12} />} Remover
+                          </button>
                           {!config.user_photo_base64 && !!(config as Record<string, string | null>).user_photo_stored_base64 && (
                             <button type="button" onClick={() => restorePhoto("user_photo")} className="btn-motion inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--primary)]/40 bg-[var(--primary)]/10 text-[11px] font-bold text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-all">
                               <History size={12} /> Restaurar última
