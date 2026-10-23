@@ -165,7 +165,15 @@ export default function Sidebar() {
         if (!res.ok) return;
         const data = await res.json();
         const bgPref = data.clinica.app_background;
-        if (bgPref && !localStorage.getItem("app_bg")) {
+        const bgCustom = data.clinica.app_bg_custom || null;
+        if (bgPref === "custom" && bgCustom) {
+          document.documentElement.setAttribute("data-bg", "custom");
+          document.documentElement.style.setProperty("--bg-custom", `url("${bgCustom}")`);
+          try {
+            localStorage.setItem("app_bg", "custom");
+            localStorage.setItem("app_bg_custom", bgCustom);
+          } catch {}
+        } else if (bgPref && !localStorage.getItem("app_bg")) {
           if (["clinica", "grafite", "esmeralda"].includes(bgPref)) {
             document.documentElement.setAttribute("data-bg", bgPref);
             localStorage.setItem("app_bg", bgPref);

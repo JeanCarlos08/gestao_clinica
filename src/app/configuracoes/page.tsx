@@ -5,15 +5,33 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
   Settings as SettingsIcon, Save, Building2, UserCircle, History, RefreshCw, CheckCircle2,
-  AlertCircle, Upload as UploadIcon, ShieldAlert,
+  AlertCircle, Upload as UploadIcon, ShieldAlert, Trash2,
 } from "lucide-react";
 import EmptyIllustration from "@/components/EmptyIllustration";
 import { API as API_BASE } from "@/lib/api";
 import { mutate as globalMutate } from "swr";
 
 interface Clinica { id: number; name: string; document: string; }
-interface ClinicaConfig { clinic_name: string; clinic_logo_base64: string | null; user_photo_base64: string | null; }
+interface ClinicaConfig {
+  clinic_name: string; clinic_logo_base64: string | null; user_photo_base64: string | null;
+  clinic_logo_stored_base64?: string | null; user_photo_stored_base64?: string | null;
+  app_bg_custom?: string | null; app_bg_stored?: string | null;
+  app_background?: string | null;
+  [key: string]: string | null | undefined;
+}
 interface AuditLog { id: number; acao: string; entidade: string; entidade_id: number | null; detalhes: string; usuario: string; criado_em: string; }
+
+type PhotoField = "clinic_logo" | "user_photo" | "app_background";
+const KEY_BY_FIELD: Record<PhotoField, string> = {
+  clinic_logo: "clinic_logo_base64",
+  user_photo: "user_photo_base64",
+  app_background: "app_bg_custom",
+};
+const STORED_KEY_BY_FIELD: Record<PhotoField, string> = {
+  clinic_logo: "clinic_logo_stored_base64",
+  user_photo: "user_photo_stored_base64",
+  app_background: "app_bg_stored",
+};
 
 export default function ConfigPage() {
   const router = useRouter();
@@ -25,6 +43,8 @@ export default function ConfigPage() {
   const [clinica, setClinica] = useState<Clinica | null>(null);
   const [config, setConfig] = useState<ClinicaConfig>({ clinic_name: "", clinic_logo_base64: null, user_photo_base64: null });
   const [uploading, setUploading] = useState<"clinic_logo" | "user_photo" | null>(null);
+  const [removing, setRemoving] = useState<PhotoField | null>(null);
+  const [bgUploading, setBgUploading] = useState(false);
   const [accent, setAccent] = useState<string>((() => {
     try { return localStorage.getItem("accent") || "esmeralda"; } catch { return "esmeralda"; }
   })());
@@ -32,6 +52,7 @@ export default function ConfigPage() {
 
   const logoRef = useRef<HTMLInputElement>(null);
   const photoRef = useRef<HTMLInputElement>(null);
+  const bgRef = useRef<HTMLInputElement>(null);
 
   const getToken = () => localStorage.getItem("token");
 
@@ -52,6 +73,13 @@ export default function ConfigPage() {
           setConfig(d.clinica || { clinic_name: "", clinic_logo_base64: null, user_photo_base64: null });
           const acc = (d.clinica as unknown as { accent_color?: string })?.accent_color;
           if (acc) { setAccent(acc); document.documentElement.setAttribute("data-accent", acc); localStorage.setItem("accent", acc); }
+          const dCl = (d.clinica || {}) as Record<string, string>;
+          if (dCl.app_background === "custom" && dCl.app_bg_custom) {
+            setAppBg("custom");
+            document.documentElement.setAttribute("data-bg", "custom");
+            document.documentElement.style.setProperty("--bg-custom", `url("${dCl.app_bg_custom}")`);
+            try { localStorage.setItem("app_bg", "custom"); localStorage.setItem("app_bg_custom", dCl.app_bg_custom); } catch {}
+          }
         }
         if (logsRes.ok) setLogs(await logsRes.json());
       } catch (e) { console.debug("Erro ao carregar configurações:", e); }
@@ -67,8 +95,13 @@ export default function ConfigPage() {
 
   const [appBg, setAppBg] = useState("clinica");
   useEffect(() => {
-    const stored = localStorage.getItem("app_bg");
-    if (stored === "clinica" || stored === "grafite" || stored === "esmeralda") setAppBg(stored);
+    const stored = localStorage.getItem("app_bg") || "";
+    if (["clinica", "grafite", "esmeralda", "custom"].includes(stored)) setAppBg(stored);
+    if (stored === "custom") {
+      const cached = localStorage.getItem("app_bg_custom");
+      if (cached) document.documentElement.style.setProperty("--bg-custom", `url("${cached}")`);
+      document.documentElement.setAttribute("data-bg", "custom");
+    }
   }, []);
   const applyBg = async (id: string) => {
     setAppBg(id);
@@ -174,6 +207,88 @@ export default function ConfigPage() {
     } finally { setUploading(null); }
   };
 
+  /* Remover: limpa o slot (o lugar volta ao estado vazio) mas guarda o dadoUri
+     na biblioteca (*_stored) para ser recuperado via "Restaurar última". */
+  const removePhoto = async (field: PhotoField) => {
+    const tk = getToken();
+    if (!tk) return;
+    setRemoving(field);
+    try {
+      const res = await fetch(`${API_BASE}/configuracoes/photo?field=${field}`, { method: "DELETE", headers: { Authorization: `Bearer ${tk}` } });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d?.detail || "Falha ao remover."); }
+      setConfig(prev => {
+        const prevAny = prev as Record<string, string | null>;
+        return {
+          ...prev,
+          [STORED_KEY_BY_FIELD[field]]: prevAny[STORED_KEY_BY_FIELD[field]] || prevAny[KEY_BY_FIELD[field]] || null,
+          [KEY_BY_FIELD[field]]: null,
+        } as ClinicaConfig;
+      });
+      if (field === "app_background") {
+        setAppBg("clinica");
+        document.documentElement.setAttribute("data-bg", "clinica");
+        try { localStorage.setItem("app_bg", "clinica"); localStorage.removeItem("app_bg_custom"); } catch {}
+      }
+      showMsg("success", field === "app_background" ? "Fundo removido — foto guardada para reutilizar." : "Foto removida — guardada para reutilizar.");
+    } catch (err: unknown) {
+      showMsg("error", err instanceof Error && err.message !== "auth" ? err.message : "Erro ao remover a foto.");
+    } finally { setRemoving(null); }
+  };
+
+  /* Restaurar: recoloca a última foto guardada da biblioteca no slot. */
+  const restorePhoto = async (field: PhotoField) => {
+    const tk = getToken();
+    if (!tk) return;
+    setRemoving(field);
+    try {
+      const fd = new FormData();
+      fd.append("field", field);
+      fd.append("restore", "1");
+      const res = await fetch(`${API_BASE}/configuracoes/photo`, { method: "POST", headers: { Authorization: `Bearer ${tk}` }, body: fd });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d?.detail || "Falha ao restaurar."); }
+      setConfig(prev => ({ ...prev, [KEY_BY_FIELD[field]]: (prev as Record<string, string | null>)[STORED_KEY_BY_FIELD[field]] || null } as ClinicaConfig));
+      if (field === "app_background") {
+        const stored = (config as Record<string, string | null>)[STORED_KEY_BY_FIELD.app_background];
+        setAppBg("custom");
+        document.documentElement.setAttribute("data-bg", "custom");
+        if (stored) document.documentElement.style.setProperty("--bg-custom", `url("${stored}")`);
+        const cached = stored || localStorage.getItem("app_bg_custom") || null;
+        try { localStorage.setItem("app_bg", "custom"); if (cached) localStorage.setItem("app_bg_custom", cached); } catch {}
+      }
+      showMsg("success", field === "app_background" ? "Fundo próprio restaurado." : "Foto restaurada.");
+    } catch (err: unknown) {
+      showMsg("error", err instanceof Error && err.message !== "auth" ? err.message : "Erro ao restaurar a foto.");
+    } finally { setRemoving(null); }
+  };
+
+  /* Fundo próprio: foto enviada vira o ambiente do sistema (data-bg="custom"). */
+  const handleBgUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) e.target.value = "";
+    if (!f) return;
+    if (!f.type.startsWith("image/")) { showMsg("error", "Envie um arquivo de imagem (PNG ou JPG)."); return; }
+    const tk = getToken();
+    if (!tk) return;
+    setBgUploading(true);
+    try {
+      const b64 = await compressImage(f, 1280);
+      const blob = await (await fetch(b64)).blob();
+      const fd = new FormData();
+      fd.append("field", "app_background");
+      fd.append("file", new File([blob], "fundo.png", { type: blob.type }));
+      const res = await fetch(`${API_BASE}/configuracoes/photo`, { method: "POST", headers: { Authorization: `Bearer ${tk}` }, body: fd });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d?.detail || "Falha no upload do fundo."); }
+      setAppBg("custom");
+      document.documentElement.setAttribute("data-bg", "custom");
+      document.documentElement.style.setProperty("--bg-custom", `url("${b64}")`);
+      setConfig(prev => ({ ...prev, app_bg_custom: b64, app_background: "custom" } as ClinicaConfig));
+      try { localStorage.setItem("app_bg", "custom"); localStorage.setItem("app_bg_custom", b64); } catch {}
+      showMsg("success", "Fundo do sistema atualizado.");
+    } catch (err: unknown) {
+      showMsg("error", err instanceof Error && err.message !== "auth" ? err.message : "Falha ao enviar fundo.");
+    } finally { setBgUploading(false); }
+  };
+
   return (
     <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-8 scrollbar-hide fade-up">
       {/* Header */}
@@ -260,6 +375,21 @@ export default function ConfigPage() {
                       <div>
                         <h2 className="text-lg font-bold text-white mb-1">Identidade Visual da Clínica</h2>
                         <p className="text-sm text-[var(--text-muted)] max-w-md">Clique no quadro para adicionar a foto da logo marca da sua clínica. Ela aparece no menu lateral, no login e no papel timbrado dos laudos — salva na hora, sem precisar de Salvar.</p>
+                        <div className="mt-3 flex items-center gap-2 flex-wrap">
+                          <button type="button" onClick={() => logoRef.current?.click()} className="btn-motion inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--card-hover)] text-[11px] font-bold text-white hover:border-[var(--primary)]/60 transition-all">
+                            <UploadIcon size={12} /> {config.clinic_logo_base64 ? "Adicionar nova" : "Adicionar foto"}
+                          </button>
+                          {config.clinic_logo_base64 && (
+                            <button type="button" onClick={() => removePhoto("clinic_logo")} disabled={removing === "clinic_logo"} className="btn-motion inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-500/30 bg-red-500/10 text-[11px] font-bold text-red-300 hover:bg-red-500/20 disabled:opacity-50 transition-all">
+                              {removing === "clinic_logo" ? <RefreshCw size={12} className="animate-spin" /> : <Trash2 size={12} />} Remover
+                            </button>
+                          )}
+                          {!config.clinic_logo_base64 && !!(config as Record<string, string | null>).clinic_logo_stored_base64 && (
+                            <button type="button" onClick={() => restorePhoto("clinic_logo")} className="btn-motion inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--primary)]/40 bg-[var(--primary)]/10 text-[11px] font-bold text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-all">
+                              <History size={12} /> Restaurar última
+                            </button>
+                          )}
+                        </div>
                         <div className="mt-3">
                           <label className="block text-[10px] font-bold text-[var(--text-label)] uppercase tracking-wider mb-2">Cor de identidade (accent)</label>
                           <div className="flex items-center gap-2 flex-wrap">
@@ -319,7 +449,30 @@ export default function ConfigPage() {
                             <span className="bg-thumb-img bg-thumb-esmeralda" />
                             <span className="bg-thumb-label">Esmeralda</span>
                           </button>
+                          {appBg === "custom" && (
+                            <button type="button" className="bg-thumb bg-thumb-on" title="Fundo personalizado">
+                              <span className="bg-thumb-img bg-thumb-custom" />
+                              <span className="bg-thumb-label">Própria</span>
+                            </button>
+                          )}
                         </div>
+                        <div className="mt-3 flex items-center gap-2 flex-wrap">
+                          <button type="button" onClick={() => bgRef.current?.click()} disabled={bgUploading} className="btn-motion inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--card-hover)] text-[11px] font-bold text-white hover:border-[var(--primary)]/60 disabled:opacity-50 transition-all">
+                            {bgUploading ? <RefreshCw size={12} className="animate-spin" /> : <UploadIcon size={12} />} {appBg === "custom" ? "Adicionar nova" : "Adicionar foto"}
+                          </button>
+                          {appBg === "custom" && (
+                            <button type="button" onClick={() => removePhoto("app_background")} disabled={removing === "app_background"} className="btn-motion inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-500/30 bg-red-500/10 text-[11px] font-bold text-red-300 hover:bg-red-500/20 disabled:opacity-50 transition-all">
+                              {removing === "app_background" ? <RefreshCw size={12} className="animate-spin" /> : <Trash2 size={12} />} Remover
+                            </button>
+                          )}
+                          {appBg !== "custom" && !!(config as Record<string, string | null>).app_bg_stored && (
+                            <button type="button" onClick={() => restorePhoto("app_background")} className="btn-motion inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--primary)]/40 bg-[var(--primary)]/10 text-[11px] font-bold text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-all">
+                              <History size={12} /> Restaurar última
+                            </button>
+                          )}
+                          <input type="file" accept="image/*" ref={bgRef} className="hidden" onChange={handleBgUpload} />
+                        </div>
+                        <p className="text-[10px] text-[var(--text-muted)] mt-2">Sua foto própria vira o fundo do sistema. Remover volta ao padrão Clínica — a foto permanece guardada para reutilizar depois.</p>
                       </div>
                   </div>
                   <div className="bg-[var(--card)] px-6 py-4 flex justify-end gap-3">
@@ -355,6 +508,18 @@ export default function ConfigPage() {
                       <div>
                         <h2 className="text-lg font-bold text-white mb-1">Foto de Perfil</h2>
                         <p className="text-sm text-[var(--text-muted)] max-w-md">Personalize seu avatar que aparece na barra lateral e em anotações.</p>
+                        <div className="mt-3 flex items-center gap-2 flex-wrap">
+                          {config.user_photo_base64 && (
+                            <button type="button" onClick={() => removePhoto("user_photo")} disabled={removing === "user_photo"} className="btn-motion inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-500/30 bg-red-500/10 text-[11px] font-bold text-red-300 hover:bg-red-500/20 disabled:opacity-50 transition-all">
+                              {removing === "user_photo" ? <RefreshCw size={12} className="animate-spin" /> : <Trash2 size={12} />} Remover
+                            </button>
+                          )}
+                          {!config.user_photo_base64 && !!(config as Record<string, string | null>).user_photo_stored_base64 && (
+                            <button type="button" onClick={() => restorePhoto("user_photo")} className="btn-motion inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--primary)]/40 bg-[var(--primary)]/10 text-[11px] font-bold text-[var(--primary)] hover:bg-[var(--primary)]/20 transition-all">
+                              <History size={12} /> Restaurar última
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>

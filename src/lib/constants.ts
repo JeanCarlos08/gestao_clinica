@@ -93,3 +93,9 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
 export const CLINIC_PREF_USER_PHOTO = "user_photo_base64";
 export const CLINIC_PREF_LOGO = "clinic_logo_base64";
 export const CLINIC_PREF_GOOGLE_DOC_ID = "clinic_google_doc_id";
+// Biblioteca de fotos: remover um slot guarda o dataUri numa chave *_stored
+// para reutilização via "Restaurar" sem apagar definitivamente a imagem.
+export const CLINIC_PREF_USER_PHOTO_STORED = "user_photo_stored_base64";
+export const CLINIC_PREF_LOGO_STORED = "clinic_logo_stored_base64";
+export const CLINIC_PREF_APP_BG_CUSTOM = "app_bg_custom";
+export const CLINIC_PREF_APP_BG_STORED = "app_bg_stored";

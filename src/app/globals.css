@@ -955,6 +955,14 @@ body { font-variant-numeric: tabular-nums; }
     radial-gradient(ellipse 90% 60% at -5% 80%, rgba(77,167,104,0.10) 0%, transparent 60%),
     linear-gradient(180deg, #0a3520 0%, #062015 45%, #02100b 100%) !important;
 }
+/* Fundo próprio (foto enviada no usuário): vem da var --bg-custom (injetada pela
+   Sidebar/configurações a partir do pref app_bg_custom). Scrim mantém o texto legível. */
+[data-bg="custom"] .app-bg-photo {
+  background-image:
+    radial-gradient(ellipse 150% 120% at 50% 25%, rgba(4,10,8,0.80) 0%, rgba(4,10,8,0.90) 65%, rgba(3,7,6,0.95) 100%),
+    var(--bg-custom, url("/bg-clinic.jpg")) !important;
+}
+.bg-thumb-custom { background-image: var(--bg-custom, url("/bg-clinic.jpg")); background-size: cover; background-position: center; }
 
 /* ── Onda visual 4 ─────────────────────────────────────────── */
 /* Ripple material em botões (span injetado via delegation) */
