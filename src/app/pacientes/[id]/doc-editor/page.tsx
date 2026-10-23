@@ -125,7 +125,7 @@ export default function DocEditorPage() {
             : <FileText size={12} className="text-[var(--primary)]" />}
         </div>
         <span className="text-[11px] font-bold text-white truncate">{clinicName}</span>
-        <span className="text-[10px] text-[var(--text-muted)] hidden sm:inline">· Documento confidencial · {new Date().toLocaleDateString("pt-BR")}</span>
+        <span suppressHydrationWarning className="text-[10px] text-[var(--text-muted)] hidden sm:inline">· Documento confidencial · {new Date().toLocaleDateString("pt-BR")}</span>
       </div>
       {/* ── Toolbar ─────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-[var(--border)] bg-[var(--card)] flex-shrink-0">
