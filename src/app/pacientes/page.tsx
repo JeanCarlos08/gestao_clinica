@@ -7,7 +7,7 @@ import useSWR from "swr";
 import {
   Search, Users, CalendarClock, Activity, RefreshCw, Loader2,
   Plus, XCircle, Edit3, Trash2, User, Phone, Mail, Building2, CreditCard, Save,
-  FileText, LayoutGrid, List, NotebookPen, Star, Sparkles, Send, Clock3, Printer,
+  FileText, LayoutGrid, List, NotebookPen, Star, Sparkles, Send, Clock3, Printer, Eye,
 } from "lucide-react";
 import EmptyIllustration from "@/components/EmptyIllustration";
 import { swrFetcher, API as API_BASE } from "@/lib/api";
@@ -71,6 +71,7 @@ export default function PacientesPage() {
   const [evoLoading, setEvoLoading] = useState(false);
   const [novaEvo, setNovaEvo] = useState("");
   const [evoSaving, setEvoSaving] = useState(false);
+  const [previewTimbrado, setPreviewTimbrado] = useState<string | null>(null);
   const [evoIAloading, setEvoIAloading] = useState(false);
 
   useEffect(() => {
@@ -172,11 +173,9 @@ export default function PacientesPage() {
   };
   const { clinicName: marcaClinica, clinicLogo: marcaLogo } = useClinicaMarca();
 
-  const imprimirEvolucaoTimbrada = (evo: { titulo: string; conteudo: string; criado_em: string }, pacienteNome: string) => {
+  const buildTimbradoHtml = (evo: { titulo: string; conteudo: string; criado_em: string }, pacienteNome: string) => {
     const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    const w = window.open("", "_blank", "width=820,height=940");
-    if (!w) return;
-    w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(evo.titulo)}</title>
+    return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(evo.titulo)}</title>
       <style>
         @page { margin: 0; }
         body { font-family: "Segoe UI", Arial, sans-serif; color: #132a1d; margin: 0; padding: 0; }
@@ -201,7 +200,17 @@ export default function PacientesPage() {
         <div class="content">${esc(evo.conteudo)}</div>
         <div class="foot"><span>${esc(marcaClinica)} — Documento confidencial (LGPD)</span><span>Impresso em ${new Date().toLocaleString("pt-BR")}</span></div>
       </div>
-      </body></html>`);
+      </body></html>`;
+  };
+
+  const abrirPreviewTimbrado = (evo: { titulo: string; conteudo: string; criado_em: string }, pacienteNome: string) => {
+    setPreviewTimbrado(buildTimbradoHtml(evo, pacienteNome));
+  };
+
+  const imprimirEvolucaoTimbrada = (evo: { titulo: string; conteudo: string; criado_em: string }, pacienteNome: string) => {
+    const w = window.open("", "_blank", "width=820,height=940");
+    if (!w) return;
+    w.document.write(buildTimbradoHtml(evo, pacienteNome));
     w.document.close();
     setTimeout(() => { w.focus(); w.print(); }, 350);
   };
@@ -532,7 +541,7 @@ export default function PacientesPage() {
                           <div className="flex items-center gap-1">
                             {evo.favorita && <Star size={12} className="text-amber-400 fill-amber-400" />}
                             <span className="text-[10px] text-[var(--text-muted)] font-mono bg-[var(--card)] border border-[var(--border)] px-1.5 py-0.5 rounded">{new Date(evo.criado_em).toLocaleString("pt-BR")}</span>
-                            <button onClick={() => imprimirEvolucaoTimbrada(evo, prontPaciente.nome)} title="Imprimir timbrado" className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-[var(--primary)]/10 text-[var(--primary)] transition-all btn-motion"><Printer size={12} /></button>
+                            <button onClick={() => abrirPreviewTimbrado(evo, prontPaciente.nome)} title="Prévia do timbrado" className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-[var(--primary)]/10 text-[var(--primary)] transition-all btn-motion"><Eye size={12} /></button><button onClick={() => imprimirEvolucaoTimbrada(evo, prontPaciente.nome)} title="Imprimir timbrado" className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-[var(--primary)]/10 text-[var(--primary)] transition-all btn-motion"><Printer size={12} /></button>
                             <button onClick={() => deletarEvolucao(evo.id)} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-500/10 text-red-400 transition-all"><Trash2 size={12} /></button>
                           </div>
                         </div>
@@ -543,6 +552,23 @@ export default function PacientesPage() {
                 )}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Modal Prévia do Timbrado */}
+      {previewTimbrado && (
+        <div className="fixed inset-0 z-[60] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl w-full max-w-4xl h-[88vh] flex flex-col modal-glass modal-in overflow-hidden">
+            <div className="p-4 border-b border-[var(--border)] flex items-center justify-between">
+              <h2 className="text-base font-bold text-white flex items-center gap-2"><Eye size={16} className="text-emerald-400" /> Prévia do papel timbrado</h2>
+              <div className="flex items-center gap-2">
+                <button onClick={() => { const f = document.getElementById("timbradoFrame") as HTMLIFrameElement | null; f?.contentWindow?.print(); }} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[var(--primary)] text-black text-xs font-bold hover:brightness-110 transition-all">
+                  <Printer size={12} /> Imprimir
+                </button>
+                <button onClick={() => setPreviewTimbrado(null)} className="text-[var(--text-muted)] hover:text-white p-1"><XCircle size={20} /></button>
+              </div>
+            </div>
+            <iframe id="timbradoFrame" srcDoc={previewTimbrado} className="flex-1 w-full bg-white" title="Prévia do timbrado" />
           </div>
         </div>
       )}

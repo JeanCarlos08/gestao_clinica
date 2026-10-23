@@ -49,6 +49,12 @@ export default function Sidebar() {
   const aiListRef = useRef<HTMLDivElement>(null);
   const navRef = useRef<HTMLElement>(null);
   const [pill, setPill] = useState<{ top: number; height: number; opacity: number }>({ top: 24, height: 0, opacity: 0 });
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    const st = localStorage.getItem("sidebar_collapsed");
+    if (st === "1" || st === "0") setCollapsed(st === "1");
+  }, []);
+  const toggleCollapsed = () => setCollapsed((c) => { localStorage.setItem("sidebar_collapsed", c ? "0" : "1"); return !c; });
 
   useEffect(() => {
     if (aiListRef.current) aiListRef.current.scrollTop = aiListRef.current.scrollHeight;
@@ -81,7 +87,7 @@ export default function Sidebar() {
     const w3 = setTimeout(measure, 1800);
     window.addEventListener("resize", measure);
     return () => { cancelAnimationFrame(t); clearTimeout(w1); clearTimeout(w2); clearTimeout(w3); window.removeEventListener("resize", measure); };
-  }, [pathname]);
+  }, [pathname, collapsed]);
 
   useEffect(() => {
     const onResize = () => { if (window.innerWidth >= 768) setOpen(false); };
@@ -188,17 +194,25 @@ export default function Sidebar() {
 
         {/* Brand header */}
         <div className="relative px-5 py-5 border-b border-[var(--border)] mb-3 overflow-hidden">
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
+            className="sb-collapse hidden md:flex absolute top-4 right-3 w-7 h-7 rounded-lg bg-white/[0.06] border border-white/10 items-center justify-center text-[#9cbbaa] hover:text-white hover:bg-white/[0.12] transition-all z-10"
+          >
+            <ChevronRight size={14} className={collapsed ? "" : "rotate-180"} />
+          </button>
           {/* Decorative glow */}
           <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-[var(--primary)] opacity-[0.07] blur-3xl pointer-events-none" />
           <div className="absolute inset-0 bg-gradient-to-br from-[rgba(77,167,104,0.08)] to-transparent pointer-events-none" />
 
-          <div className="relative flex items-center gap-3">
+          <div className="relative flex items-center gap-3 sb-brand">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#4DA768] to-[#0d3a22] border border-[rgba(168,232,183,0.3)] flex items-center justify-center shadow-[0_0_24px_rgba(77,167,104,0.35),inset_0_1px_0_rgba(255,255,255,0.35)] flex-shrink-0 overflow-hidden">
               {clinicLogo
                 ? <Image src={clinicLogo} alt="Logo da clínica" width={40} height={40} unoptimized className="w-full h-full object-cover" />
                 : <Sparkles size={17} className="text-[#eafff1]" />}
             </div>
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 sb-hide">
               <div className="font-extrabold text-sm text-white tracking-tight leading-tight truncate">{clinicName}</div>
               <div className="text-[10px] text-[#9cbbaa] tracking-wide">Prontuário • Agenda</div>
               <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-[rgba(123,207,138,0.35)] bg-[rgba(77,167,104,0.16)] px-2 py-[3px] shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]">
@@ -211,7 +225,7 @@ export default function Sidebar() {
         </div>
 
         {/* User profile */}
-        <div className="mx-3 mb-4 p-3 rounded-2xl bg-[linear-gradient(160deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04))] border border-[rgba(255,255,255,0.16)] backdrop-blur-md flex items-center gap-3 group hover:border-[rgba(123,207,138,0.4)] hover:-translate-y-0.5 transition-all duration-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_26px_rgba(0,0,0,0.3)]">
+        <div className="mx-3 mb-4 p-3 rounded-2xl bg-[linear-gradient(160deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04))] border border-[rgba(255,255,255,0.16)] backdrop-blur-md sb-user flex items-center gap-3 group hover:border-[rgba(123,207,138,0.4)] hover:-translate-y-0.5 transition-all duration-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_26px_rgba(0,0,0,0.3)]">
           <Link
             href="/configuracoes"
             title="Trocar foto"
@@ -231,7 +245,7 @@ export default function Sidebar() {
               <Camera size={16} className="text-white" />
             </span>
           </Link>
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 sb-hide">
             <div className="text-sm font-semibold text-white truncate leading-tight">{profile.displayName}</div>
             <div className="text-[11px] text-[#a8e8b7] font-medium truncate">
               {buildDisplayName(profile.role) || "Administradora"}
@@ -241,7 +255,7 @@ export default function Sidebar() {
         </div>
 
         {/* Nav label */}
-        <div className="px-5 mb-2">
+        <div className="px-5 mb-2 sb-hide">
           <span className="text-[9px] font-bold text-[#9cbbaa] uppercase tracking-[2px]">Navegação</span>
         </div>
 
@@ -256,7 +270,7 @@ export default function Sidebar() {
                 href={href}
                 style={{ animationDelay: `${i * 45}ms` }}
                 data-active={active ? "true" : "false"}
-                className={`list-item-fade group z-[1] flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative overflow-hidden ${
+                className={`list-item-fade group z-[1] sb-navitem flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative overflow-hidden ${
                   active
                     ? "text-white border border-transparent bg-transparent translate-x-[3px] font-bold"
                     : "text-[#9cbbaa] border border-transparent hover:text-white hover:bg-white/[0.07] hover:translate-x-[3px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_6px_18px_rgba(0,0,0,0.2)]"
@@ -270,7 +284,7 @@ export default function Sidebar() {
                 <span className={`flex-shrink-0 transition-all duration-200 ${active ? color : "text-[var(--text-muted)] group-hover:text-white"}`}>
                   <Icon size={16} strokeWidth={active ? 2.5 : 2} />
                 </span>
-                <span className="flex-1 truncate">{label}</span>
+                <span className="flex-1 truncate sb-hide">{label}</span>
                 {active && (
                   <span className="w-1.5 h-1.5 rounded-full bg-[#4ade80] shadow-[0_0_6px_rgba(74,222,128,0.9)] flex-shrink-0 pulse-green" />
                 )}
@@ -280,7 +294,7 @@ export default function Sidebar() {
         </nav>
 
         {/* Card IA */}
-        <div className="mx-3 mt-4 p-3 rounded-2xl bg-[linear-gradient(160deg,rgba(77,167,104,0.28),rgba(0,0,0,0.22))] border border-[rgba(142,227,154,0.28)] shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_10px_26px_rgba(0,0,0,0.28)] backdrop-blur-sm">
+        <div className="mx-3 mt-4 p-3 sb-hide rounded-2xl bg-[linear-gradient(160deg,rgba(77,167,104,0.28),rgba(0,0,0,0.22))] border border-[rgba(142,227,154,0.28)] shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_10px_26px_rgba(0,0,0,0.28)] backdrop-blur-sm">
           <div className="flex items-center gap-2 mb-2.5">
             <div className="w-7 h-7 rounded-[10px] bg-[linear-gradient(135deg,#4DA768,#8ee39a)] flex items-center justify-center shadow-[0_0_14px_rgba(77,167,104,0.4)] flex-shrink-0">
               <Bot size={14} className="text-[#052417]" strokeWidth={2.5} />
@@ -360,7 +374,7 @@ export default function Sidebar() {
           className="theme-btn"
         >
           {theme === "dark" ? <Sun size={12} /> : <Moon size={13} />}
-          {theme === "dark" ? "Tema claro" : "Tema escuro"}
+          <span className="sb-hide">{theme === "dark" ? "Tema claro" : "Tema escuro"}</span>
         </button>
         <button
           type="button"
@@ -368,17 +382,17 @@ export default function Sidebar() {
           className="btn-motion flex items-center gap-3 w-full px-3 py-2.5 text-sm font-semibold text-[#9cbbaa] hover:text-[#ffd0d6] hover:bg-[rgba(255,80,80,0.16)] border border-transparent hover:border-[rgba(255,80,80,0.28)] rounded-xl transition-all duration-200 group"
         >
           <LogOut size={15} strokeWidth={2} className="group-hover:rotate-12 group-hover:text-[#ff8f9b] transition-transform duration-200" />
-          Encerrar sessão
+          <span className="sb-hide">Encerrar sessão</span>
         </button>
-        <div className="px-3 pt-1 text-center">
+        <div className="px-3 pt-1 text-center sb-hide">
           <span className="text-[9px] text-[#6f917c] whitespace-nowrap">v3.0 · {clinicName}</span>
         </div>
-        <div className="px-3 flex items-center justify-center gap-2">
+        <div className="px-3 flex items-center justify-center gap-2 sb-hide">
           <Link href="/privacy" className="text-[9px] text-[#6f917c] hover:text-[#a8e8b7] transition-colors">Privacidade</Link>
           <span className="text-[9px] text-[#3f5c4b]">·</span>
           <Link href="/terms" className="text-[9px] text-[#6f917c] hover:text-[#a8e8b7] transition-colors">Termos</Link>
         </div>
-        <div className="px-3 pb-0.5 text-center">
+        <div className="px-3 pb-0.5 text-center sb-hide">
           <span className="text-[9px] text-[#3f5c4b]">🔒 LGPD · © 2026</span>
         </div>
       </div>
@@ -423,7 +437,7 @@ export default function Sidebar() {
         className={`
           fixed md:static inset-y-0 left-0 z-50
           w-60 flex-shrink-0 flex flex-col relative overflow-hidden
-          sidebar-premium border-r border-[var(--border)]
+          sidebar-premium border-r border-[var(--border)] ${collapsed ? "sidebar-collapsed" : ""}
           transform transition-transform duration-300 ease-out
           ${open ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
         `}

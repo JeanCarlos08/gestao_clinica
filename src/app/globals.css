@@ -1,3 +1,18 @@
+
+/* Colapso da sidebar (desktop) */
+@media (min-width: 768px) {
+  aside.sidebar-collapsed { width: 76px !important; }
+  aside.sidebar-collapsed .sb-hide { display: none !important; }
+  aside.sidebar-collapsed .sb-brand { justify-content: center; padding-inline: 0.75rem; }
+  aside.sidebar-collapsed .sb-user { justify-content: center; padding-inline: 0.35rem; }
+  aside.sidebar-collapsed .sb-navitem { padding-inline: 0.85rem; }
+  .sb-collapse { display: none; }
+  aside .sb-collapse { display: flex; }
+}
+@media (min-width: 768px) {
+  aside.sidebar-collapsed .sb-collapse { justify-content: center; left: 50%; right: auto; transform: translateX(-50%); }
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

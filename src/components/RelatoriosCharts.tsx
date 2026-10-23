@@ -57,6 +57,20 @@ export default function RelatoriosCharts({ stats, total }: { stats: ReportStats;
           <div className="flex items-center gap-2 font-semibold mb-5 text-sm">
             <TrendingUp size={16} className="text-[var(--primary)]" /> Atendimentos por Mês
           </div>
+          {mesData.length >= 2 && (() => {
+            const cur = mesData[mesData.length - 1];
+            const prev = mesData[mesData.length - 2];
+            const delta = prev.value > 0 ? Math.round(((cur.value - prev.value) / prev.value) * 100) : (cur.value > 0 ? 100 : 0);
+            const up = delta >= 0;
+            return (
+              <div className="flex items-center gap-2 mb-3 -mt-2">
+                <span className={`text-[10px] font-bold px-2 py-1 rounded-full border inline-flex items-center gap-1 ${up ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/25" : "text-amber-400 bg-amber-500/10 border-amber-500/25"}`}>
+                  <TrendingUp size={10} className={up ? "" : "-rotate-90"} /> {up ? "+" : ""}{delta}% vs. mês anterior
+                </span>
+                <span className="text-[10px] text-[var(--text-muted)]">{prev.name} → {cur.name}: {prev.value} → <b className="text-white">{cur.value}</b></span>
+              </div>
+            );
+          })()}
           {mesData.length === 0 ? (
             <EmptyBox title="Nenhum dado no período." />
           ) : (
