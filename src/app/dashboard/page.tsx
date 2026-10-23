@@ -6,7 +6,7 @@ import Image from "next/image";
 import useSWR from "swr";
 import {
   Users, CalendarCheck, TrendingUp, Activity, Bell, Calendar as CalendarIcon,
-  Clock, ChevronRight, ArrowUpRight, Sparkles, type LucideIcon,
+  Clock, ChevronRight, ArrowUpRight, Sparkles, type LucideIcon, Flame,
   AlertCircle, XCircle, RotateCcw, UserCheck, Home, Database, FileText, ClipboardList,
 } from "lucide-react";
 import { getLoggedUserProfile } from "@/lib/auth";
@@ -171,6 +171,8 @@ export default function DashboardPage() {
   const sparkHoje = useMemo(() => countsByDay(atendimentos, 7), [atendimentos]);
   const sparkMes = useMemo(() => countsByWeek(atendimentos, 12), [atendimentos]);
   const sparkConcluidos = useMemo(() => countsByDay(atendimentos, 7, (a) => a.status === "Concluído"), [atendimentos]);
+  const heatWeeks = useMemo(() => buildHeat(atendimentos, 12), [atendimentos]);
+  const heatMax = useMemo(() => Math.max(1, ...heatWeeks.flat().map((d) => d.c)), [heatWeeks]);
   const donutTotal = concluidos + atendidos + confirmados + reagendados + cancelados + faltou;
   const donutSegs = useMemo(() => {
     const vals = [concluidos, atendidos, confirmados, reagendados, cancelados, faltou];
@@ -479,6 +481,35 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* ── Heatmap de atividade: últimas 12 semanas ─────────── */}
+      {!isFirstLoad && (
+        <div className="premium-surface rounded-2xl p-6 mb-6 fade-up-delay-2">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <Flame size={16} className="text-[var(--primary)]" />
+              Atividade das Últimas Semanas
+            </h3>
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-[var(--text-label)]">
+              menos
+              {[0, 1, 2, 3, 4].map((lv) => <span key={lv} className={`heat-swatch heat-${lv}`} />)}
+              mais
+            </div>
+          </div>
+          <div className="overflow-x-auto pb-1">
+            <div className="heat-grid">
+              {heatWeeks.flat().map((d, i) => (
+                <span
+                  key={i}
+                  className={`heat-cell ${d.c >= 0 ? `heat-${Math.min(4, Math.ceil((d.c / heatMax) * 4))}` : "heat-0"}`}
+                  style={d.c >= 0 && d.c === 0 ? { opacity: 0.55 } : d.c < 0 ? { visibility: "hidden" } : undefined}
+                  title={d.label}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Agenda de Hoje: linha do tempo horizontal ─────────── */}
       {agendaHoje.length > 0 && !isFirstLoad && (
         <div className="premium-surface rounded-2xl p-6 mb-6 fade-up-delay-2">
@@ -717,6 +748,33 @@ function countsByWeek(atendimentos: AtendimentoResumo[], weeks: number): number[
     out.push(atendimentos.filter((a) => { const t = toTimestamp(a.data, a.hora); return t >= d0.getTime() && t < d1.getTime(); }).length);
   }
   return out;
+}
+
+// Heatmap das últimas N semanas: 12 colunas × 7 dias (seg→dom), estilo GitHub
+interface HeatDay { c: number; label: string; }
+function buildHeat(atendimentos: AtendimentoResumo[], weeks: number): HeatDay[][] {
+  const counts = new Map<string, number>();
+  for (const a of atendimentos) {
+    const t = toTimestamp(a.data, a.hora);
+    if (t <= 0) continue;
+    const d = new Date(t);
+    const key = d.toLocaleDateString("pt-BR");
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  const cols: HeatDay[][] = [];
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const monday = new Date(today); monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7) - (weeks - 1) * 7);
+  for (let w = 0; w < weeks; w++) {
+    const col: HeatDay[] = [];
+    for (let dow = 0; dow < 7; dow++) {
+      const d = new Date(monday); d.setDate(monday.getDate() + w * 7 + dow);
+      if (d > today) { col.push({ c: -1, label: "" }); continue; }
+      const label = d.toLocaleDateString("pt-BR");
+      col.push({ c: counts.get(label) || 0, label: `${label}: ${counts.get(label) || 0} atendimento${(counts.get(label) || 0) === 1 ? "" : "s"}` });
+    }
+    cols.push(col);
+  }
+  return cols;
 }
 
 const DONUT_SEGS = [

@@ -12,6 +12,7 @@ import {
 import EmptyIllustration from "@/components/EmptyIllustration";
 import { swrFetcher, API as API_BASE } from "@/lib/api";
 import { useClinicaMarca } from "@/hooks/useClinicaMarca";
+import { confettiBurst } from "@/lib/confetti";
 
 interface PacienteResumo {
   id: number;
@@ -127,7 +128,7 @@ export default function PacientesPage() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(form),
       });
-      if (res.ok) { setShowModal(false); mutate(); }
+      if (res.ok) { setShowModal(false); if (!editingId) confettiBurst(); mutate(); }
     } catch (e) { console.debug("Erro ao salvar paciente:", e); alert("Erro ao salvar paciente."); }
     finally { setSaving(false); }
   };
@@ -178,8 +179,8 @@ export default function PacientesPage() {
     return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(evo.titulo)}</title>
       <style>
         @page { margin: 0; }
-        body { font-family: "Segoe UI", Arial, sans-serif; color: #132a1d; margin: 0; padding: 0; }
-        .sheet { max-width: 760px; margin: 0 auto; padding: 48px 56px 120px; position: relative; min-height: 96vh; box-sizing: border-box; }
+        body { font-family: "Segoe UI", Arial, sans-serif; color: #132a1d; margin: 0; padding: 0; background: #eef2ef; }
+        .sheet { max-width: 760px; margin: 18px auto 0; padding: 48px 56px 120px; position: relative; min-height: 96vh; box-sizing: border-box; background: #fff; border: 1.5px solid #dbe4e0; border-top: 6px solid #4DA768; border-radius: 6px; box-shadow: 0 10px 34px rgba(10,40,25,0.10); }
         .lh { display: flex; align-items: center; gap: 16px; border-bottom: 3px solid #4DA768; padding-bottom: 16px; }
         .lh img { width: 64px; height: 64px; object-fit: cover; border-radius: 12px; border: 2px solid rgba(77,167,104,0.35); }
         .lh .c { font-size: 20px; font-weight: 800; letter-spacing: 0.2px; }
@@ -188,7 +189,7 @@ export default function PacientesPage() {
         h1 { font-size: 17px; margin: 26px 0 10px; }
         .content { font-size: 13px; line-height: 1.75; white-space: pre-wrap; }
         .foot { position: fixed; bottom: 24px; left: 56px; right: 56px; font-size: 9.5px; color: #748f81; border-top: 1px solid #d8e5dd; padding-top: 8px; display: flex; justify-content: space-between; }
-        @media print { .sheet { padding-bottom: 60px; } .foot { position: absolute; bottom: 16px; } }
+        @media print { body { background: #fff; } .sheet { padding-bottom: 60px; margin: 0; border: none; border-top: 4px solid #4DA768; border-radius: 0; box-shadow: none; } .foot { position: absolute; bottom: 16px; } }
       </style></head><body>
       <div class="sheet">
         <div class="lh">
@@ -223,7 +224,7 @@ export default function PacientesPage() {
     setEvoSaving(true);
     try {
       const res = await fetch(`${API_BASE}/notas`, { method: "POST", headers: { "Content-Type":"application/json", Authorization:`Bearer ${tk}` }, body: JSON.stringify({ paciente_id: prontPaciente.id, conteudo: novaEvo }) });
-      if (res.ok) { setNovaEvo(""); fetchEvolucoes(prontPaciente.id); }
+      if (res.ok) { setNovaEvo(""); confettiBurst(30); fetchEvolucoes(prontPaciente.id); }
     } catch (e) { console.debug(e); alert("Erro ao salvar evolução"); }
     finally { setEvoSaving(false); }
   };

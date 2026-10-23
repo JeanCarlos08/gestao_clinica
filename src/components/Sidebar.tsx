@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Home, ClipboardList, BarChart2, Upload, Settings, LogOut, FileText, Users,
   Menu, X, Sparkles, ChevronRight, FileEdit, Bot, Send, Camera, Loader2, Sun, Moon,
+  Command, RefreshCw, Maximize2, Minimize2, Search,
 } from "lucide-react";
 import { buildDisplayName, getLoggedUserProfile, getUserInitials } from "@/lib/auth";
 import AiMarkdown from "@/components/AiMarkdown";
@@ -50,6 +51,47 @@ export default function Sidebar() {
   const navRef = useRef<HTMLElement>(null);
   const [pill, setPill] = useState<{ top: number; height: number; opacity: number }>({ top: 24, height: 0, opacity: 0 });
   const [collapsed, setCollapsed] = useState(false);
+  const [cmdOpen, setCmdOpen] = useState(false);
+  const [cmdQuery, setCmdQuery] = useState("");
+  const [cmdSel, setCmdSel] = useState(0);
+  const cmdInputRef = useRef<HTMLInputElement>(null);
+
+  const cmdItems = [
+    ...NAV_ITEMS.map((n) => ({ type: "page" as const, href: n.href, label: n.label, icon: n.icon, color: n.color })),
+    { type: "action" as const, id: "theme", label: theme === "dark" ? "Tema claro" : "Tema escuro", icon: theme === "dark" ? Sun : Moon, run: toggleTheme },
+    { type: "action" as const, id: "collapse", label: collapsed ? "Expandir menu" : "Recolher menu", icon: collapsed ? Maximize2 : Minimize2, run: () => setCollapsed((c) => { localStorage.setItem("sidebar_collapsed", c ? "0" : "1"); return !c; }) },
+    { type: "action" as const, id: "reload", label: "Recarregar dados", icon: RefreshCw, run: () => router.refresh() },
+  ];
+  const cmdFiltered = cmdItems.filter((i) => (i.label + (i.type === "page" ? " " + i.href : "")).toLowerCase().includes(cmdQuery.trim().toLowerCase()));
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "K")) {
+        e.preventDefault();
+        setCmdOpen((o) => !o);
+      } else if (e.key === "Escape") setCmdOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  useEffect(() => {
+    if (cmdOpen) { setCmdQuery(""); setCmdSel(0); requestAnimationFrame(() => cmdInputRef.current?.focus()); }
+  }, [cmdOpen]);
+
+  useEffect(() => { setCmdSel(0); }, [cmdQuery]);
+
+  const runCmd = (item: (typeof cmdItems)[number]) => {
+    setCmdOpen(false);
+    if (item.type === "page") router.push(item.href);
+    else item.run();
+  };
+
+  const onCmdInputKey = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowDown") { e.preventDefault(); setCmdSel((s) => Math.min(s + 1, Math.max(cmdFiltered.length - 1, 0))); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setCmdSel((s) => Math.max(s - 1, 0)); }
+    else if (e.key === "Enter" && cmdFiltered[cmdSel]) { e.preventDefault(); runCmd(cmdFiltered[cmdSel]); }
+  };
   useEffect(() => {
     const st = localStorage.getItem("sidebar_collapsed");
     if (st === "1" || st === "0") setCollapsed(st === "1");
@@ -369,6 +411,16 @@ export default function Sidebar() {
       <div className="flex-shrink-0 border-t border-[rgba(255,255,255,0.09)] p-3 space-y-1 bg-[rgba(0,0,0,0.18)] backdrop-blur-sm">
         <button
           type="button"
+          onClick={() => setCmdOpen(true)}
+          aria-label="Abrir busca de comandos"
+          className="btn-motion flex items-center gap-3 w-full px-3 py-2.5 text-sm font-semibold text-[#9cbbaa] hover:text-white hover:bg-white/[0.07] border border-transparent hover:border-[rgba(142,227,154,0.2)] rounded-xl transition-all duration-200"
+        >
+          <Command size={15} strokeWidth={2} className="text-[#8ee39a]" />
+          <span className="sb-hide flex-1 text-left">Busca rápida</span>
+          <span className="sb-hide text-[9px] font-black text-[#6f917c] border border-[rgba(142,227,154,0.25)] rounded-md px-1.5 py-0.5 tracking-wider bg-[rgba(142,227,154,0.08)]">⌘K</span>
+        </button>
+        <button
+          type="button"
           onClick={toggleTheme}
           aria-label="Alterna tema claro/escuro"
           className="theme-btn"
@@ -452,6 +504,50 @@ export default function Sidebar() {
         </button>
         {navContent}
       </aside>
+
+      {/* Command palette (Ctrl+K / ⌘K) */}
+      {cmdOpen && (
+        <div className="command-overlay" onMouseDown={() => setCmdOpen(false)}>
+          <div className="command-panel" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="flex items-center px-4 border-b border-[var(--border)]">
+              <Search size={15} className="text-[var(--text-label)] flex-shrink-0" />
+              <input
+                ref={cmdInputRef}
+                value={cmdQuery}
+                onChange={(e) => setCmdQuery(e.target.value)}
+                onKeyDown={onCmdInputKey}
+                placeholder="Ir para página ou executar um comando…"
+                className="command-input"
+                aria-label="Comando: buscar páginas e ações"
+              />
+              <span className="command-kbd">ESC</span>
+            </div>
+            {cmdFiltered.length === 0 ? (
+              <p className="command-empty">Nada encontrado para “{cmdQuery}”.</p>
+            ) : (
+              <div className="command-list">
+                <div className="command-label">Navegação & Ações</div>
+                {cmdFiltered.map((item, i) => {
+                  const Icon = item.icon;
+                  return (
+                    <div
+                      key={item.type === "page" ? item.href : item.id}
+                      data-sel={i === cmdSel ? "true" : "false"}
+                      className="command-item"
+                      onMouseEnter={() => setCmdSel(i)}
+                      onClick={() => runCmd(item)}
+                    >
+                      <Icon size={15} className="command-ic" />
+                      <span className="truncate">{item.label}</span>
+                      {item.type === "page" && <span className="command-kbd">{item.href}</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }

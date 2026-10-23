@@ -52,6 +52,47 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const toggle = () => setTheme((t) => (t === "light" ? "dark" : "light"));
 
+  // Efeitos por delegação global: ripple nos CTAs e spotlight nos cards.
+  useEffect(() => {
+    const onDown = (e: PointerEvent) => {
+      const btn = (e.target as HTMLElement | null)?.closest?.(".btn-motion, .auth-submit") as HTMLElement | null;
+      if (!btn || btn.hasAttribute("disabled")) return;
+      const r = btn.getBoundingClientRect();
+      const bit = document.createElement("span");
+      bit.className = "ripple-bit";
+      bit.style.left = `${e.clientX - r.left}px`;
+      bit.style.top = `${e.clientY - r.top}px`;
+      if (getComputedStyle(btn).position === "static") btn.style.position = "relative";
+      btn.appendChild(bit);
+      setTimeout(() => bit.remove(), 520);
+    };
+    let spot: HTMLElement | null = null;
+    let raf = 0;
+    const onMove = (e: PointerEvent) => {
+      const el = (e.target as HTMLElement | null)?.closest?.(".premium-surface") as HTMLElement | null;
+      if (el !== spot) {
+        spot?.classList.remove("is-spot");
+        spot = el;
+        spot?.classList.add("spot-on", "is-spot");
+      }
+      if (!spot) return;
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const r = spot!.getBoundingClientRect();
+        spot!.style.setProperty("--mx", `${e.clientX - r.left}px`);
+        spot!.style.setProperty("--my", `${e.clientY - r.top}px`);
+      });
+    };
+    window.addEventListener("pointerdown", onDown);
+    window.addEventListener("pointermove", onMove);
+    return () => {
+      window.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("pointermove", onMove);
+      spot?.classList.remove("is-spot");
+      cancelAnimationFrame(raf);
+    };
+  }, []);
+
   return (
     <ThemeContext.Provider value={{ theme, toggle }}>
       {children}

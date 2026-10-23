@@ -181,6 +181,9 @@ export default function UploadPage() {
           <div className="flex flex-col items-center gap-3 text-[var(--primary)]">
             <Loader2 size={48} className="animate-spin" />
             <p className="font-semibold text-lg">Enviando arquivo...</p>
+            <div className="w-64 h-1.5 rounded-full bg-white/10 overflow-hidden">
+              <div className="upload-bar h-full w-1/3 rounded-full bg-[var(--primary)]" />
+            </div>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-4">
