@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import useSWR from "swr";
@@ -9,6 +9,7 @@ import {
   Clock, ChevronRight, ArrowUpRight, Sparkles, type LucideIcon, Flame,
   AlertCircle, XCircle, RotateCcw, UserCheck, Home, Database, FileText, ClipboardList,
 } from "lucide-react";
+import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { getLoggedUserProfile } from "@/lib/auth";
 import { swrFetcher, API as API_BASE } from "@/lib/api";
 import EmptyIllustration from "@/components/EmptyIllustration";
@@ -82,23 +83,7 @@ const EmpresaRanking = dynamic(() => import("@/components/EmpresaRanking"), {
   loading: () => <div className="lg:col-span-3 premium-surface rounded-2xl h-[350px] animate-pulse" />,
 });
 
-// ── Counter animation hook ─────────────────────────────────
-function useCountUp(target: number, duration = 1200): number {
-  const [value, setValue] = useState(0);
-  const ref = useRef<ReturnType<typeof requestAnimationFrame>>();
-  useEffect(() => {
-    const start = performance.now();
-    const animate = (now: number) => {
-      const progress = Math.min((now - start) / duration, 1);
-      const ease = 1 - Math.pow(1 - progress, 3);
-      setValue(Math.round(target * ease));
-      if (progress < 1) ref.current = requestAnimationFrame(animate);
-    };
-    ref.current = requestAnimationFrame(animate);
-    return () => { if (ref.current) cancelAnimationFrame(ref.current); };
-  }, [target, duration]);
-  return value;
-}
+
 
 export default function DashboardPage() {
   const [displayName, setDisplayName] = useState("Usuário");
@@ -596,10 +581,43 @@ interface MetricCardProps {
   hoverClass?: string;
 }
 
+// ── Interações premium (framer-motion) ─────────────────────
+// Número dos KPIs com física de mola (180fps no compositor, sem re-render)
+function SpringNumber({ value }: { value: number }) {
+  const mv = useMotionValue(0);
+  const spring = useSpring(mv, { stiffness: 120, damping: 24, mass: 0.7 });
+  const text = useTransform(spring, (v) => new Intl.NumberFormat("pt-BR").format(Math.round(v)));
+  useEffect(() => { mv.set(value); }, [value, mv]);
+  return <motion.span>{text}</motion.span>;
+}
+
+// Tilt 3D suave seguindo o cursor (desktop com hover real)
+function TiltCard({ children }: { children: React.ReactNode }) {
+  const rx = useSpring(0, { stiffness: 260, damping: 24 });
+  const ry = useSpring(0, { stiffness: 260, damping: 24 });
+  const onMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!window.matchMedia("(hover: hover)").matches) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    ry.set(((e.clientX - r.left) / r.width - 0.5) * 5.5);
+    rx.set(-((e.clientY - r.top) / r.height - 0.5) * 5.5);
+  };
+  const onLeave = () => { rx.set(0); ry.set(0); };
+  return (
+    <motion.div
+      style={{ rotateX: rx, rotateY: ry, transformPerspective: 900 }}
+      onPointerMove={onMove}
+      onPointerLeave={onLeave}
+      className="relative z-10"
+    >
+      {children}
+    </motion.div>
+  );
+}
+
 function MetricCard({ title, value, suffix, change, tone = "neutral", icon: Icon, color, bgColor, borderColor, hoverClass = "", spark }: MetricCardProps) {
-  const animated = useCountUp(value);
   return (
     <div className={`premium-surface rounded-2xl p-4 sm:p-5 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group overflow-hidden relative border ${borderColor} ${hoverClass} fade-up`}>
+     <TiltCard>
       {/* Top accent line - estética psicologia premium */}
       <div className="absolute top-0 left-4 right-4 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-60 group-hover:via-[var(--primary)]/30 transition-all duration-500" />
       {/* Corner glow */}
@@ -621,12 +639,13 @@ function MetricCard({ title, value, suffix, change, tone = "neutral", icon: Icon
       </div>
       <h3 className="text-[var(--text-label)] text-xs font-semibold mb-1.5 relative z-10 uppercase tracking-wide">{title}</h3>
       <p className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight relative z-10">
-        {new Intl.NumberFormat("pt-BR").format(animated)}{suffix}
+        <SpringNumber value={value} />{suffix}
       </p>{spark ? (
         <div className="mt-1.5 relative z-10 opacity-90">
           <MiniSpark points={spark.points} color={spark.color} active={spark.active} />
         </div>
       ) : null}
+     </TiltCard>
     </div>
   );
 }

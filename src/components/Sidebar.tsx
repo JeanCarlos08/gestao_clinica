@@ -81,16 +81,7 @@ export default function Sidebar() {
 
   useEffect(() => { setCmdSel(0); }, [cmdQuery]);
 
-  // Dica única da busca rápida (uma vez por navegador)
-  const [cmdHint, setCmdHint] = useState(false);
-  useEffect(() => {
-    if (localStorage.getItem("cmd_hint_seen") !== "1") {
-      setCmdHint(true);
-      localStorage.setItem("cmd_hint_seen", "1");
-      const t = setTimeout(() => setCmdHint(false), 9000);
-      return () => clearTimeout(t);
-    }
-  }, []);
+
 
   const runCmd = (item: (typeof cmdItems)[number]) => {
     setCmdOpen(false);
@@ -371,6 +362,24 @@ export default function Sidebar() {
               </span>
             )}
           </div>
+          {aiMessages.length === 0 && !aiLoading && (
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {[
+                { label: "Resumo do dia", q: "Resumo dos atendimentos de hoje" },
+                { label: "Aguardando hoje", q: "Quais pacientes estão agendados para hoje e aguardam atendimento?" },
+                { label: "Semana cheia?", q: "Qual o dia da semana com mais atendimentos?" },
+                { label: "Ausências", q: "Quantos pacientes faltaram e cancelaram no total?" },
+              ].map((chip) => (
+                <button
+                  key={chip.label}
+                  onClick={() => sendAI(chip.q)}
+                  className="text-[10px] font-bold text-[#d7ece0] bg-white/[0.07] hover:bg-[rgba(142,227,154,0.16)] border border-[rgba(142,227,154,0.22)] hover:border-[rgba(142,227,154,0.45)] rounded-full px-2.5 py-1 transition-all duration-200 hover:-translate-y-px btn-motion"
+                >
+                  {chip.label}
+                </button>
+              ))}
+            </div>
+          )}
           {aiMessages.length > 0 && (
             <div
               ref={aiListRef}
@@ -516,17 +525,6 @@ export default function Sidebar() {
         {navContent}
       </aside>
 
-      {/* Dica única da busca rápida */}
-      {cmdHint && (
-        <button
-          onClick={() => { setCmdHint(false); setCmdOpen(true); }}
-          className="hidden md:flex fixed bottom-5 left-72 z-40 items-center gap-2.5 px-4 py-3 rounded-2xl border border-[rgba(142,227,154,0.3)] bg-[color-mix(in_srgb,var(--card)_92%,transparent)] shadow-[0_18px_44px_rgba(0,0,0,0.5)] text-sm font-semibold text-white empty-in btn-motion"
-        >
-          <Command size={15} className="text-[var(--primary)]" />
-          Dica: <kbd className="text-[10px] font-black tracking-wider bg-[rgba(142,227,154,0.12)] border border-[rgba(142,227,154,0.3)] rounded-md px-1.5 py-0.5 text-[#a8e8b7]">Ctrl+K</kbd> para buscar em qualquer página
-          <X size={13} className="ml-1 opacity-40" />
-        </button>
-      )}
 
       {/* Command palette (Ctrl+K / ⌘K) */}
       {cmdOpen && (

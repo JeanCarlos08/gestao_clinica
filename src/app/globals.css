@@ -110,12 +110,8 @@ body {
   background-position: center;
   background-repeat: no-repeat;
   opacity: 1;
-  animation: bgPhotoBreathe 90s ease-in-out infinite alternate;
-  will-change: opacity, transform;
-}
-@keyframes bgPhotoBreathe {
-  from { transform: scale(1); }
-  to { transform: scale(1.05) translateY(-1%); }
+  /* MOVIMENTO 120FPS: transform contínuo nesta camada invalida o backdrop-blur
+     de TODOS os cards a cada frame → fundo estático (o grão discreto segue vivo). */
 }
 [data-theme="light"] .app-bg-photo { display: none; }
 /* Sem foto no light: <main> volta a ter fundo opaco */
@@ -146,22 +142,22 @@ main {
   );
   border: 1px solid var(--border);
   box-shadow: var(--shadow-card);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
 .glass-surface {
   background: rgba(10,24,16,0.6);
   border: 1px solid rgba(255,255,255,0.06);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.03) inset;
 }
 
 .glass-surface-hover {
   background: rgba(12,28,19,0.7);
   border: 1px solid rgba(77,167,104,0.12);
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(8px);
 }
 
 @media (max-width: 768px) {
@@ -458,13 +454,13 @@ main {
   background: rgba(77,167,104,0.12);
   border: 1px solid rgba(77,167,104,0.3);
   color: #7BCF8A;
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(8px);
 }
 .toast-error {
   background: rgba(239,68,68,0.12);
   border: 1px solid rgba(239,68,68,0.3);
   color: #f87171;
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(8px);
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -762,11 +758,7 @@ a:focus-visible {
   100% { opacity: 1; transform: none; }
 }
 .row-pop { animation: riseRow .42s cubic-bezier(.22,1,.36,1) both; }
-@keyframes dotsDrift {
-  from { transform: translate3d(0,0,0); }
-  to { transform: translate3d(-28px,-28px,0); }
-}
-.app-premium-bg::before { animation: dotsDrift 80s linear infinite; will-change: transform; }
+/* MOVIMENTO 120FPS: dots estáticos (idem foto) */
 @keyframes shineSweep {
   0% { transform: translateX(-120%) skewX(-18deg); }
   100% { transform: translateX(300%) skewX(-18deg); }
@@ -857,12 +849,12 @@ a:focus-visible {
     radial-gradient(56% 40% at 82% 92%, color-mix(in srgb, var(--primary) 13%, transparent) 0%, transparent 62%),
     radial-gradient(46% 34% at 6% 94%, color-mix(in srgb, var(--primary) 10%, transparent) 0%, transparent 58%);
   pointer-events: none;
-  animation: haloBreath 18s ease-in-out infinite alternate;
+  opacity: 0.8;
 }
-@keyframes haloBreath { from { opacity: 0.55; } to { opacity: 1; } }
+
 /* Vinheta respira devagar */
-.app-premium-bg::after { animation: vigBreath 45s ease-in-out infinite alternate; }
-@keyframes vigBreath { from { opacity: 0.72; } to { opacity: 1; } }
+.app-premium-bg::after { opacity: 0.85; }
+
 
 /* Faixa da foto da clínica desfocada no topo da sidebar */
 .sidebar-premium::after {
@@ -1055,6 +1047,8 @@ body { font-variant-numeric: tabular-nums; }
 
 /* Szkielet: brilho mais rápido e visível ao carregar */
 .skeleton::after { animation-duration: 1.2s; }
+
+@media (pointer: coarse) { .spot-on::before { display: none; } }
 
 /* Baixa motion: deslige entradas/transições longas */
 @media (prefers-reduced-motion: reduce) {

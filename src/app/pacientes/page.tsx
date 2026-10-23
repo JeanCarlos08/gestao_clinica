@@ -293,7 +293,7 @@ export default function PacientesPage() {
       </div>
 
       {/* Search + View Toggle — app moderno */}
-      <div className="flex flex-col md:flex-row gap-3 mb-6">
+      <div className="flex flex-col md:flex-row gap-3 mb-6 sticky top-0 z-20 py-2 -my-2 bg-[var(--background)]/85 backdrop-blur-md">
         <div className="flex-1 premium-surface rounded-xl p-3 flex items-center gap-3 border border-[var(--border)] focus-within:border-[var(--primary)]/30 transition-colors">
           <Search size={16} className="text-[var(--text-muted)] flex-shrink-0 ml-1" />
           <input type="text" value={q} onChange={e => setQ(e.target.value)}
@@ -364,10 +364,10 @@ export default function PacientesPage() {
                      <div className="flex items-center justify-between sm:justify-end gap-2">
                       <span className="text-xs font-bold text-white bg-[var(--primary)]/10 border border-[var(--primary)]/20 px-2.5 py-1 rounded-full">{paciente.modalidades_distintas} mods</span>
                       <div className="flex items-center gap-1">
-                        <button onClick={() => openProntuario(paciente)} title="Prontuário" className="p-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 transition-colors"><NotebookPen size={14} /></button>
-                        <button onClick={() => openEdit(paciente)} className="p-2 rounded-lg bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] border border-[var(--primary)]/20 transition-colors"><Edit3 size={14} /></button>
-                        <button onClick={() => router.push(`/pacientes/${paciente.id}/doc-editor`)} className="hidden sm:inline-flex p-2 rounded-lg bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 border border-violet-500/20 transition-colors"><FileText size={14} /></button>
-                        <button onClick={() => deletePaciente(paciente.id)} className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition-colors"><Trash2 size={14} /></button>
+                        <button onClick={() => openProntuario(paciente)} title="Prontuário" aria-label={`Abrir prontuário de ${paciente.nome}`} className="p-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 transition-colors"><NotebookPen size={14} /></button>
+                        <button onClick={() => openEdit(paciente)} title="Editar" aria-label={`Editar ${paciente.nome}`} className="p-2 rounded-lg bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] border border-[var(--primary)]/20 transition-colors"><Edit3 size={14} /></button>
+                        <button onClick={() => router.push(`/pacientes/${paciente.id}/doc-editor`)} className="hidden sm:inline-flex p-2 rounded-lg bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 border border-violet-500/20 transition-colors" title="Documentos" aria-label={`Documentos de ${paciente.nome}`}><FileText size={14} /></button>
+                        <button onClick={() => deletePaciente(paciente.id)} title="Excluir" aria-label={`Excluir ${paciente.nome}`} className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition-colors"><Trash2 size={14} /></button>
                       </div>
                     </div>
                   </div>

@@ -6,27 +6,6 @@ export default function PageTransition({ children }: { children: ReactNode }) {
   return (
     <div className="animate-page-in flex-1 min-h-0 flex flex-col overflow-y-auto">
       {children}
-      <style>{`
-        .animate-page-in {
-          animation: pageIn 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
-          will-change: opacity, transform, filter;
-        }
-        @keyframes pageIn {
-          from {
-            opacity: 0;
-            transform: translateY(8px) scale(0.995);
-            filter: blur(6px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-            filter: blur(0);
-          }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .animate-page-in { animation: none; }
-        }
-      `}</style>
     </div>
   );
 }

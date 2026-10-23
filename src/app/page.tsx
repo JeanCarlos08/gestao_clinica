@@ -170,6 +170,7 @@ export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [capsOn, setCapsOn] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [attempts, setAttempts] = useState(0);
@@ -704,6 +705,13 @@ export default function LoginPage() {
         }
         .auth-eye:hover { color: rgba(255,255,255,0.8); }
 
+        .auth-caps {
+          display: flex; align-items: center; gap: 7px;
+          color: rgba(245,200,130,0.95); font-size: 11px; font-weight: 700; letter-spacing: 0.4px;
+          padding: 8px 12px; border-radius: 10px; margin-top: 8px;
+          background: rgba(245,158,11,0.10); border: 1px solid rgba(245,158,11,0.28);
+          animation: authUp 0.3s ease both;
+        }
         .auth-error {
           display: flex; align-items: center; gap: 8px;
           background: rgba(239,68,68,0.1); border: 1.5px solid rgba(239,68,68,0.3);
@@ -949,6 +957,8 @@ export default function LoginPage() {
                     className="auth-input auth-input-pr"
                     autoComplete="current-password"
                     disabled={attempts >= 5}
+                    onKeyUp={(e) => setCapsOn(e.getModifierState ? e.getModifierState("CapsLock") : false)}
+                    onBlur={() => setCapsOn(false)}
                   />
                   <button
                     type="button"
@@ -961,6 +971,13 @@ export default function LoginPage() {
                   </button>
                 </div>
               </div>
+
+              {capsOn && !showPassword && (
+                <div className="auth-caps" role="status">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m18 11-6-6-6 6" /><path d="M12 5v14" /><path d="m6 19 12 0" /></svg>
+                  Caps Lock ativo — cuidado com maiúsculas
+                </div>
+              )}
 
               {error && <div className="auth-error">{error}</div>}
 

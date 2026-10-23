@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, createContext, useContext } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { CheckCircle2, XCircle, Info, X } from "lucide-react";
 
 type ToastType = "success" | "error" | "info";
@@ -52,18 +53,25 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <ToastContext.Provider value={{ toast }}>
       {children}
       <div className="fixed top-4 right-4 z-[100] space-y-2 pointer-events-none">
-        {toasts.map((t) => (
-          <div
+        <AnimatePresence>
+          {toasts.map((t) => (
+          <motion.div
             key={t.id}
-            className={`pointer-events-auto relative overflow-hidden flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium shadow-lg animate-in slide-in-from-right duration-300 ${colors[t.type]}`}
+            layout
+            initial={{ opacity: 0, x: 80, scale: 0.85 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 90, scale: 0.85 }}
+            transition={{ type: "spring", stiffness: 420, damping: 30, mass: 0.65 }}
+            className={`pointer-events-auto relative overflow-hidden flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium shadow-lg ${colors[t.type]}`}
             onClick={() => dismiss(t.id)}
           >
             <span className="toast-pop inline-flex">{icons[t.type]}</span>
             <span className="flex-1">{t.message}</span>
             <button onClick={(e) => { e.stopPropagation(); dismiss(t.id); }} aria-label="Fechar aviso" className="opacity-40 hover:opacity-100 transition-opacity p-0.5"><X size={14} /></button>
             <span className="toast-bar" aria-hidden="true" />
-          </div>
-        ))}
+          </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
     </ToastContext.Provider>
   );

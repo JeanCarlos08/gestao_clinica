@@ -5,6 +5,7 @@ import { ToastProvider } from "@/components/Toast";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import TitleSync from "@/components/TitleSync";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import ParallaxBg from "@/components/ParallaxBg";
 import PageTransition from "@/components/PageTransition";
 import "./globals.css";
 
@@ -51,7 +52,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: "(function(){try{var t=localStorage.getItem('theme');if(!t){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}document.documentElement.setAttribute('data-theme',t);var a=localStorage.getItem('accent');if(a)document.documentElement.setAttribute('data-accent',a);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();" }} />
         <ThemeProvider>
           <TitleSync />
-          <div className="app-bg-photo" aria-hidden="true" />
+          <ParallaxBg />
           <Sidebar />
           <main className="flex-1 flex flex-col h-full overflow-hidden pt-14 md:pt-0">
             <ToastProvider>

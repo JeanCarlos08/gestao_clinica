@@ -264,7 +264,7 @@ export default function AtendimentosPage() {
       ) : viewMode === "lista" ? (
         /* Lista moderna — sem <table>, app-style rows */
         <div className="premium-surface border border-[var(--border)] rounded-2xl overflow-hidden fade-up-delay-1">
-          <div className="p-4 border-b border-[var(--border)] flex items-center justify-between bg-[var(--card)]/50 backdrop-blur-sm">
+          <div className="p-4 border-b border-[var(--border)] flex items-center justify-between bg-[var(--card)]/70 backdrop-blur-md sticky top-0 z-10">
             <span className="font-semibold text-sm flex items-center gap-2"><List size={16} className="text-[var(--primary)]" /> {statusFilter==="todos" ? "Todos os Agendamentos" : statusFilter} <span className="text-[var(--text-muted)] font-normal">· {filteredAtendimentos.length}</span></span>
             <span className="text-xs text-[var(--text-muted)] hidden sm:flex items-center gap-1">Clique no card para editar <ChevronRight size={12} /></span>
           </div>
