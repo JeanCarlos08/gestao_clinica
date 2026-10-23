@@ -119,6 +119,13 @@ export async function ensureSchema() {
       criado_em TIMESTAMPTZ DEFAULT NOW()
     )`;
 
+  // Editor nativo de documentos (estilo Google Docs): instâncias antigas da tabela
+  // não têm o corpo do documento nem vínculo direto com paciente, e o histórico de
+  // produção criou google_doc_id como NOT NULL — documentos internos ficam sem ele.
+  await sql`ALTER TABLE documentos ADD COLUMN IF NOT EXISTS conteudo_html TEXT`;
+  await sql`ALTER TABLE documentos ADD COLUMN IF NOT EXISTS atualizado_em TIMESTAMPTZ DEFAULT NOW()`;
+  await sql`ALTER TABLE documentos ALTER COLUMN google_doc_id DROP NOT NULL`;
+
   await sql`
     CREATE TABLE IF NOT EXISTS temporary_permissions (
       id SERIAL PRIMARY KEY,

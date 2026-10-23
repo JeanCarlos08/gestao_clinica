@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import {
-  FileText, CheckCircle2, Clock, RefreshCw, XCircle, Search, FileDown, Plus
+  FileText, CheckCircle2, Clock, RefreshCw, XCircle, Search, FileDown, Plus,
+  FilePlus2, FilePen, Trash2,
 } from "lucide-react";
 import EmptyIllustration from "@/components/EmptyIllustration";
 import { swrFetcher, API as API_BASE } from "@/lib/api";
@@ -18,6 +20,7 @@ interface Laudo {
   status: string;
   url: string;
   embed_url: string;
+  kind?: "nativo" | "google";
 }
 
 interface LaudoForm {
@@ -49,11 +52,14 @@ const emptyForm: LaudoForm = {
 };
 
 export default function LaudosPage() {
+  const router = useRouter();
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState<LaudoForm>(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [creating, setCreating] = useState(false);
+
 
   useEffect(() => { const t = setTimeout(() => setDebouncedQ(q), 300); return () => clearTimeout(t); }, [q]);
 
@@ -62,6 +68,36 @@ export default function LaudosPage() {
     fetcher,
     { revalidateOnFocus: false, dedupingInterval: 5000 }
   );
+
+  const novoDocumento = async () => {
+    const tk = localStorage.getItem("token");
+    if (!tk) return;
+    setCreating(true);
+    try {
+      const res = await fetch(`${API_BASE}/laudos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${tk}` },
+        body: JSON.stringify({ titulo: "Documento sem título", conteudo_html: "<p></p>" }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        router.push(`/laudos/${d.id}/editor`);
+      } else { alert("Erro ao criar documento."); }
+    } catch { alert("Erro de comunicação."); }
+    finally { setCreating(false); }
+  };
+
+  const excluirDocumento = async (l: Laudo) => {
+    if (l.kind !== "nativo") return;
+    if (!window.confirm(`Excluir "${l.titulo}" permanentemente?`)) return;
+    const tk = localStorage.getItem("token");
+    if (!tk) return;
+    try {
+      const res = await fetch(`${API_BASE}/laudos/${l.db_id}`, { method: "DELETE", headers: { Authorization: `Bearer ${tk}` } });
+      if (res.ok) mutate();
+      else alert("Erro ao excluir documento.");
+    } catch { alert("Erro de comunicação."); }
+  };
 
   const gerarLaudo = async () => {
     const tk = localStorage.getItem("token");
@@ -97,9 +133,11 @@ export default function LaudosPage() {
 
   const statusIcons: Record<string, JSX.Element> = {
     "Gerado": <CheckCircle2 size={14} className="text-emerald-400" />,
+    "Nativo": <FilePen size={12} className="text-blue-400" />,
   };
   const statusColors: Record<string, string> = {
     "Gerado": "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+    "Nativo": "bg-blue-500/10 text-blue-400 border-blue-500/20",
   };
 
   return (
@@ -113,12 +151,17 @@ export default function LaudosPage() {
             </div>
             <span className="text-xs font-bold text-amber-400 uppercase tracking-widest">Documentos</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Laudos Clínicos</h1>
-          <p className="text-[var(--text-muted)] text-sm mt-1">Geração automática de laudos via Google Docs e PDF.</p>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Laudos & Documentos</h1>
+          <p className="text-[var(--text-muted)] text-sm mt-1">Editor próprio estilo Docs e geração automática de laudos via Google Docs.</p>
         </div>
-        <button onClick={() => setShowModal(true)} className="flex items-center justify-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-[0_0_20px_rgba(77,167,104,0.3)] hover:shadow-[0_0_30px_rgba(77,167,104,0.5)]">
-          <Plus size={16} strokeWidth={2.5} /> Novo Laudo
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={novoDocumento} disabled={creating} className="btn-motion flex items-center justify-center gap-2 bg-[var(--card-hover)] border border-[var(--border)] hover:border-[var(--primary)]/40 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-all disabled:opacity-50">
+            {creating ? <RefreshCw size={16} className="animate-spin" /> : <FilePlus2 size={16} strokeWidth={2.5} />} Novo documento
+          </button>
+          <button onClick={() => setShowModal(true)} className="btn-motion flex items-center justify-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-[0_0_20px_rgba(77,167,104,0.3)] hover:shadow-[0_0_30px_rgba(77,167,104,0.5)]">
+            <Plus size={16} strokeWidth={2.5} /> Novo Laudo
+          </button>
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -176,14 +219,16 @@ export default function LaudosPage() {
         ) : (
           <div className="divide-y divide-[var(--border)] max-h-[65vh] overflow-y-auto scrollbar-thin">
             {laudos.map(l => {
-              const initials = l.paciente.split(" ").filter(Boolean).slice(0,2).map(p=>p[0]?.toUpperCase()).join("");
+              const isNat = l.kind === "nativo";
+              const principale = isNat ? (l.titulo || "Documento sem título") : (l.paciente || l.titulo);
+              const initials = principale.split(" ").filter(Boolean).slice(0,2).map(p=>p[0]?.toUpperCase()).join("");
               return (
                 <div key={l.id} className="group flex items-center gap-4 p-4 hover:bg-[var(--card-hover)] transition-colors">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500/20 to-[var(--card)] border border-[var(--border)] group-hover:border-amber-500/30 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">{initials || <FileText size={14} />}</div>
+                  <div className={`w-10 h-10 rounded-full border flex items-center justify-center text-white font-bold text-xs flex-shrink-0 group-hover:border-amber-500/30 transition-colors ${isNat ? "bg-gradient-to-br from-blue-500/20 to-[var(--card)]" : "bg-gradient-to-br from-amber-500/20 to-[var(--card)]"} border-[var(--border)]`}>{initials || <FileText size={14} />}</div>
                   <div className="min-w-0 flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 items-center">
                     <div className="min-w-0">
-                      <div className="font-bold text-sm text-white truncate group-hover:text-amber-400 transition-colors">{l.paciente}</div>
-                      <div className="text-xs text-[var(--text-muted)] truncate">{l.titulo} <span className="hidden sm:inline">· {l.tipo}</span></div>
+                      <div className="font-bold text-sm text-white truncate group-hover:text-amber-400 transition-colors">{principale}</div>
+                      <div className="text-xs text-[var(--text-muted)] truncate">{isNat ? l.titulo : l.titulo} <span className="hidden sm:inline">· {isNat ? "Documento" : l.tipo}</span></div>
                     </div>
                     <div className="flex sm:justify-center">
                       <span className="inline-flex items-center gap-1.5 bg-[var(--background)] border border-[var(--border)] rounded-full px-3 py-1 text-xs font-medium text-white"><Clock size={12} className="text-[var(--text-muted)]" />{l.data}</span>
@@ -191,14 +236,32 @@ export default function LaudosPage() {
                     <div className="flex items-center justify-between sm:justify-end gap-3">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${statusColors[l.status] || "bg-gray-500/10 text-gray-400 border-gray-500/20"}`}>{statusIcons[l.status] || <Clock size={12} />} {l.status}</span>
                       <div className="hidden sm:flex items-center gap-2">
-                        {l.url && <a href={l.url} target="_blank" rel="noreferrer" className="p-2 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 transition-colors"><FileText size={14} /></a>}
-                        <button onClick={() => downloadPdf(l.id, l.paciente)} className="p-2 rounded-lg bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] border border-[var(--primary)]/20 transition-colors"><FileDown size={14} /></button>
+                        {isNat ? (
+                          <>
+                            <button title="Abrir no editor" onClick={() => router.push(`/laudos/${l.db_id}/editor`)} className="btn-motion p-2 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 transition-colors"><FilePen size={14} /></button>
+                            <button title="Excluir documento" onClick={() => excluirDocumento(l)} className="btn-motion p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition-colors"><Trash2 size={14} /></button>
+                          </>
+                        ) : (
+                          <>
+                            {l.url && <a href={l.url} target="_blank" rel="noreferrer" className="p-2 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 transition-colors"><FileText size={14} /></a>}
+                            <button onClick={() => downloadPdf(l.id, l.paciente)} className="p-2 rounded-lg bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] border border-[var(--primary)]/20 transition-colors"><FileDown size={14} /></button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
                   <div className="sm:hidden flex items-center gap-2">
-                    {l.url && <a href={l.url} target="_blank" rel="noreferrer" className="p-2 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20"><FileText size={12} /></a>}
-                    <button onClick={() => downloadPdf(l.id, l.paciente)} className="p-2 rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/20"><FileDown size={12} /></button>
+                    {isNat ? (
+                      <>
+                        <button onClick={() => router.push(`/laudos/${l.db_id}/editor`)} className="p-2 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20"><FilePen size={12} /></button>
+                        <button onClick={() => excluirDocumento(l)} className="p-2 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20"><Trash2 size={12} /></button>
+                      </>
+                    ) : (
+                      <>
+                        {l.url && <a href={l.url} target="_blank" rel="noreferrer" className="p-2 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20"><FileText size={12} /></a>}
+                        <button onClick={() => downloadPdf(l.id, l.paciente)} className="p-2 rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/20"><FileDown size={12} /></button>
+                      </>
+                    )}
                   </div>
                 </div>
               );
