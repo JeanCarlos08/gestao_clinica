@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import useSWR from "swr";
@@ -124,7 +124,7 @@ export default function DashboardPage() {
 
   const payload = data && !Array.isArray(data) ? data : null;
   const stats: DashboardStats | null = payload?.stats ?? null;
-  const atendimentos: AtendimentoResumo[] = payload?.atendimentos ?? [];
+  const atendimentos: AtendimentoResumo[] = useMemo(() => payload?.atendimentos ?? [], [payload]);
   const loadingState = loading && !data;
   const hasError = !!error;
 
@@ -168,6 +168,20 @@ export default function DashboardPage() {
   const agendaHoje = atendimentos
     .filter((x) => isSameDay(toTimestamp(x.data, x.hora), Date.now()))
     .sort((x, y) => toTimestamp(x.data, x.hora) - toTimestamp(y.data, y.hora));
+  const sparkHoje = useMemo(() => countsByDay(atendimentos, 7), [atendimentos]);
+  const sparkMes = useMemo(() => countsByWeek(atendimentos, 12), [atendimentos]);
+  const sparkConcluidos = useMemo(() => countsByDay(atendimentos, 7, (a) => a.status === "Concluído"), [atendimentos]);
+  const donutTotal = concluidos + atendidos + confirmados + reagendados + cancelados + faltou;
+  const donutSegs = useMemo(() => {
+    const vals = [concluidos, atendidos, confirmados, reagendados, cancelados, faltou];
+    let acc = 0;
+    return vals.map((v, i) => {
+      const start = donutTotal > 0 ? (acc / donutTotal) * 100 : 0;
+      acc += v;
+      const end = donutTotal > 0 ? (acc / donutTotal) * 100 : 0;
+      return { ...DONUT_SEGS[i], start, end, v };
+    });
+  }, [donutTotal, concluidos, atendidos, confirmados, reagendados, cancelados, faltou]);
   const empresaEntries = (Object.entries(stats?.por_empresa ?? {}) ?? []) as Array<[string, number]>;
   const totalPorEmpresa = empresaEntries.reduce((sum, [, v]) => sum + (Number(v) || 0), 0);
 
@@ -300,12 +314,14 @@ export default function DashboardPage() {
           <>
             <MetricCard
               title="Consultas Hoje" value={consultasHoje} suffix="" change="Hoje"
+              spark={{ points: sparkHoje, color: "var(--primary)", active: true }}
               tone="positive" icon={CalendarCheck}
               color="text-[var(--primary)]" bgColor="bg-[var(--primary)]/10" borderColor="border-[var(--primary)]/15"
               hoverClass="metric-card-green"
             />
             <MetricCard
               title="Atendimentos do Mês" value={stats?.atendimentos_mes ?? 0} suffix="" change="Mês"
+              spark={{ points: sparkMes, color: "#a855f7" }}
               tone="neutral" icon={Activity}
               color="text-purple-400" bgColor="bg-purple-500/10" borderColor="border-purple-500/15"
               hoverClass="metric-card-purple"
@@ -318,6 +334,7 @@ export default function DashboardPage() {
             />
             <MetricCard
               title="Concluídos" value={concluidos} suffix="" change={`${taxaConclusao}%`}
+              spark={{ points: sparkConcluidos, color: "#10b981" }}
               tone="positive" icon={UserCheck}
               color="text-emerald-400" bgColor="bg-emerald-500/10" borderColor="border-emerald-500/15"
               hoverClass="metric-card-green"
@@ -436,6 +453,32 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* ── Donut: mix de status ─────────────────────────────── */}
+      {donutTotal > 0 && !isFirstLoad && (
+        <div className="premium-surface rounded-2xl p-6 mb-6 fade-up-delay-2 flex flex-col sm:flex-row items-center gap-6">
+          <div className="relative flex-shrink-0" style={{ width: 128, height: 128 }}>
+            <div
+              className="donut-ring rounded-full"
+              style={{ transform: "rotate(-90deg)", background: donutSegs.filter((x) => x.v > 0).length
+                ? `conic-gradient(${donutSegs.filter((x) => x.v > 0).map((x) => `${x.color} ${x.start}% ${x.end}%`).join(", ")})`
+                : "rgba(255,255,255,0.08)" }}
+            />
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-2xl font-extrabold text-white leading-none">{totalAtendimentos}</span>
+              <span className="text-[9px] uppercase tracking-wider text-[var(--text-label)] font-bold mt-1">total</span>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+            {donutSegs.filter((x) => x.v > 0).map((x) => (
+              <span key={x.key} className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--text-muted)] border border-[var(--border)] rounded-full px-2.5 py-1 bg-white/[0.02]">
+                <span className="w-2 h-2 rounded-full" style={{ background: x.color }} />
+                {x.key}&nbsp;<b className="text-white">{x.v}</b>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── Agenda de Hoje: linha do tempo horizontal ─────────── */}
       {agendaHoje.length > 0 && !isFirstLoad && (
         <div className="premium-surface rounded-2xl p-6 mb-6 fade-up-delay-2">
@@ -509,6 +552,7 @@ export default function DashboardPage() {
 
 // ── MetricCard ────────────────────────────────────────────────
 interface MetricCardProps {
+  spark?: { points: number[]; color: string; active?: boolean };
   title: string;
   value: number;
   suffix: string;
@@ -521,7 +565,7 @@ interface MetricCardProps {
   hoverClass?: string;
 }
 
-function MetricCard({ title, value, suffix, change, tone = "neutral", icon: Icon, color, bgColor, borderColor, hoverClass = "" }: MetricCardProps) {
+function MetricCard({ title, value, suffix, change, tone = "neutral", icon: Icon, color, bgColor, borderColor, hoverClass = "", spark }: MetricCardProps) {
   const animated = useCountUp(value);
   return (
     <div className={`premium-surface rounded-2xl p-4 sm:p-5 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group overflow-hidden relative border ${borderColor} ${hoverClass} fade-up`}>
@@ -547,7 +591,11 @@ function MetricCard({ title, value, suffix, change, tone = "neutral", icon: Icon
       <h3 className="text-[var(--text-label)] text-xs font-semibold mb-1.5 relative z-10 uppercase tracking-wide">{title}</h3>
       <p className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight relative z-10">
         {new Intl.NumberFormat("pt-BR").format(animated)}{suffix}
-      </p>
+      </p>{spark ? (
+        <div className="mt-1.5 relative z-10 opacity-90">
+          <MiniSpark points={spark.points} color={spark.color} active={spark.active} />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -634,3 +682,48 @@ function PatientAvatar({ name, photo }: { name: string; photo?: string | null })
     </div>
   );
 }
+
+// ── Sparkline mini (SVG, sem libs) ─────────────────────────
+function MiniSpark({ points, color, active }: { points: number[]; color: string; active?: boolean }) {
+  if (points.length < 2) return null;
+  const w = 60, h = 18;
+  const max = Math.max(...points, 1);
+  const pts = points.map((v, i) => `${(i / (points.length - 1)) * w},${h - 2 - (v / max) * (h - 5)}`);
+  const last = pts[pts.length - 1];
+  return (
+    <svg width={w} height={h} className="ml-1 align-middle" aria-hidden="true">
+      <polyline points={pts.join(" ")} fill="none" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" opacity={active ? 0.95 : 0.55} />
+      <circle cx={last.split(",")[0]} cy={last.split(",")[1]} r={2} fill={color} opacity={active ? 0.95 : 0.6} />
+    </svg>
+  );
+}
+
+// Converte um grupo de atendimentos em contagem por dia (últimos `n` dias)
+function countsByDay(atendimentos: AtendimentoResumo[], days: number, predicate?: (a: AtendimentoResumo) => boolean): number[] {
+  const out: number[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const base = new Date(); base.setDate(base.getDate() - i); base.setHours(12, 0, 0, 0);
+    out.push(atendimentos.filter((a) => (predicate ? predicate(a) : true) && isSameDay(toTimestamp(a.data, a.hora), base.getTime())).length);
+  }
+  return out;
+}
+
+function countsByWeek(atendimentos: AtendimentoResumo[], weeks: number): number[] {
+  const out: number[] = [];
+  for (let i = weeks - 1; i >= 0; i--) {
+    const base = new Date(); base.setDate(base.getDate() - i * 7); base.setHours(12, 0, 0, 0);
+    const d0 = new Date(base); d0.setDate(d0.getDate() - ((d0.getDay() + 6) % 7)); d0.setHours(0, 0, 0, 0);
+    const d1 = new Date(d0.getTime() + 7 * 86400000);
+    out.push(atendimentos.filter((a) => { const t = toTimestamp(a.data, a.hora); return t >= d0.getTime() && t < d1.getTime(); }).length);
+  }
+  return out;
+}
+
+const DONUT_SEGS = [
+  { key: "Concluído", color: "#10b981" },
+  { key: "Atendido", color: "#3b82f6" },
+  { key: "Confirmado", color: "var(--primary)" },
+  { key: "Reagendado", color: "#38bdf8" },
+  { key: "Cancelado", color: "#f59e0b" },
+  { key: "Faltou", color: "#ef4444" },
+] as const;

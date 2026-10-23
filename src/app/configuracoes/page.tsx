@@ -65,6 +65,25 @@ export default function ConfigPage() {
     setTimeout(() => setMsg(null), 4000);
   };
 
+  const [appBg, setAppBg] = useState("clinica");
+  useEffect(() => {
+    const stored = localStorage.getItem("app_bg");
+    if (stored === "clinica" || stored === "grafite" || stored === "esmeralda") setAppBg(stored);
+  }, []);
+  const applyBg = async (id: string) => {
+    setAppBg(id);
+    document.documentElement.setAttribute("data-bg", id);
+    localStorage.setItem("app_bg", id);
+    try {
+      const token = localStorage.getItem("token");
+      await fetch((process.env.NEXT_PUBLIC_API_URL || "/api") + "/configuracoes", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ app_background: id }),
+      });
+    } catch {}
+  };
+
   const ACCENTS: { id: string; nome: string; hex: string }[] = [
     { id: "esmeralda", nome: "Esmeralda", hex: "#4DA768" },
     { id: "petroleo", nome: "Azul-petróleo", hex: "#2E86AB" },
@@ -283,6 +302,25 @@ export default function ConfigPage() {
                         <p className="text-[10px] text-[var(--text-muted)] mt-1.5">Documento vinculado à assinatura. Contate o suporte para alterar.</p>
                       </div>
                     </div>
+
+                      <div className="border-t border-[var(--border)] pt-5">
+                        <h2 className="text-lg font-bold text-white mb-1">Fundo do Sistema</h2>
+                        <p className="text-sm text-[var(--text-muted)] mb-3">Escolha o ambiente de fundo da área de trabalho — aplica e salva na hora.</p>
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <button type="button" onClick={() => applyBg("clinica")} className={`bg-thumb ${appBg === "clinica" ? "bg-thumb-on" : ""}`} title="Foto da clínica">
+                            <span className="bg-thumb-img" style={{ backgroundImage: "url(/bg-clinic.jpg)" }} />
+                            <span className="bg-thumb-label">Clínica</span>
+                          </button>
+                          <button type="button" onClick={() => applyBg("grafite")} className={`bg-thumb ${appBg === "grafite" ? "bg-thumb-on" : ""}`} title="Grafite sólido">
+                            <span className="bg-thumb-img bg-thumb-grafite" />
+                            <span className="bg-thumb-label">Grafite</span>
+                          </button>
+                          <button type="button" onClick={() => applyBg("esmeralda")} className={`bg-thumb ${appBg === "esmeralda" ? "bg-thumb-on" : ""}`} title="Esmeralda profundo">
+                            <span className="bg-thumb-img bg-thumb-esmeralda" />
+                            <span className="bg-thumb-label">Esmeralda</span>
+                          </button>
+                        </div>
+                      </div>
                   </div>
                   <div className="bg-[var(--card)] px-6 py-4 flex justify-end gap-3">
                     <button type="submit" disabled={saving} className="flex items-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(77,167,104,0.25)] hover:shadow-[0_0_25px_rgba(77,167,104,0.4)] disabled:opacity-50">

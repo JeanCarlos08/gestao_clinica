@@ -181,6 +181,15 @@ export default function AppointmentCalendar({ appointments, onSelect }: Props) {
                   <div className={`p-2 text-center border-b border-[var(--border)] ${isToday ? "bg-[var(--primary)]/10" : "bg-[var(--background)]/50"}`}>
                     <div className="text-[10px] uppercase text-[var(--text-label)]">{WEEKDAYS[day.getDay()]}</div>
                     <div className={`text-lg font-bold ${isToday ? "text-[var(--primary)]" : "text-white"}`}>{day.getDate()}</div>
+                    <span className="cal-dots" aria-hidden="true">
+                      {(() => {
+                        const seen = new Map<string, number>();
+                        items.forEach((a) => seen.set(a.status, (seen.get(a.status) || 0) + 1));
+                        return Array.from(seen.entries()).slice(0, 3).map(([st, n]) => (
+                          <span key={st} className="cal-dot" style={{ background: statusStyle(st).border }} title={`${st} (${n})`} />
+                        ));
+                      })()}
+                    </span>
                   </div>
                   <div className="flex-1 p-1.5 space-y-1.5 overflow-y-auto max-h-[320px]">
                     {items.length === 0 ? (
@@ -215,8 +224,18 @@ export default function AppointmentCalendar({ appointments, onSelect }: Props) {
                       inMonth ? "border-[var(--border)] bg-[var(--background)]/30" : "border-transparent bg-transparent opacity-40"
                     } ${isToday ? "ring-1 ring-[var(--primary)]" : ""}`}
                   >
-                    <div className={`text-[11px] font-semibold mb-0.5 ${isToday ? "text-[var(--primary)]" : "text-[var(--text-muted)]"}`}>
+                    <div className={`text-[11px] font-semibold mb-0.5 flex items-center gap-1 ${isToday ? "text-[var(--primary)]" : "text-[var(--text-muted)]"}`}>
                       {day.getDate()}
+                      <span className="cal-dots" aria-hidden="true">
+                        {(() => {
+                          const seen = new Map<string, number>();
+                          items.forEach((a) => seen.set(a.status, (seen.get(a.status) || 0) + 1));
+                          const dots = Array.from(seen.entries()).slice(0, 3);
+                          return dots.map(([st, n]) => (
+                            <span key={st} className="cal-dot" style={{ background: statusStyle(st).border }} title={`${st} (${n})`} />
+                          ));
+                        })()}
+                      </span>
                     </div>
                     <div className="space-y-0.5">
                       {items.slice(0, 2).map((a) => renderBlock(a, true))}

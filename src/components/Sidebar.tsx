@@ -47,6 +47,8 @@ export default function Sidebar() {
   const [aiMessages, setAiMessages] = useState<{ role: "user" | "assistant"; text: string }[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
   const aiListRef = useRef<HTMLDivElement>(null);
+  const navRef = useRef<HTMLElement>(null);
+  const [pill, setPill] = useState<{ top: number; height: number; opacity: number }>({ top: 24, height: 0, opacity: 0 });
 
   useEffect(() => {
     if (aiListRef.current) aiListRef.current.scrollTop = aiListRef.current.scrollHeight;
@@ -65,6 +67,21 @@ export default function Sidebar() {
   }, [clinicLogo]);
 
   useEffect(() => { setOpen(false); }, [pathname]);
+  // Pill deslizante da navegação: mede o item ativo e viaja até ele
+  useEffect(() => {
+    const measure = () => {
+      const nav = navRef.current;
+      const act = nav?.querySelector<HTMLElement>('a[data-active="true"]');
+      if (!nav || !act || act.offsetHeight < 20) { setPill((px) => ({ ...px, opacity: 0 })); return; }
+      setPill({ top: act.offsetTop + 4, height: Math.max(act.offsetHeight - 8, 36), opacity: 1 });
+    };
+    const t = requestAnimationFrame(measure);
+    const w1 = setTimeout(measure, 260);
+    const w2 = setTimeout(measure, 900);
+    const w3 = setTimeout(measure, 1800);
+    window.addEventListener("resize", measure);
+    return () => { cancelAnimationFrame(t); clearTimeout(w1); clearTimeout(w2); clearTimeout(w3); window.removeEventListener("resize", measure); };
+  }, [pathname]);
 
   useEffect(() => {
     const onResize = () => { if (window.innerWidth >= 768) setOpen(false); };
@@ -97,6 +114,13 @@ export default function Sidebar() {
         });
         if (!res.ok) return;
         const data = await res.json();
+        const bgPref = data.clinica.app_background;
+        if (bgPref && !localStorage.getItem("app_bg")) {
+          if (["clinica", "grafite", "esmeralda"].includes(bgPref)) {
+            document.documentElement.setAttribute("data-bg", bgPref);
+            localStorage.setItem("app_bg", bgPref);
+          }
+        }
         const photo = data.clinica.user_photo_base64 || null;
         if (photo) {
           setPhotoSrc(photo);
@@ -128,7 +152,21 @@ export default function Sidebar() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Erro ao consultar IA");
-      setAiMessages((prev) => [...prev, { role: "assistant", text: data.resposta }]);
+      const resposta: string = data.resposta ?? "";
+      setAiMessages((prev) => [...prev, { role: "assistant", text: "" }]);
+      const step = Math.max(4, Math.ceil(resposta.length / 70));
+      let i = 0;
+      const int = setInterval(() => {
+        i = Math.min(i + step, resposta.length);
+        setAiMessages((prev) => {
+          const last = prev[prev.length - 1];
+          if (!last || last.role !== "assistant") { clearInterval(int); return prev; }
+          const cp = [...prev];
+          cp[cp.length - 1] = { role: "assistant", text: resposta.slice(0, i) };
+          return cp;
+        });
+        if (i >= resposta.length) clearInterval(int);
+      }, 14);
     } catch (err: unknown) {
       setAiMessages((prev) => [
         ...prev,
@@ -208,7 +246,8 @@ export default function Sidebar() {
         </div>
 
         {/* Navigation */}
-        <nav className="px-3 space-y-0.5">
+        <nav ref={navRef} className="relative px-3 space-y-0.5">
+          <span className="nav-slide-pill" style={{ top: pill.top, height: pill.height, opacity: pill.opacity }} aria-hidden="true" />
           {NAV_ITEMS.map(({ href, label, icon: Icon, color }, i) => {
             const active = isActive(href);
             return (
@@ -216,9 +255,10 @@ export default function Sidebar() {
                 key={href}
                 href={href}
                 style={{ animationDelay: `${i * 45}ms` }}
-                className={`list-item-fade group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative overflow-hidden ${
+                data-active={active ? "true" : "false"}
+                className={`list-item-fade group z-[1] flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative overflow-hidden ${
                   active
-                    ? "bg-[linear-gradient(135deg,rgba(142,227,154,0.26),rgba(255,255,255,0.08))] text-white border border-[rgba(168,235,177,0.5)] shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_8px_22px_rgba(0,0,0,0.22)] translate-x-[3px] font-bold"
+                    ? "text-white border border-transparent bg-transparent translate-x-[3px] font-bold"
                     : "text-[#9cbbaa] border border-transparent hover:text-white hover:bg-white/[0.07] hover:translate-x-[3px] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_6px_18px_rgba(0,0,0,0.2)]"
                 }`}
               >

@@ -890,3 +890,60 @@ body { font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) {
   .app-bg-photo::before, .app-bg-photo::after, .app-premium-bg::after, .toast-pop { animation: none !important; }
 }
+
+
+/* ── Onda visual 2 ─────────────────────────────────────────── */
+/* Pill deslizante da sidebar */
+.nav-slide-pill {
+  position: absolute; left: 12px; right: 12px; border-radius: 12px;
+  background: linear-gradient(135deg, rgba(142,227,154,0.26), rgba(255,255,255,0.08));
+  border: 1px solid rgba(168,235,177,0.5);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 8px 22px rgba(0,0,0,0.22);
+  transition: top .3s cubic-bezier(.22,1,.36,1), height .3s cubic-bezier(.22,1,.36,1), opacity .25s;
+  z-index: 0; pointer-events: none;
+}
+
+/* Donut de status */
+.donut-ring {
+  width: 100%; height: 100%; position: absolute; inset: 0;
+  -webkit-mask: radial-gradient(circle 42px, transparent 41px, #000 42px);
+  mask: radial-gradient(circle 42px, transparent 41px, #000 42px);
+  box-shadow: 0 0 32px -6px rgba(77,167,104,0.35);
+}
+.donut-ring::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 1px solid rgba(255,255,255,0.06); -webkit-mask: none; mask: none; }
+[data-theme="light"] .donut-ring { box-shadow: 0 0 32px -6px rgba(29,139,68,0.3); }
+
+/* Dots do calendário */
+.cal-dots { display: flex; gap: 2px; margin-left: 2px; }
+.cal-dot { width: 5px; height: 5px; border-radius: 99px; opacity: 0.9; box-shadow: 0 0 3px rgba(0,0,0,0.4); }
+
+/* Galeria de fundos (configurações) */
+.bg-thumb {
+  position: relative; width: 104px; height: 66px; border-radius: 12px; overflow: hidden;
+  border: 2px solid var(--border); transition: border-color .2s, transform .2s, box-shadow .2s;
+  cursor: pointer; background: rgba(255,255,255,0.02);
+}
+.bg-thumb:hover { transform: translateY(-2px); border-color: rgba(123,207,138,0.5); }
+.bg-thumb-on { border-color: var(--primary) !important; box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 28%, transparent), 0 8px 24px -8px rgba(0,0,0,0.5); }
+.bg-thumb-img { position: absolute; inset: 0; background-size: cover; background-position: center; }
+.bg-thumb-grafite { background: linear-gradient(180deg, #101a14, #060f0a); }
+.bg-thumb-esmeralda { background: radial-gradient(90% 70% at 30% 20%, rgba(77,167,104,0.35), transparent 60%), linear-gradient(180deg, #0a3520, #02100b); }
+.bg-thumb-label {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 2px 0 3px; text-align: center;
+  font-size: 9px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; color: #eafff1;
+  background: linear-gradient(transparent, rgba(2,10,6,0.85) 60%);
+}
+[data-theme="light"] .bg-thumb-label { color: #fff; }
+
+/* Variantes de fundo do sistema */
+[data-bg="grafite"] .app-bg-photo {
+  background-image:
+    radial-gradient(ellipse 120% 80% at 70% -10%, rgba(77,167,104,0.08) 0%, transparent 55%),
+    linear-gradient(180deg, #07120d 0%, #030c08 100%) !important;
+}
+[data-bg="esmeralda"] .app-bg-photo {
+  background-image:
+    radial-gradient(ellipse 130% 90% at 75% -10%, rgba(77,167,104,0.16) 0%, transparent 55%),
+    radial-gradient(ellipse 90% 60% at -5% 80%, rgba(77,167,104,0.10) 0%, transparent 60%),
+    linear-gradient(180deg, #0a3520 0%, #062015 45%, #02100b 100%) !important;
+}

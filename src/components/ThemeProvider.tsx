@@ -31,6 +31,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    const bg = localStorage.getItem("app_bg");
+    if (bg) document.documentElement.setAttribute("data-bg", bg);
+  }, []);
+
+  useEffect(() => {
     const accent = localStorage.getItem("accent");
     if (accent) document.documentElement.setAttribute("data-accent", accent);
   }, []);
