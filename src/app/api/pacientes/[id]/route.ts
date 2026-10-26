@@ -10,6 +10,8 @@ function mapPaciente(p: Record<string, unknown>) {
     nome: p.nome,
     slug: p.slug,
     cpf: p.cpf,
+    rg: p.rg,
+    ativo: !!p.ativo,
     telefone: p.telefone,
     email: p.email,
     data_nascimento: p.data_nascimento ? new Date(String(p.data_nascimento)).toISOString().split("T")[0] : null,
@@ -34,6 +36,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   if (auth instanceof Response) return auth;
 
   const id = parseInt(params.id);
+  if (!Number.isInteger(id)) return jsonError("ID inválido.", 400);
   const result = await sql`SELECT * FROM pacientes WHERE id = ${id}`;
   if (result.length === 0) return jsonError("Paciente não encontrado.", 404);
   return jsonOk(mapPaciente(result[0]));
@@ -44,14 +47,17 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   if (auth instanceof Response) return auth;
 
   const id = parseInt(params.id);
+  if (!Number.isInteger(id)) return jsonError("ID inválido.", 400);
   const body = await request.json();
-  const { nome, cpf, telefone, email, data_nascimento, sexo, estado_civil, profissao, convenio, numero_convenio, empresa, endereco, contato_emergencia, telefone_emergencia, observacoes } = body;
+  const { nome, cpf, rg, ativo, telefone, email, data_nascimento, sexo, estado_civil, profissao, convenio, numero_convenio, empresa, endereco, contato_emergencia, telefone_emergencia, observacoes } = body;
 
   try {
     const result = await sql`
       UPDATE pacientes SET
         nome = COALESCE(${nome}, nome),
         cpf = COALESCE(${cpf}, cpf),
+        rg = COALESCE(${rg}, rg),
+        ativo = COALESCE(${ativo === undefined ? null : (ativo ? 1 : 0)}, ativo),
         telefone = COALESCE(${telefone}, telefone),
         email = COALESCE(${email}, email),
         data_nascimento = COALESCE(${data_nascimento}, data_nascimento),
@@ -84,6 +90,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
   if (auth instanceof Response) return auth;
 
   const id = parseInt(params.id);
+  if (!Number.isInteger(id)) return jsonError("ID inválido.", 400);
   try {
     await sql`UPDATE atendimentos SET paciente_id = NULL WHERE paciente_id = ${id}`;
     const result = await sql`DELETE FROM pacientes WHERE id = ${id} RETURNING id`;

@@ -8,6 +8,7 @@ import {
   Search, Users, CalendarClock, Activity, RefreshCw, Loader2,
   Plus, XCircle, Edit3, Trash2, User, Phone, Mail, Building2, CreditCard, Save,
   FileText, LayoutGrid, List, NotebookPen, Star, Sparkles, Send, Clock3, Printer, Eye,
+  Fingerprint, Cake, Home, Power,
 } from "lucide-react";
 import EmptyIllustration from "@/components/EmptyIllustration";
 import { swrFetcher, API as API_BASE } from "@/lib/api";
@@ -24,6 +25,8 @@ interface PacienteResumo {
   ultimo_atendimento: string | null;
   status: string | null;
   modalidades_distintas: number;
+  rg?: string | null;
+  ativo?: boolean | null;
 }
 
 interface PacienteFull {
@@ -31,6 +34,8 @@ interface PacienteFull {
   nome: string;
   slug: string;
   cpf: string | null;
+  rg: string | null;
+  ativo: boolean | null;
   telefone: string | null;
   email: string | null;
   data_nascimento: string | null;
@@ -47,10 +52,32 @@ interface PacienteFull {
   foto: string | null;
 }
 
+interface AtendimentoItem {
+  id: number;
+  empresa: string | null;
+  nome: string;
+  modalidade: string;
+  data: string | null;
+  hora: string | null;
+  status: string;
+}
+
+const ANAMNESE_CAMPOS = [
+  { key: "queixa_principal", label: "Queixa principal" },
+  { key: "historico_doenca", label: "Histórico da doença atual" },
+  { key: "historico_familiar", label: "Histórico familiar" },
+  { key: "medicamentos", label: "Medicamentos em uso" },
+  { key: "alergias", label: "Alergias" },
+  { key: "habitos", label: "Hábitos" },
+  { key: "observacoes", label: "Observações" },
+] as const;
+
+const emptyAnamnese: Record<string, string> = Object.fromEntries(ANAMNESE_CAMPOS.map(c => [c.key, ""]));
+
 const fetcher = swrFetcher;
 
 const emptyForm = {
-  nome: "", cpf: "", telefone: "", email: "", data_nascimento: "", sexo: "",
+  nome: "", cpf: "", rg: "", telefone: "", email: "", data_nascimento: "", sexo: "",
   estado_civil: "", profissao: "", convenio: "", numero_convenio: "", empresa: "",
   endereco: "", contato_emergencia: "", telefone_emergencia: "", observacoes: "",
 };
@@ -59,21 +86,32 @@ export default function PacientesPage() {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
+  const [soAtivos, setSoAtivos] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [dupWarning, setDupWarning] = useState<{ id: number; nome: string; telefone: string | null; ativo: boolean }[] | null>(null);
+  const [formMsg, setFormMsg] = useState<{ type: "error"; text: string } | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "lista">("grid");
 
   // ── Prontuário / Evolução (reaproveita tabela `notas`) ──
   const [showProntuario, setShowProntuario] = useState(false);
   const [prontPaciente, setProntPaciente] = useState<PacienteResumo | null>(null);
+  const [prontFull, setProntFull] = useState<PacienteFull | null>(null);
+  const [abaPront, setAbaPront] = useState<"evolucao" | "anamnese" | "historico">("evolucao");
   const [evolucoes, setEvolucoes] = useState<{ id:number; titulo:string; conteudo:string; favorita:boolean; criado_em:string }[]>([]);
   const [evoLoading, setEvoLoading] = useState(false);
   const [novaEvo, setNovaEvo] = useState("");
   const [evoSaving, setEvoSaving] = useState(false);
   const [previewTimbrado, setPreviewTimbrado] = useState<string | null>(null);
   const [evoIAloading, setEvoIAloading] = useState(false);
+  // ── Anamnese digital + histórico de atendimentos (paridade streamlit) ──
+  const [anamnese, setAnamnese] = useState<Record<string, string>>(emptyAnamnese);
+  const [anaSaving, setAnaSaving] = useState(false);
+  const [atendimentos, setAtendimentos] = useState<AtendimentoItem[]>([]);
+  const [attLoading, setAttLoading] = useState(false);
+  const [togglingAtivo, setTogglingAtivo] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(q), 280);
@@ -81,7 +119,7 @@ export default function PacientesPage() {
   }, [q]);
 
   const { data: pacientes = [], isLoading: loading, mutate } = useSWR<PacienteResumo[]>(
-    `${API_BASE}/pacientes?q=${encodeURIComponent(debouncedQ)}`,
+    `${API_BASE}/pacientes?q=${encodeURIComponent(debouncedQ)}${soAtivos ? "&ativos=1" : ""}`,
     fetcher,
     { revalidateOnFocus: false, dedupingInterval: 5000 }
   );
@@ -89,6 +127,8 @@ export default function PacientesPage() {
   const openNew = () => {
     setEditingId(null);
     setForm(emptyForm);
+    setDupWarning(null);
+    setFormMsg(null);
     setShowModal(true);
   };
 
@@ -102,7 +142,7 @@ export default function PacientesPage() {
       if (res.ok) {
         const data: PacienteFull = await res.json();
         setForm({
-          nome: data.nome || "", cpf: data.cpf || "", telefone: data.telefone || "",
+          nome: data.nome || "", cpf: data.cpf || "", rg: data.rg || "", telefone: data.telefone || "",
           email: data.email || "", data_nascimento: data.data_nascimento || "",
           sexo: data.sexo || "", estado_civil: data.estado_civil || "",
           profissao: data.profissao || "", convenio: data.convenio || "",
@@ -111,6 +151,8 @@ export default function PacientesPage() {
           telefone_emergencia: data.telefone_emergencia || "", observacoes: data.observacoes || "",
         });
         setEditingId(paciente.id);
+        setDupWarning(null);
+        setFormMsg(null);
         setShowModal(true);
       }
     } catch (e) { console.debug("Erro ao carregar paciente:", e); }
@@ -128,9 +170,45 @@ export default function PacientesPage() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(form),
       });
-      if (res.ok) { setShowModal(false); if (!editingId) confettiBurst(); mutate(); }
-    } catch (e) { console.debug("Erro ao salvar paciente:", e); alert("Erro ao salvar paciente."); }
+      if (res.ok) {
+        setShowModal(false);
+        setDupWarning(null);
+        if (!editingId) confettiBurst();
+        mutate();
+      } else {
+        const d = await res.json().catch(() => ({}));
+        if (res.status === 409) {
+          // Duplicidade (nome exato/CPF igual): busca os registros para mostrar ao usuário.
+          const tk = token;
+          setFormMsg({ type: "error", text: "Cadastro não realizado. Verifique se o paciente já existe." });
+          try {
+            const dupe = await fetch(`${API_BASE}/pacientes/duplicidade?nome=${encodeURIComponent(form.nome)}&cpf=${encodeURIComponent(form.cpf || "")}`, { headers: { Authorization: `Bearer ${tk}` } });
+            if (dupe.ok) setDupWarning(await dupe.json());
+          } catch {}
+        } else {
+          setFormMsg({ type: "error", text: d?.error || d?.detail || "Erro ao salvar paciente." });
+        }
+      }
+    } catch (e) { console.debug("Erro ao salvar paciente:", e); }
     finally { setSaving(false); }
+  };
+
+  const toggleAtivo = async (paciente: PacienteResumo) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    setTogglingAtivo(true);
+    try {
+      const res = await fetch(`${API_BASE}/pacientes/${paciente.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ativo: !paciente.ativo }),
+      });
+      if (res.ok) {
+        mutate();
+        if (prontPaciente?.id === paciente.id) setProntPaciente({ ...paciente, ativo: !paciente.ativo });
+      }
+    } catch (e) { console.debug("Erro ao alternar status:", e); }
+    finally { setTogglingAtivo(false); }
   };
 
   const deletePaciente = async (id: number) => {
@@ -143,6 +221,18 @@ export default function PacientesPage() {
       });
       if (res.ok) mutate();
     } catch (e) { console.debug("Erro ao excluir paciente:", e); }
+  };
+
+  const ativoDe = (p: PacienteResumo) => p.ativo !== false && p.ativo !== null;
+
+  const calcIdade = (dt: string | null | undefined) => {
+    if (!dt) return "";
+    const [y, m, d] = dt.split("-").map(Number);
+    if (!y) return "";
+    const nasc = new Date(y, (m || 1) - 1, d || 1);
+    const diff = Date.now() - nasc.getTime();
+    if (diff < 0) return "";
+    return `${Math.floor(diff / (365.25 * 24 * 3600 * 1000))} anos`;
   };
 
   const uploadPhoto = async (paciente: PacienteResumo, file?: File | null) => {
@@ -216,7 +306,33 @@ export default function PacientesPage() {
     setTimeout(() => { w.focus(); w.print(); }, 350);
   };
   const openProntuario = (p: PacienteResumo) => {
-    setProntPaciente(p); setNovaEvo(""); setShowProntuario(true); fetchEvolucoes(p.id);
+    setProntPaciente(p);
+    setProntFull(null);
+    setAbaPront("evolucao");
+    setNovaEvo("");
+    setShowProntuario(true);
+    fetchEvolucoes(p.id);
+    fetchProntExtra(p.id);
+  };
+
+  const fetchProntExtra = async (pacienteId: number) => {
+    const tk = localStorage.getItem("token");
+    if (!tk) return;
+    setAttLoading(true);
+    try {
+      const [full, ana, att] = await Promise.all([
+        fetch(`${API_BASE}/pacientes/${pacienteId}`, { headers: { Authorization: `Bearer ${tk}` } }),
+        fetch(`${API_BASE}/pacientes/${pacienteId}/anamnese`, { headers: { Authorization: `Bearer ${tk}` } }),
+        fetch(`${API_BASE}/pacientes/${pacienteId}/atendimentos`, { headers: { Authorization: `Bearer ${tk}` } }),
+      ]);
+      if (full.ok) setProntFull(await full.json());
+      if (ana.ok) {
+        const data = await ana.json();
+        setAnamnese(data ? { ...emptyAnamnese, ...Object.fromEntries(ANAMNESE_CAMPOS.map(c => [c.key, (data as Record<string, string>)[c.key] || ""])) } : emptyAnamnese);
+      } else setAnamnese(emptyAnamnese);
+      if (att.ok) setAtendimentos(await att.json());
+    } catch (e) { console.debug("fetchProntExtra", e); }
+    finally { setAttLoading(false); }
   };
   const salvarEvolucao = async () => {
     if (!prontPaciente || !novaEvo.trim()) return;
@@ -233,6 +349,22 @@ export default function PacientesPage() {
     const tk = localStorage.getItem("token"); if (!tk) return;
     await fetch(`${API_BASE}/notas/${id}`, { method:"DELETE", headers:{ Authorization:`Bearer ${tk}` } });
     if (prontPaciente) fetchEvolucoes(prontPaciente.id);
+  };
+
+  const salvarAnamnese = async () => {
+    if (!prontPaciente) return;
+    const tk = localStorage.getItem("token");
+    if (!tk) return;
+    setAnaSaving(true);
+    try {
+      const res = await fetch(`${API_BASE}/pacientes/${prontPaciente.id}/anamnese`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${tk}` },
+        body: JSON.stringify(anamnese),
+      });
+      if (res.ok) confettiBurst(25);
+    } catch (e) { console.debug("salvarAnamnese", e); }
+    finally { setAnaSaving(false); }
   };
   const resumirComIA = async () => {
     if (!novaEvo.trim() || !prontPaciente) return;
@@ -298,11 +430,15 @@ export default function PacientesPage() {
           <Search size={16} className="text-[var(--text-muted)] flex-shrink-0 ml-1" />
           <input type="text" value={q} onChange={e => setQ(e.target.value)}
             onKeyDown={e => e.key === "Enter" && mutate()}
-            placeholder="Buscar por nome, empresa ou CPF..."
+            placeholder="Buscar por nome, CPF, telefone, e-mail ou empresa..."
             className="w-full bg-transparent outline-none text-sm text-white placeholder:text-[var(--text-muted)]" />
           {q && <button onClick={() => setQ("")} className="text-[var(--text-muted)] hover:text-white text-xs p-1">✕</button>}
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => setSoAtivos(s => !s)} title="Mostrar somente pacientes ativos"
+            className={`px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 border transition-all ${soAtivos ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" : "premium-surface text-[var(--text-muted)] hover:text-white border-[var(--border)]"}`}>
+            <Users size={14} /> Somente ativos
+          </button>
           <div className="premium-surface rounded-xl p-1 flex items-center gap-1 border border-[var(--border)]">
             <button onClick={() => setViewMode("grid")} className={`px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${viewMode==="grid" ? "bg-[var(--primary)] text-black shadow-md" : "text-[var(--text-muted)] hover:text-white"}`}><LayoutGrid size={14} /> Grid</button>
             <button onClick={() => setViewMode("lista")} className={`px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${viewMode==="lista" ? "bg-[var(--primary)] text-black shadow-md" : "text-[var(--text-muted)] hover:text-white"}`}><List size={14} /> Lista</button>
@@ -337,6 +473,7 @@ export default function PacientesPage() {
             <PatientCard
               key={paciente.id} paciente={paciente} delay={idx * 30}
               onPhoto={uploadPhoto} onEdit={openEdit} onDelete={deletePaciente}
+              onToggle={() => toggleAtivo(paciente)} toggling={togglingAtivo}
               onViewDocs={() => router.push(`/pacientes/${paciente.id}/doc-editor`)}
               onProntuario={() => openProntuario(paciente)}
             />
@@ -354,7 +491,10 @@ export default function PacientesPage() {
                   </div>
                   <div className="min-w-0 flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 items-center">
                     <div className="min-w-0">
-                      <div className="text-sm font-bold text-white truncate group-hover:text-[var(--primary)] transition-colors">{paciente.nome}</div>
+                      <div className="text-sm font-bold text-white truncate group-hover:text-[var(--primary)] transition-colors flex items-center gap-2">
+                        <span className="truncate">{paciente.nome}</span>
+                        <StatusPill ativo={ativoDe(paciente)} />
+                      </div>
                       <div className="text-xs text-[var(--text-muted)] flex items-center gap-1 truncate"><Building2 size={10} /> {paciente.empresa || "Sem empresa"}</div>
                     </div>
                     <div className="flex items-center gap-2 sm:justify-center">
@@ -389,6 +529,19 @@ export default function PacientesPage() {
               <button onClick={() => setShowModal(false)} className="text-[var(--text-muted)] hover:text-white"><XCircle size={20} /></button>
             </div>
             <form onSubmit={savePaciente} className="p-6 space-y-4">
+              {dupWarning && dupWarning.length > 0 && (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-sm">
+                  <p className="font-bold text-amber-300 mb-2 flex items-center gap-2">⚠️ Possível duplicidade de cadastro encontrada:</p>
+                  <ul className="space-y-1 text-amber-200/90">
+                    {dupWarning.map(d => (
+                      <li key={d.id}>• #{d.id} — {d.nome} ({d.telefone || "sem telefone"})</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {formMsg && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 text-xs font-semibold text-red-300">{formMsg.text}</div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <label className="block text-[11px] font-bold text-[var(--text-label)] uppercase tracking-wider mb-1.5 flex items-center gap-1"><User size={12} /> Nome *</label>
@@ -398,6 +551,11 @@ export default function PacientesPage() {
                 <div>
                   <label className="block text-[11px] font-bold text-[var(--text-label)] uppercase tracking-wider mb-1.5 flex items-center gap-1"><CreditCard size={12} /> CPF</label>
                   <input value={form.cpf} onChange={e => setField("cpf", e.target.value)} placeholder="000.000.000-00"
+                    className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-white focus:border-[var(--primary)] focus:outline-none transition-colors" />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-[var(--text-label)] uppercase tracking-wider mb-1.5 flex items-center gap-1"><Fingerprint size={12} /> RG</label>
+                  <input value={form.rg} onChange={e => setField("rg", e.target.value)} placeholder="00.000.000-0"
                     className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-white focus:border-[var(--primary)] focus:outline-none transition-colors" />
                 </div>
                 <div>
@@ -497,61 +655,170 @@ export default function PacientesPage() {
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-[0_32px_64px_rgba(0,0,0,0.7)] animate-in fade-in zoom-in duration-200 modal-glass modal-in">
             <div className="p-5 border-b border-[var(--border)] flex items-center justify-between sticky top-0 bg-[var(--card)] z-10 rounded-t-2xl">
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <NotebookPen size={18} className="text-emerald-400" /> Prontuário — {prontPaciente.nome}
+              <h2 className="text-lg font-bold text-white flex items-center gap-2 min-w-0">
+                <NotebookPen size={18} className="text-emerald-400 flex-shrink-0" />
+                <span className="truncate">Prontuário — {prontPaciente.nome}</span>
+                <StatusPill ativo={prontPaciente.ativo !== false && prontPaciente.ativo !== null} />
               </h2>
-              <button onClick={() => setShowProntuario(false)} className="text-[var(--text-muted)] hover:text-white"><XCircle size={20} /></button>
+              <button onClick={() => setShowProntuario(false)} className="text-[var(--text-muted)] hover:text-white flex-shrink-0"><XCircle size={20} /></button>
             </div>
-            <div className="p-5 space-y-4 overflow-y-auto flex-1">
-              {/* Nova evolução */}
-              <div className="bg-[var(--background)] border border-[var(--border)] rounded-xl p-4">
-                <label className="block text-[11px] font-bold text-[var(--text-label)] uppercase tracking-wider mb-2 flex items-center gap-1"><NotebookPen size={12} /> Nova evolução (sigilosa)</label>
-                <textarea value={novaEvo} onChange={e => setNovaEvo(e.target.value)} rows={4} placeholder="Ex: Paciente relatou melhora no sono, mantém ansiedade em crises... (SOAP livre)" className="w-full bg-[var(--card)] border border-[var(--border)] rounded-xl px-3 py-3 text-sm text-white placeholder:text-[var(--text-muted)] focus:border-emerald-500/50 focus:outline-none resize-none" />
-                <div className="flex gap-2 mt-3">
-                  <button onClick={resumirComIA} disabled={evoIAloading || !novaEvo.trim()} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 border border-violet-500/20 text-xs font-semibold disabled:opacity-40 transition-colors">
-                    {evoIAloading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />} Lapidar com IA
-                  </button>
-                  <div className="flex-1" />
-                  <button onClick={salvarEvolucao} disabled={evoSaving || !novaEvo.trim()} className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-5 py-2 rounded-xl text-sm disabled:opacity-40 transition-colors">
-                    {evoSaving ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} Salvar evolução
-                  </button>
-                </div>
-                <p className="text-[10px] text-[var(--text-muted)] mt-2">Armazenado na tabela <code>notas</code> com tag <code>paciente:{prontPaciente.id}</code> — sigiloso, LGPD ok.</p>
-              </div>
 
-              {/* Timeline */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-xs font-bold text-[var(--text-label)] uppercase tracking-wider flex items-center gap-1"><Clock3 size={12} /> Timeline ({evolucoes.length})</h3>
-                  <button onClick={() => fetchEvolucoes(prontPaciente.id)} className="text-xs text-[var(--text-muted)] hover:text-white inline-flex items-center gap-1"><RefreshCw size={12} /> Atualizar</button>
+            {/* Chips de identidade (paridade streamlit: CPF, RG, nascimento + idade, contatos) */}
+            <div className="px-5 pt-4">
+              {prontFull ? (
+                <div className="flex flex-wrap gap-2">
+                  {(() => {
+                    const idade = calcIdade(prontFull.data_nascimento);
+                    const chips: { icon: React.ReactNode; val: string }[] = [];
+                    if (prontFull.data_nascimento) chips.push({ icon: <Cake size={11} />, val: `${formatDate(prontFull.data_nascimento)}${idade ? ` · ${idade}` : ""}` });
+                    if (prontFull.cpf) chips.push({ icon: <CreditCard size={11} />, val: prontFull.cpf });
+                    if (prontFull.rg) chips.push({ icon: <Fingerprint size={11} />, val: prontFull.rg });
+                    if (prontFull.telefone) chips.push({ icon: <Phone size={11} />, val: prontFull.telefone });
+                    if (prontFull.email) chips.push({ icon: <Mail size={11} />, val: prontFull.email });
+                    if (prontFull.endereco) chips.push({ icon: <Home size={11} />, val: prontFull.endereco });
+                    if (chips.length === 0) return <p className="text-xs text-[var(--text-muted)] italic">Sem dados de identidade cadastrados — use Editar Dados.</p>;
+                    return chips.map((c, i) => (
+                      <span key={i} className="inline-flex items-center gap-1.5 bg-[var(--background)] border border-[var(--border)] rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-white/90 max-w-full">
+                        <span className="text-[var(--text-muted)]">{c.icon}</span> <span className="truncate">{c.val}</span>
+                      </span>
+                    ));
+                  })()}
                 </div>
-                {evoLoading ? (
-                  <div className="text-center py-8 text-sm text-[var(--text-muted)] flex flex-col items-center gap-2"><Loader2 size={20} className="animate-spin text-emerald-400" /> Carregando evoluções...</div>
-                ) : evolucoes.length === 0 ? (
-                  <div className="premium-surface rounded-xl p-8 text-center border border-dashed border-[var(--border)]">
-                    <NotebookPen size={28} className="mx-auto text-[var(--text-muted)] mb-2 opacity-50" />
-                    <p className="text-sm text-[var(--text-muted)]">Nenhuma evolução registrada.</p>
-                    <p className="text-xs text-[var(--text-muted)] mt-1">A primeira evolução cria o prontuário do paciente.</p>
-                  </div>
-                ) : (
-                  <div className="timeline-rail space-y-4 pl-5">
-                    {evolucoes.map(evo => (
-                      <div key={evo.id} className="timeline-item bg-[var(--background)] border border-[var(--border)] rounded-xl p-4 hover:border-[var(--primary)]/30 hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200 group empty-in">
-                        <div className="flex items-start justify-between gap-2 mb-2">
-                          <div className="text-xs font-bold text-white flex items-center gap-2"><Star size={12} className="text-emerald-400 flex-shrink-0" /> {evo.titulo}</div>
-                          <div className="flex items-center gap-1">
-                            {evo.favorita && <Star size={12} className="text-amber-400 fill-amber-400" />}
-                            <span className="text-[10px] text-[var(--text-muted)] font-mono bg-[var(--card)] border border-[var(--border)] px-1.5 py-0.5 rounded">{new Date(evo.criado_em).toLocaleString("pt-BR")}</span>
-                            <button onClick={() => abrirPreviewTimbrado(evo, prontPaciente.nome)} title="Prévia do timbrado" className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-[var(--primary)]/10 text-[var(--primary)] transition-all btn-motion"><Eye size={12} /></button><button onClick={() => imprimirEvolucaoTimbrada(evo, prontPaciente.nome)} title="Imprimir timbrado" className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-[var(--primary)]/10 text-[var(--primary)] transition-all btn-motion"><Printer size={12} /></button>
-                            <button onClick={() => deletarEvolucao(evo.id)} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-500/10 text-red-400 transition-all"><Trash2 size={12} /></button>
-                          </div>
-                        </div>
-                        <div className="text-sm text-white/90 whitespace-pre-wrap leading-relaxed">{evo.conteudo}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+              ) : (
+                <div className="flex gap-2">
+                  {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-7 w-24 rounded-lg skeleton" />)}
+                </div>
+              )}
+
+              {/* Tabs: Evolução | Anamnese | Histórico */}
+              <div className="mt-4 premium-surface rounded-xl p-1 flex items-center gap-1 border border-[var(--border)]">
+                {([
+                  { id: "evolucao", label: "Evolução Clínica", icon: <NotebookPen size={13} /> },
+                  { id: "anamnese", label: "Anamnese", icon: <FileText size={13} /> },
+                  { id: "historico", label: `Histórico (${atendimentos.length})`, icon: <CalendarClock size={13} /> },
+                ] as const).map(t => (
+                  <button key={t.id} onClick={() => setAbaPront(t.id)}
+                    className={`flex-1 px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${abaPront === t.id ? "bg-[var(--primary)] text-black shadow-md" : "text-[var(--text-muted)] hover:text-white"}`}>
+                    {t.icon} <span className="truncate">{t.label}</span>
+                  </button>
+                ))}
               </div>
+            </div>
+
+            <div className="p-5 space-y-4 overflow-y-auto flex-1">
+              {abaPront === "evolucao" && (<>
+                {/* Nova evolução */}
+                <div className="bg-[var(--background)] border border-[var(--border)] rounded-xl p-4">
+                  <label className="block text-[11px] font-bold text-[var(--text-label)] uppercase tracking-wider mb-2 flex items-center gap-1"><NotebookPen size={12} /> Nova evolução (sigilosa)</label>
+                  <textarea value={novaEvo} onChange={e => setNovaEvo(e.target.value)} rows={4} placeholder="Ex: Paciente relatou melhora no sono, mantém ansiedade em crises... (SOAP livre)" className="w-full bg-[var(--card)] border border-[var(--border)] rounded-xl px-3 py-3 text-sm text-white placeholder:text-[var(--text-muted)] focus:border-emerald-500/50 focus:outline-none resize-none" />
+                  <div className="flex gap-2 mt-3">
+                    <button onClick={resumirComIA} disabled={evoIAloading || !novaEvo.trim()} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 border border-violet-500/20 text-xs font-semibold disabled:opacity-40 transition-colors">
+                      {evoIAloading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />} Lapidar com IA
+                    </button>
+                    <div className="flex-1" />
+                    <button onClick={salvarEvolucao} disabled={evoSaving || !novaEvo.trim()} className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-5 py-2 rounded-xl text-sm disabled:opacity-40 transition-colors">
+                      {evoSaving ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} Salvar evolução
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-[var(--text-muted)] mt-2">Armazenado na tabela <code>notas</code> com tag <code>paciente:{prontPaciente.id}</code> — sigiloso, LGPD ok.</p>
+                </div>
+
+                {/* Timeline */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-xs font-bold text-[var(--text-label)] uppercase tracking-wider flex items-center gap-1"><Clock3 size={12} /> Timeline ({evolucoes.length})</h3>
+                    <button onClick={() => fetchEvolucoes(prontPaciente.id)} className="text-xs text-[var(--text-muted)] hover:text-white inline-flex items-center gap-1"><RefreshCw size={12} /> Atualizar</button>
+                  </div>
+                  {evoLoading ? (
+                    <div className="text-center py-8 text-sm text-[var(--text-muted)] flex flex-col items-center gap-2"><Loader2 size={20} className="animate-spin text-emerald-400" /> Carregando evoluções...</div>
+                  ) : evolucoes.length === 0 ? (
+                    <div className="premium-surface rounded-xl p-8 text-center border border-dashed border-[var(--border)]">
+                      <NotebookPen size={28} className="mx-auto text-[var(--text-muted)] mb-2 opacity-50" />
+                      <p className="text-sm text-[var(--text-muted)]">Nenhuma evolução registrada.</p>
+                      <p className="text-xs text-[var(--text-muted)] mt-1">A primeira evolução cria o prontuário do paciente.</p>
+                    </div>
+                  ) : (
+                    <div className="timeline-rail space-y-4 pl-5">
+                      {evolucoes.map(evo => (
+                        <div key={evo.id} className="timeline-item bg-[var(--background)] border border-[var(--border)] rounded-xl p-4 hover:border-[var(--primary)]/30 hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200 group empty-in">
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <div className="text-xs font-bold text-white flex items-center gap-2"><Star size={12} className="text-emerald-400 flex-shrink-0" /> {evo.titulo}</div>
+                            <div className="flex items-center gap-1">
+                              {evo.favorita && <Star size={12} className="text-amber-400 fill-amber-400" />}
+                              <span className="text-[10px] text-[var(--text-muted)] font-mono bg-[var(--card)] border border-[var(--border)] px-1.5 py-0.5 rounded">{new Date(evo.criado_em).toLocaleString("pt-BR")}</span>
+                              <button onClick={() => abrirPreviewTimbrado(evo, prontPaciente.nome)} title="Prévia do timbrado" className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-[var(--primary)]/10 text-[var(--primary)] transition-all btn-motion"><Eye size={12} /></button><button onClick={() => imprimirEvolucaoTimbrada(evo, prontPaciente.nome)} title="Imprimir timbrado" className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-[var(--primary)]/10 text-[var(--primary)] transition-all btn-motion"><Printer size={12} /></button>
+                              <button onClick={() => deletarEvolucao(evo.id)} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-500/10 text-red-400 transition-all"><Trash2 size={12} /></button>
+                            </div>
+                          </div>
+                          <div className="text-sm text-white/90 whitespace-pre-wrap leading-relaxed">{evo.conteudo}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>)}
+
+              {abaPront === "anamnese" && (
+                <div className="space-y-3">
+                  <p className="text-xs text-[var(--text-muted)]">Anamnese digital estruturada — salva por paciente, atualiza em qualquer momento.</p>
+                  {ANAMNESE_CAMPOS.map(c => (
+                    <div key={c.key}>
+                      <label className="block text-[11px] font-bold text-[var(--text-label)] uppercase tracking-wider mb-1.5">{c.label}</label>
+                      <textarea
+                        rows={c.key === "queixa_principal" ? 2 : 3}
+                        value={anamnese[c.key] || ""}
+                        onChange={e => setAnamnese(prev => ({ ...prev, [c.key]: e.target.value }))}
+                        className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-[var(--text-muted)] focus:border-emerald-500/50 focus:outline-none resize-none"
+                      />
+                    </div>
+                  ))}
+                  <button onClick={salvarAnamnese} disabled={anaSaving}
+                    className="w-full inline-flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-5 py-2.5 rounded-xl text-sm disabled:opacity-40 transition-colors">
+                    {anaSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Salvar Anamnese
+                  </button>
+                </div>
+              )}
+
+              {abaPront === "historico" && (
+                <div className="space-y-2">
+                  {attLoading || (!prontFull && atendimentos.length === 0) ? (
+                    <div className="text-center py-8 text-sm text-[var(--text-muted)] flex flex-col items-center gap-2"><Loader2 size={20} className="animate-spin text-emerald-400" /> Carregando histórico...</div>
+                  ) : atendimentos.length === 0 ? (
+                    <div className="premium-surface rounded-xl p-8 text-center border border-dashed border-[var(--border)]">
+                      <CalendarClock size={28} className="mx-auto text-[var(--text-muted)] mb-2 opacity-50" />
+                      <p className="text-sm text-[var(--text-muted)]">Nenhum atendimento vinculado a este paciente.</p>
+                    </div>
+                  ) : (
+                    <>
+                      {atendimentos.map(a => (
+                        <div key={a.id} className="flex items-center gap-3 bg-[var(--background)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 hover:border-[var(--primary)]/30 transition-colors">
+                          <span className="text-[10px] font-bold text-[var(--text-muted)]">#{a.id}</span>
+                          <span className="text-sm font-semibold text-white truncate">{a.modalidade}</span>
+                          <span className="text-xs text-[var(--text-muted)] truncate hidden sm:inline">{a.empresa || "—"} · {a.data ? formatDate(a.data) : "—"} {a.hora || ""}</span>
+                          <span className={`ml-auto flex-shrink-0 rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide border ${a.status === "Finalizado" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/25" : a.status === "Cancelado" || a.status === "Faltou" ? "bg-red-500/10 text-red-400 border-red-500/25" : "bg-blue-500/10 text-blue-300 border-blue-500/25"}`}>{a.status || "Agendado"}</span>
+                        </div>
+                      ))}
+                      <p className="text-[10px] text-[var(--text-muted)] text-right">Total: {atendimentos.length} atendimento(s).</p>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Ações do prontuário (paridade streamlit) */}
+            <div className="p-4 border-t border-[var(--border)] bg-[var(--background)]/50 flex items-center gap-2 rounded-b-2xl">
+              <button onClick={() => { setShowProntuario(false); openEdit(prontPaciente); }}
+                className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-[var(--primary)] border border-[var(--primary)]/20 bg-[var(--primary)]/5 hover:bg-[var(--primary)]/10 transition-all flex items-center justify-center gap-1.5">
+                <Edit3 size={13} /> Editar Dados
+              </button>
+              <button onClick={() => toggleAtivo(prontPaciente)} disabled={togglingAtivo} title={prontPaciente.ativo !== false ? "Inativar paciente" : "Ativar paciente"}
+                className="flex-1 py-2.5 rounded-xl text-xs font-semibold border transition-all disabled:opacity-50 flex items-center justify-center gap-1.5" style={prontPaciente.ativo !== false ? { color: "#fbbf24", borderColor: "rgba(251,191,36,0.3)", background: "rgba(251,191,36,0.08)" } : { color: "#4ade80", borderColor: "rgba(74,222,128,0.3)", background: "rgba(74,222,128,0.1)" }}>
+                {togglingAtivo ? <Loader2 size={13} className="animate-spin" /> : <Power size={13} />} {prontPaciente.ativo !== false ? "Inativar" : "Ativar"}
+              </button>
+              <button onClick={() => { if (confirm("Tem certeza que deseja excluir este paciente?")) { deletePaciente(prontPaciente.id); setShowProntuario(false); } }}
+                className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-red-400 border border-red-500/20 bg-red-500/5 hover:bg-red-500/10 transition-all flex items-center justify-center gap-1.5">
+                <Trash2 size={13} /> Excluir Paciente
+              </button>
             </div>
           </div>
         </div>
@@ -577,16 +844,19 @@ export default function PacientesPage() {
   );
 }
 
-function PatientCard({ paciente, onPhoto, onEdit, onDelete, onViewDocs, onProntuario, delay }: {
+function PatientCard({ paciente, onPhoto, onEdit, onDelete, onViewDocs, onProntuario, onToggle, toggling, delay }: {
   paciente: PacienteResumo;
   onPhoto: (p: PacienteResumo, f?: File | null) => void;
   onEdit: (p: PacienteResumo) => void;
   onDelete: (id: number) => void;
   onViewDocs: () => void;
   onProntuario: () => void;
+  onToggle: () => void;
+  toggling: boolean;
   delay: number;
 }) {
   const initials = paciente.nome.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() || "").join("");
+  const ativo = paciente.ativo !== false && paciente.ativo !== null;
 
   return (
     <div className="premium-surface rounded-2xl p-5 border border-[var(--border)] hover:border-[var(--border-light)] hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 group list-item-fade"
@@ -606,7 +876,10 @@ function PatientCard({ paciente, onPhoto, onEdit, onDelete, onViewDocs, onProntu
           </label>
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-bold text-white truncate">{paciente.nome}</h3>
+          <h3 className="text-sm font-bold text-white truncate flex items-center gap-2">
+            <span className="truncate">{paciente.nome}</span>
+            <StatusPill ativo={ativo} />
+          </h3>
           <p className="text-xs text-[var(--text-muted)] truncate">{paciente.empresa || "Sem empresa"}</p>
         </div>
       </div>
@@ -637,8 +910,12 @@ function PatientCard({ paciente, onPhoto, onEdit, onDelete, onViewDocs, onProntu
           className="flex-1 py-2 rounded-lg text-xs font-semibold text-[var(--primary)] border border-[var(--primary)]/20 bg-[var(--primary)]/5 hover:bg-[var(--primary)]/10 transition-all flex items-center justify-center gap-1.5">
           <Edit3 size={12} /> Editar
         </button>
-        <button onClick={() => onDelete(paciente.id)}
-          className="py-2 px-3 rounded-lg text-xs font-semibold text-red-400 border border-red-500/20 bg-red-500/5 hover:bg-red-500/10 transition-all flex items-center justify-center">
+        <button onClick={onToggle} title={ativo ? "Inativar paciente" : "Ativar paciente"} disabled={toggling}
+          className="py-2 px-2.5 rounded-lg text-xs font-semibold border transition-all flex items-center justify-center disabled:opacity-50" style={ativo ? { color: "#fbbf24", borderColor: "rgba(251,191,36,0.25)", background: "rgba(251,191,36,0.06)" } : { color: "#4ade80", borderColor: "rgba(74,222,128,0.25)", background: "rgba(74,222,128,0.08)" }}>
+          {toggling ? <Loader2 size={12} className="animate-spin" /> : <Power size={12} />}
+        </button>
+        <button onClick={() => onDelete(paciente.id)} title="Excluir"
+          className="py-2 px-2.5 rounded-lg text-xs font-semibold text-red-400 border border-red-500/20 bg-red-500/5 hover:bg-red-500/10 transition-all flex items-center justify-center">
           <Trash2 size={12} />
         </button>
       </div>
@@ -646,6 +923,14 @@ function PatientCard({ paciente, onPhoto, onEdit, onDelete, onViewDocs, onProntu
         <FileText size={12} /> Documentos
       </button>
     </div>
+  );
+}
+
+function StatusPill({ ativo }: { ativo: boolean }) {
+  return ativo ? (
+    <span className="inline-flex items-center flex-shrink-0 rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">Ativo</span>
+  ) : (
+    <span className="inline-flex items-center flex-shrink-0 rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide bg-red-500/15 text-red-400 border border-red-500/25">Inativo</span>
   );
 }
 

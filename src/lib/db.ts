@@ -63,6 +63,7 @@ export async function ensureSchema() {
       telefone_emergencia VARCHAR(30),
       observacoes TEXT,
       foto TEXT,
+      ativo INTEGER DEFAULT 1,
       criado_em TIMESTAMPTZ DEFAULT NOW(),
       atualizado_em TIMESTAMPTZ DEFAULT NOW()
     )`;
@@ -125,6 +126,27 @@ export async function ensureSchema() {
   await sql`ALTER TABLE documentos ADD COLUMN IF NOT EXISTS conteudo_html TEXT`;
   await sql`ALTER TABLE documentos ADD COLUMN IF NOT EXISTS atualizado_em TIMESTAMPTZ DEFAULT NOW()`;
   await sql`ALTER TABLE documentos ALTER COLUMN google_doc_id DROP NOT NULL`;
+
+  // Paridade com o MVP Psicologia (mesmo banco Neon compartilhado): identidade
+  // documental (rg) e ciclo de vida do cadastro (ativo INTEGER 0/1, tipo do streamlit)
+  // + anamnese digital estruturada — sem DDL destrutivo, tudo idempotente.
+  await sql`ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS rg VARCHAR(30)`;
+  await sql`ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS ativo INTEGER DEFAULT 1`;
+  await sql`
+    CREATE TABLE IF NOT EXISTS anamnese (
+      id SERIAL PRIMARY KEY,
+      paciente_id INTEGER NOT NULL REFERENCES pacientes(id) ON DELETE CASCADE,
+      queixa_principal TEXT,
+      historico_doenca TEXT,
+      historico_familiar TEXT,
+      medicamentos TEXT,
+      alergias TEXT,
+      habitos TEXT,
+      observacoes TEXT,
+      criado_em TIMESTAMPTZ DEFAULT NOW(),
+      atualizado_em TIMESTAMPTZ DEFAULT NOW()
+    )`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_pacientes_ativo ON pacientes(ativo)`;
 
   await sql`
     CREATE TABLE IF NOT EXISTS temporary_permissions (
