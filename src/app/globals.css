@@ -211,12 +211,12 @@ main {
 
 /* ── Animations ─────────────────────────────────────────── */
 .fade-up {
-  animation: fadeUp 0.45s cubic-bezier(0.16,1,0.3,1) both;
+  animation: fadeUp 0.45s cubic-bezier(0.16,1,0.3,1) backwards;
 }
-.fade-up-delay-1 { animation: fadeUp 0.45s 0.05s cubic-bezier(0.16,1,0.3,1) both; }
-.fade-up-delay-2 { animation: fadeUp 0.45s 0.10s cubic-bezier(0.16,1,0.3,1) both; }
-.fade-up-delay-3 { animation: fadeUp 0.45s 0.15s cubic-bezier(0.16,1,0.3,1) both; }
-.fade-up-delay-4 { animation: fadeUp 0.45s 0.20s cubic-bezier(0.16,1,0.3,1) both; }
+.fade-up-delay-1 { animation: fadeUp 0.45s 0.05s cubic-bezier(0.16,1,0.3,1) backwards; }
+.fade-up-delay-2 { animation: fadeUp 0.45s 0.10s cubic-bezier(0.16,1,0.3,1) backwards; }
+.fade-up-delay-3 { animation: fadeUp 0.45s 0.15s cubic-bezier(0.16,1,0.3,1) backwards; }
+.fade-up-delay-4 { animation: fadeUp 0.45s 0.20s cubic-bezier(0.16,1,0.3,1) backwards; }
 
 @keyframes fadeUp {
   from { opacity: 0; transform: translate3d(0, 16px, 0); }
