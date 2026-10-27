@@ -148,6 +148,13 @@ export async function ensureSchema() {
     )`;
   await sql`CREATE INDEX IF NOT EXISTS idx_pacientes_ativo ON pacientes(ativo)`;
 
+  // Cadastrar Novo Atendimento (paridade streamlit): observações/notas da IA e
+  // anexos oficiais (📄 Laudo PDF e 📝 Avaliação PDF) guardados como ref "db:<id>"
+  // na tabela arquivos (BYTEA) — mesma convenção do app streamlit.
+  await sql`ALTER TABLE atendimentos ADD COLUMN IF NOT EXISTS observacoes TEXT`;
+  await sql`ALTER TABLE atendimentos ADD COLUMN IF NOT EXISTS laudo_pdf VARCHAR(80)`;
+  await sql`ALTER TABLE atendimentos ADD COLUMN IF NOT EXISTS avaliacao_pdf VARCHAR(80)`;
+
   await sql`
     CREATE TABLE IF NOT EXISTS temporary_permissions (
       id SERIAL PRIMARY KEY,

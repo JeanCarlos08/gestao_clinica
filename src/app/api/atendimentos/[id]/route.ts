@@ -10,14 +10,17 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
   const id = parseInt(params.id);
   const body = await request.json();
-  const { empresa, nome, modalidade, data, hora, status, paciente_id } = body;
+  const { empresa, nome, modalidade, data, hora, status, paciente_id, observacoes, laudo_pdf, avaliacao_pdf } = body;
 
   try {
     const result = await sql`
       UPDATE atendimentos SET
         empresa = ${empresa || "Particular"}, nome = ${nome}, modalidade = ${modalidade},
         data = ${data}, hora = ${hora}, status = ${status || "Agendado"},
-        paciente_id = ${paciente_id || null}
+        paciente_id = ${paciente_id || null},
+        observacoes = COALESCE(${observacoes === undefined ? null : observacoes || null}, observacoes),
+        laudo_pdf = COALESCE(${laudo_pdf === undefined ? null : laudo_pdf || null}, laudo_pdf),
+        avaliacao_pdf = COALESCE(${avaliacao_pdf === undefined ? null : avaliacao_pdf || null}, avaliacao_pdf)
       WHERE id = ${id}
       RETURNING id
     `;

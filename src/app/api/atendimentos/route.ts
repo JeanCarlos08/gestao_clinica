@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     if (q) {
       atendimentos = await sql`
         SELECT a.id, a.empresa, a.nome, a.modalidade, a.data, a.hora, a.status, a.paciente_id,
-          p.foto
+          a.observacoes, a.laudo_pdf, a.avaliacao_pdf, p.foto
         FROM atendimentos a
         LEFT JOIN pacientes p ON p.id = a.paciente_id
         WHERE a.nome ILIKE ${"%" + q + "%"} OR a.empresa ILIKE ${"%" + q + "%"}
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     } else {
       atendimentos = await sql`
         SELECT a.id, a.empresa, a.nome, a.modalidade, a.data, a.hora, a.status, a.paciente_id,
-          p.foto
+          a.observacoes, a.laudo_pdf, a.avaliacao_pdf, p.foto
         FROM atendimentos a
         LEFT JOIN pacientes p ON p.id = a.paciente_id
         ORDER BY a.data DESC, a.hora DESC
@@ -52,6 +52,9 @@ export async function GET(request: NextRequest) {
         hora: a.hora || "",
         status: a.status,
         paciente_id: a.paciente_id,
+        observacoes: a.observacoes || null,
+        laudo_pdf: a.laudo_pdf || null,
+        avaliacao_pdf: a.avaliacao_pdf || null,
         foto: a.foto,
       })),
       total,
@@ -69,7 +72,7 @@ export async function POST(request: NextRequest) {
   if (auth instanceof Response) return auth;
 
   const body = await request.json();
-  const { empresa, nome, modalidade, data, hora, status, paciente_id } = body;
+  const { empresa, nome, modalidade, data, hora, status, paciente_id, observacoes, laudo_pdf, avaliacao_pdf } = body;
 
   if (!nome || !modalidade || !data || !hora) {
     return jsonError("Campos obrigatórios: nome, modalidade, data, hora. (empresa/convênio opcional para psico)");
@@ -90,8 +93,8 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await sql`
-      INSERT INTO atendimentos (empresa, nome, modalidade, data, hora, status, paciente_id)
-      VALUES (${empresa || "Particular"}, ${nome}, ${modalidade}, ${data}, ${hora}, ${status || "Agendado"}, ${finalPacienteId || null})
+      INSERT INTO atendimentos (empresa, nome, modalidade, data, hora, status, paciente_id, observacoes, laudo_pdf, avaliacao_pdf)
+      VALUES (${empresa || "Particular"}, ${nome}, ${modalidade}, ${data}, ${hora}, ${status || "Agendado"}, ${finalPacienteId || null}, ${observacoes || null}, ${laudo_pdf || null}, ${avaliacao_pdf || null})
       RETURNING id
     `;
 

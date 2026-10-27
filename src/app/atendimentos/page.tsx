@@ -5,7 +5,8 @@ import useSWR from "swr";
 import {
   CalendarDays, Clock, PlayCircle, Plus, Search,
   XCircle, RefreshCw, Sparkles, Building2, User,
-  List, Kanban, MoreHorizontal, ChevronRight, Calendar
+  List, Kanban, MoreHorizontal, ChevronRight, Calendar,
+  FileText, StickyNote, Wand2, Eraser, Loader2
 } from "lucide-react";
 import AppointmentCalendar from "@/components/AppointmentCalendar";
 import EmptyIllustration from "@/components/EmptyIllustration";
@@ -15,6 +16,7 @@ import { MODALIDADES } from "@/lib/constants";
 
 interface Atendimento {
   id: number; empresa: string; nome: string; modalidade: string; data: string; hora: string; status: string; paciente_id: number | null;
+  observacoes: string | null; laudo_pdf: string | null; avaliacao_pdf: string | null;
 }
 
 interface PacienteOption {
@@ -45,6 +47,18 @@ export default function AtendimentosPage() {
   const [pacienteSearchLoading, setPacienteSearchLoading] = useState(false);
   const pacienteDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Observações + anexos (📄 Laudo PDF / 📝 Avaliação PDF) — paridade streamlit
+  const [observacoes, setObservacoes] = useState("");
+  const [laudoFile, setLaudoFile] = useState<File | null>(null);
+  const [avalFile, setAvalFile] = useState<File | null>(null);
+  const [laudoRef, setLaudoRef] = useState<string | null>(null);
+  const [avalRef, setAvalRef] = useState<string | null>(null);
+  const [anexoMsg, setAnexoMsg] = useState("");
+  const [iaBusy, setIaBusy] = useState<"" | "laudo" | "aval">("");
+  const [saving, setSaving] = useState(false);
+  const [pdfView, setPdfView] = useState<{ url: string; titulo: string } | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+
   // AI Prompt Modal
   const [showAI, setShowAI] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
@@ -56,6 +70,8 @@ export default function AtendimentosPage() {
   const [statusFilter, setStatusFilter] = useState<string>("todos");
 
   useEffect(() => { const t = setTimeout(() => setDebouncedQ(q), 300); return () => clearTimeout(t); }, [q]);
+
+  useEffect(() => () => { if (pdfView?.url) URL.revokeObjectURL(pdfView.url); }, [pdfView]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -78,23 +94,133 @@ export default function AtendimentosPage() {
   const atendimentos = paginated?.items ?? [];
   const filteredAtendimentos = statusFilter === "todos" ? atendimentos : atendimentos.filter(a => a.status === statusFilter);
 
+  const resetAnexos = () => {
+    setObservacoes(""); setLaudoFile(null); setAvalFile(null);
+    setLaudoRef(null); setAvalRef(null); setAnexoMsg(""); setIaBusy("");
+  };
+
   const openNew = () => {
     setEditingId(null); setEmpresa(""); setNome(""); setModalidade(""); setModalidadeCustom("");
     setData(new Date().toISOString().split("T")[0]); setHora("09:00"); setStatus("Agendado");
     setSelectedPacienteId(null); setPacienteSearch(""); setShowPacienteDropdown(false);
+    resetAnexos();
     setShowModal(true);
+  };
+
+  const openEdit = (a: Atendimento) => {
+    setEditingId(a.id); setEmpresa(a.empresa); setNome(a.nome); setModalidade(a.modalidade);
+    setData(a.data); setHora(a.hora); setStatus(a.status);
+    setSelectedPacienteId(a.paciente_id || null); setPacienteSearch(""); setShowPacienteDropdown(false);
+    setObservacoes(a.observacoes || ""); setLaudoFile(null); setAvalFile(null);
+    setLaudoRef(a.laudo_pdf || null); setAvalRef(a.avaliacao_pdf || null);
+    setAnexoMsg(""); setIaBusy("");
+    setShowModal(true);
+  };
+
+  const uploadAnexo = async (file: File, prefixo: string): Promise<string | null> => {
+    const tk = localStorage.getItem("token");
+    if (!tk) return null;
+    const fd = new FormData();
+    fd.append("file", file, `${prefixo}_${Date.now()}_${file.name}`);
+    const res = await fetch(`${API_BASE}/arquivos`, { method: "POST", headers: { Authorization: `Bearer ${tk}` }, body: fd });
+    if (!res.ok) return null;
+    const d = await res.json();
+    return d?.id ? `db:${d.id}` : null;
+  };
+
+  const validarPdfIA = async (file: File): Promise<string> => {
+    const tk = localStorage.getItem("token");
+    if (!tk) return "Sessão expirada. Faça login novamente.";
+    try {
+      const fd = new FormData();
+      fd.append("pdf", file); fd.append("mode", "validar");
+      const res = await fetch(`${API_BASE}/ia/pdf`, { method: "POST", headers: { Authorization: `Bearer ${tk}` }, body: fd });
+      if (res.status === 503) return "";
+      if (!res.ok) return "Não foi possível validar o PDF com a IA.";
+      const d = await res.json();
+      return d?.valido ? "" : (d?.msg || "Selecione um PDF clínico (ex.: laudo, atestado, exame).");
+    } catch {
+      return "Falha na validação do PDF.";
+    }
   };
 
   const saveAtendimento = async (e: React.FormEvent) => {
     e.preventDefault();
     const tk = localStorage.getItem("token");
     if (!tk) return;
-    const body = { empresa, nome, modalidade, data, hora, status, paciente_id: selectedPacienteId };
+    setAnexoMsg(""); setSaving(true);
     try {
+      let laudoFinal = laudoRef, avalFinal = avalRef;
+      if (laudoFile) {
+        const invalido = await validarPdfIA(laudoFile);
+        if (invalido) { setAnexoMsg(`Laudo: ${invalido}`); setSaving(false); return; }
+        laudoFinal = await uploadAnexo(laudoFile, "laudo");
+        if (!laudoFinal) { setAnexoMsg("Falha ao enviar o Laudo PDF."); setSaving(false); return; }
+      }
+      if (avalFile) {
+        const invalido = await validarPdfIA(avalFile);
+        if (invalido) { setAnexoMsg(`Avaliação: ${invalido}`); setSaving(false); return; }
+        avalFinal = await uploadAnexo(avalFile, "avaliacao");
+        if (!avalFinal) { setAnexoMsg("Falha ao enviar a Avaliação PDF."); setSaving(false); return; }
+      }
+      const body: Record<string, unknown> = { empresa, nome, modalidade, data, hora, status, paciente_id: selectedPacienteId };
+      if (observacoes) body.observacoes = observacoes;
+      if (laudoFinal) body.laudo_pdf = laudoFinal;
+      if (avalFinal) body.avaliacao_pdf = avalFinal;
       const url = editingId ? `${API_BASE}/atendimentos/${editingId}` : `${API_BASE}/atendimentos`;
       const res = await fetch(url, { method: editingId ? "PUT" : "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${tk}` }, body: JSON.stringify(body) });
       if (res.ok) { setShowModal(false); mutate(); }
-    } catch { alert("Erro ao salvar."); }
+      else setAnexoMsg("Erro ao salvar atendimento.");
+    } catch {
+      setAnexoMsg("Erro ao salvar. Tente novamente.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const iaAnexar = async (kind: "laudo" | "aval") => {
+    const file = kind === "laudo" ? laudoFile : avalFile;
+    const termo = kind === "laudo" ? "Laudo" : "Avaliação";
+    if (!file) { setAnexoMsg(`Anexe o ${termo} PDF primeiro.`); return; }
+    const tk = localStorage.getItem("token");
+    if (!tk) return;
+    setAnexoMsg(""); setIaBusy(kind);
+    try {
+      const fd = new FormData();
+      fd.append("pdf", file); fd.append("mode", "resumo");
+      const res = await fetch(`${API_BASE}/ia/pdf`, { method: "POST", headers: { Authorization: `Bearer ${tk}` }, body: fd });
+      if (res.ok) {
+        const d = await res.json();
+        setObservacoes(d.texto || "A IA não retornou uma resposta.");
+      } else {
+        setAnexoMsg(`A IA não pôde analisar o ${termo} agora.`);
+      }
+    } catch {
+      setAnexoMsg("Falha na comunicação com a IA.");
+    } finally {
+      setIaBusy("");
+    }
+  };
+
+  const limparNotasIA = () => setObservacoes("");
+
+  const openAnexo = async (ref: string | null | undefined, titulo: string) => {
+    if (!ref) return;
+    if (!ref.startsWith("db:")) { setAnexoMsg("Este anexo não tem visualização disponível."); return; }
+    const tk = localStorage.getItem("token");
+    if (!tk) return;
+    setPdfLoading(true); setPdfView({ url: "", titulo });
+    try {
+      const res = await fetch(`${API_BASE}/arquivos/${ref.slice(3)}`, { headers: { Authorization: `Bearer ${tk}` } });
+      if (!res.ok) throw new Error();
+      const blob = await res.blob();
+      setPdfView({ url: URL.createObjectURL(blob), titulo });
+    } catch {
+      setPdfView(null);
+      setAnexoMsg("Não foi possível abrir o anexo.");
+    } finally {
+      setPdfLoading(false);
+    }
   };
 
   const handleAI = async () => {
@@ -234,7 +360,7 @@ export default function AtendimentosPage() {
                   ) : cols.map((a, ci) => {
                     const initials = a.nome.split(" ").filter(Boolean).slice(0,2).map(p=>p[0]?.toUpperCase()).join("");
                     return (
-                      <div key={a.id} onClick={() => { setEditingId(a.id); setEmpresa(a.empresa); setNome(a.nome); setModalidade(a.modalidade); setData(a.data); setHora(a.hora); setStatus(a.status); setSelectedPacienteId(a.paciente_id||null); setPacienteSearch(""); setShowPacienteDropdown(false); setShowModal(true); }} style={{ animationDelay: `${Math.min(ci,9)*55}ms` }} className="list-pop group bg-[var(--card)] border border-[var(--border)] rounded-xl p-3 hover:border-[var(--primary)]/30 hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer">
+                      <div key={a.id} onClick={() => { openEdit(a); }} style={{ animationDelay: `${Math.min(ci,9)*55}ms` }} className="list-pop group bg-[var(--card)] border border-[var(--border)] rounded-xl p-3 hover:border-[var(--primary)]/30 hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer">
                         <div className="flex items-start gap-2 mb-2">
                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--primary)]/20 to-[var(--card)] border border-[var(--border)] flex items-center justify-center text-white font-bold text-[10px] flex-shrink-0">{initials}</div>
                           <div className="min-w-0 flex-1">
@@ -246,6 +372,20 @@ export default function AtendimentosPage() {
                         <div className="flex items-center gap-2 mb-2">
                           <span className="text-[11px] px-2 py-1 rounded-full bg-white/5 border border-white/5 text-[var(--text-muted)] truncate">{a.modalidade}</span>
                         </div>
+                        {(a.laudo_pdf || a.avaliacao_pdf) && (
+                          <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+                            {a.laudo_pdf && (
+                              <button type="button" onClick={(e) => { e.stopPropagation(); openAnexo(a.laudo_pdf, `Laudo — ${a.nome}`); }} className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300 hover:bg-blue-500/20 transition-colors">
+                                <FileText size={9} /> Laudo
+                              </button>
+                            )}
+                            {a.avaliacao_pdf && (
+                              <button type="button" onClick={(e) => { e.stopPropagation(); openAnexo(a.avaliacao_pdf, `Avaliação — ${a.nome}`); }} className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 hover:bg-purple-500/20 transition-colors">
+                                <StickyNote size={9} /> Avaliação
+                              </button>
+                            )}
+                          </div>
+                        )}
                         <div className="flex items-center justify-between text-xs">
                           <span className="flex items-center gap-1 text-[var(--text-muted)]"><CalendarDays size={10} /> {a.data.split("-").reverse().join("/")} <Clock size={10} className="ml-1" /> {a.hora}</span>
                           <StatusBadge status={a.status} />
@@ -273,12 +413,26 @@ export default function AtendimentosPage() {
               const s = getStatusColor(a.status);
               const initials = a.nome.split(" ").filter(Boolean).slice(0,2).map(p=>p[0]?.toUpperCase()).join("");
               return (
-                <div key={a.id} onClick={() => { setEditingId(a.id); setEmpresa(a.empresa); setNome(a.nome); setModalidade(a.modalidade); setData(a.data); setHora(a.hora); setStatus(a.status); setSelectedPacienteId(a.paciente_id||null); setPacienteSearch(""); setShowPacienteDropdown(false); setShowModal(true); }} className="group flex items-center gap-4 p-4 hover:bg-[var(--card-hover)] transition-colors cursor-pointer">
+                <div key={a.id} onClick={() => { openEdit(a); }} className="group flex items-center gap-4 p-4 hover:bg-[var(--card-hover)] transition-colors cursor-pointer">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--primary)]/20 to-[var(--card)] border border-[var(--border)] group-hover:border-[var(--primary)]/30 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">{initials}</div>
                   <div className="min-w-0 flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 items-center">
                     <div className="min-w-0">
                       <div className="font-bold text-sm text-white truncate group-hover:text-[var(--primary)] transition-colors">{a.nome}</div>
                       <div className="text-xs text-[var(--text-muted)] flex items-center gap-1 truncate"><Building2 size={10} /> {a.empresa} <span className="w-1 h-1 rounded-full bg-[var(--text-muted)]" /> {a.modalidade}</div>
+                      {(a.laudo_pdf || a.avaliacao_pdf) && (
+                        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                          {a.laudo_pdf && (
+                            <button type="button" onClick={(e) => { e.stopPropagation(); openAnexo(a.laudo_pdf, `Laudo — ${a.nome}`); }} className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300 hover:bg-blue-500/20 transition-colors">
+                              <FileText size={9} /> Laudo
+                            </button>
+                          )}
+                          {a.avaliacao_pdf && (
+                            <button type="button" onClick={(e) => { e.stopPropagation(); openAnexo(a.avaliacao_pdf, `Avaliação — ${a.nome}`); }} className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 hover:bg-purple-500/20 transition-colors">
+                              <StickyNote size={9} /> Avaliação
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div className="flex sm:justify-center">
                       <div className="inline-flex items-center gap-2 bg-[var(--background)] border border-[var(--border)] rounded-full px-3 py-1.5">
@@ -298,7 +452,7 @@ export default function AtendimentosPage() {
         </div>
       ) : (
         <div className="fade-up-delay-1">
-          <AppointmentCalendar appointments={filteredAtendimentos.map(a => ({ id: a.id, nome: a.nome, empresa: a.empresa, modalidade: a.modalidade, status: a.status, data: a.data, hora: a.hora }))} onSelect={(a) => { const found = filteredAtendimentos.find(x => x.id === a.id); if(found){ setEditingId(found.id); setEmpresa(found.empresa); setNome(found.nome); setModalidade(found.modalidade); setData(found.data); setHora(found.hora); setStatus(found.status); setSelectedPacienteId(found.paciente_id||null); setPacienteSearch(""); setShowPacienteDropdown(false); setShowModal(true); } }} />
+          <AppointmentCalendar appointments={filteredAtendimentos.map(a => ({ id: a.id, nome: a.nome, empresa: a.empresa, modalidade: a.modalidade, status: a.status, data: a.data, hora: a.hora }))} onSelect={(a) => { const found = filteredAtendimentos.find(x => x.id === a.id); if(found) openEdit(found); }} />
         </div>
       )}
 
@@ -408,11 +562,68 @@ export default function AtendimentosPage() {
                     <option>Reagendado</option>
                   </select>
                 </div>
+                <div className="col-span-2">
+                  <label className="block text-[11px] font-bold text-[var(--text-label)] uppercase tracking-wider mb-1.5 flex items-center gap-1">🗒️ Observações</label>
+                  <textarea
+                    value={observacoes} onChange={e => setObservacoes(e.target.value)} rows={3}
+                    placeholder="Observações adicionais ou notas da IA..."
+                    className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl p-3 text-sm text-white placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none transition-colors resize-none"
+                  />
+                  {observacoes && (
+                    <button type="button" onClick={limparNotasIA} className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-[var(--text-muted)] hover:text-red-400 transition-colors">
+                      <Eraser size={10} /> Limpar Notas IA
+                    </button>
+                  )}
+                </div>
+                <div className="col-span-2 grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-[var(--text-label)] uppercase tracking-wider mb-1.5 flex items-center gap-1"><FileText size={12} /> Laudo PDF</label>
+                    <input
+                      type="file" accept="application/pdf,.pdf"
+                      onChange={e => { setLaudoFile(e.target.files?.[0] ?? null); setAnexoMsg(""); }}
+                      className="w-full text-[11px] text-[var(--text-muted)] file:mr-2 file:px-2 file:py-1 file:rounded-lg file:border-0 file:bg-white/5 file:text-[11px] file:text-white file:font-semibold file:cursor-pointer cursor-pointer"
+                    />
+                    {laudoFile && <span className="text-[10px] text-[var(--text-muted)]">{laudoFile.name} · {(laudoFile.size / 1048576).toFixed(1)} MB</span>}
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-[var(--text-label)] uppercase tracking-wider mb-1.5 flex items-center gap-1"><StickyNote size={12} /> Avaliação PDF</label>
+                    <input
+                      type="file" accept="application/pdf,.pdf"
+                      onChange={e => { setAvalFile(e.target.files?.[0] ?? null); setAnexoMsg(""); }}
+                      className="w-full text-[11px] text-[var(--text-muted)] file:mr-2 file:px-2 file:py-1 file:rounded-lg file:border-0 file:bg-white/5 file:text-[11px] file:text-white file:font-semibold file:cursor-pointer cursor-pointer"
+                    />
+                    {avalFile && <span className="text-[10px] text-[var(--text-muted)]">{avalFile.name} · {(avalFile.size / 1048576).toFixed(1)} MB</span>}
+                  </div>
+                </div>
+                <div className="col-span-2 grid grid-cols-2 gap-3">
+                  <button type="button" onClick={() => iaAnexar("laudo")} disabled={!laudoFile || iaBusy !== ""} className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 border border-violet-500/20 text-xs font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                    {iaBusy === "laudo" ? <Loader2 size={12} className="animate-spin" /> : <Wand2 size={12} />} Analisar Laudo com IA
+                  </button>
+                  <button type="button" onClick={() => iaAnexar("aval")} disabled={!avalFile || iaBusy !== ""} className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 border border-violet-500/20 text-xs font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                    {iaBusy === "aval" ? <Loader2 size={12} className="animate-spin" /> : <Wand2 size={12} />} Analisar Avaliação com IA
+                  </button>
+                </div>
+                {(laudoRef || avalRef) && (
+                  <div className="col-span-2 flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[10px] text-[var(--text-muted)] uppercase font-bold tracking-wider mr-1">Anexos:</span>
+                    {laudoRef && (
+                      <button type="button" onClick={() => openAnexo(laudoRef, "Laudo")} className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300 hover:bg-blue-500/20 transition-colors">
+                        <FileText size={9} /> Laudo anexado
+                      </button>
+                    )}
+                    {avalRef && (
+                      <button type="button" onClick={() => openAnexo(avalRef, "Avaliação")} className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 hover:bg-purple-500/20 transition-colors">
+                        <StickyNote size={9} /> Avaliação anexada
+                      </button>
+                    )}
+                  </div>
+                )}
+                {anexoMsg && <div className="col-span-2 text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{anexoMsg}</div>}
               </div>
               <div className="pt-4 flex justify-end gap-3">
                 <button type="button" onClick={() => setShowModal(false)} className="px-5 py-2.5 text-sm font-bold text-[var(--text-muted)] hover:text-white transition-colors">Cancelar</button>
-                <button type="submit" className="bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-colors shadow-[0_0_15px_rgba(77,167,104,0.25)] hover:shadow-[0_0_25px_rgba(77,167,104,0.4)]">
-                  Salvar
+                <button type="submit" disabled={saving} className="bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-colors shadow-[0_0_15px_rgba(77,167,104,0.25)] hover:shadow-[0_0_25px_rgba(77,167,104,0.4)] disabled:opacity-60 flex items-center gap-2">
+                  {saving && <Loader2 size={14} className="animate-spin" />} {saving ? "Salvando..." : "Salvar"}
                 </button>
               </div>
             </form>
@@ -453,6 +664,25 @@ export default function AtendimentosPage() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Viewer de PDF (Laudo/Avaliação) */}
+      {pdfView && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => { if (pdfView.url) URL.revokeObjectURL(pdfView.url); setPdfView(null); }}>
+          <div onClick={e => e.stopPropagation()} className="bg-[var(--card)] border border-[var(--border)] rounded-2xl w-full max-w-3xl h-[80vh] flex flex-col shadow-[0_32px_64px_rgba(0,0,0,0.7)] modal-glass modal-in overflow-hidden">
+            <div className="p-4 border-b border-[var(--border)] flex items-center justify-between">
+              <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                <FileText size={16} className="text-[var(--primary)]" /> {pdfView.titulo}
+              </h2>
+              <button onClick={() => { if (pdfView.url) URL.revokeObjectURL(pdfView.url); setPdfView(null); }} className="text-[var(--text-muted)] hover:text-white"><XCircle size={18} /></button>
+            </div>
+            {pdfLoading ? (
+              <div className="flex-1 flex items-center justify-center gap-2 text-sm text-[var(--text-muted)]"><Loader2 size={16} className="animate-spin" /> Carregando PDF...</div>
+            ) : (
+              <iframe src={pdfView.url} title={pdfView.titulo} className="flex-1 w-full bg-white" />
+            )}
           </div>
         </div>
       )}

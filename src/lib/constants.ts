@@ -16,6 +16,10 @@ export const TABLE_NOTAS = "notas";
 
 export const MODALIDADES = [
   "Psicologia Clínica",
+  "Admissional",
+  "Demissional",
+  "Periódico",
+  "Mudança de função",
   "Psicologia do Trabalho",
   "Avaliação Psicológica",
   "Psicologia Escolar",
