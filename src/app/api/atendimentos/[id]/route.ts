@@ -15,9 +15,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   try {
     const result = await sql`
       UPDATE atendimentos SET
-        empresa = ${empresa || "Particular"}, nome = ${nome}, modalidade = ${modalidade},
-        data = ${data}, hora = ${hora}, status = ${status || "Agendado"},
-        paciente_id = ${paciente_id || null},
+        empresa = COALESCE(${empresa || null}, empresa), nome = COALESCE(${nome || null}, nome),
+        modalidade = COALESCE(${modalidade || null}, modalidade),
+        data = COALESCE(${data || null}, data), hora = COALESCE(${hora || null}, hora),
+        status = COALESCE(${status || null}, status),
+        paciente_id = COALESCE(${paciente_id === undefined ? null : paciente_id || null}, paciente_id),
         observacoes = COALESCE(${observacoes === undefined ? null : observacoes || null}, observacoes),
         laudo_pdf = COALESCE(${laudo_pdf === undefined ? null : laudo_pdf || null}, laudo_pdf),
         avaliacao_pdf = COALESCE(${avaliacao_pdf === undefined ? null : avaliacao_pdf || null}, avaliacao_pdf)
