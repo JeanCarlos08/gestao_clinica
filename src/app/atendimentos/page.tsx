@@ -6,7 +6,8 @@ import {
   CalendarDays, Clock, PlayCircle, Plus, Search,
   XCircle, RefreshCw, Sparkles, Building2, User,
   List, Kanban, MoreHorizontal, ChevronRight, Calendar,
-  FileText, StickyNote, Wand2, Eraser, Loader2
+  FileText, StickyNote, Wand2, Eraser, Loader2,
+  Settings2, Download
 } from "lucide-react";
 import AppointmentCalendar from "@/components/AppointmentCalendar";
 import EmptyIllustration from "@/components/EmptyIllustration";
@@ -59,6 +60,14 @@ export default function AtendimentosPage() {
   const [pdfView, setPdfView] = useState<{ url: string; titulo: string } | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
 
+  // Painel Gerenciar por atendimento (paridade streamlit):
+  // visualizar/download/editar/status/exportar/excluir + parecer IA
+  const [manageId, setManageId] = useState<number | null>(null);
+  const [manageStatus, setManageStatus] = useState("Agendado");
+  const [paneMsg, setPaneMsg] = useState("");
+  const [paneBusy, setPaneBusy] = useState("status");
+  const [aiModalidade, setAiModalidade] = useState("Psicologia Clínica");
+
   // AI Prompt Modal
   const [showAI, setShowAI] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
@@ -91,7 +100,7 @@ export default function AtendimentosPage() {
     { revalidateOnFocus: false, dedupingInterval: 5000 }
   );
 
-  const atendimentos = paginated?.items ?? [];
+  const atendimentos = (paginated?.items ?? []).map(a => ({ ...a, status: a.status || "Agendado" }));
   const filteredAtendimentos = statusFilter === "todos" ? atendimentos : atendimentos.filter(a => a.status === statusFilter);
 
   const resetAnexos = () => {
@@ -223,13 +232,79 @@ export default function AtendimentosPage() {
     }
   };
 
+  const baixarAnexo = async (ref: string | null | undefined, nome: string) => {
+    if (!ref) return;
+    if (!ref.startsWith("db:")) { setPaneMsg("Este anexo não permite download."); return; }
+    const tk = localStorage.getItem("token");
+    if (!tk) return;
+    setPaneMsg("");
+    try {
+      const res = await fetch(`${API_BASE}/arquivos/${ref.slice(3)}`, { headers: { Authorization: `Bearer ${tk}` } });
+      if (!res.ok) throw new Error();
+      const blob = await res.blob();
+      const dl = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      dl.href = url; dl.download = nome; dl.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setPaneMsg("Não foi possível preparar o download do anexo.");
+    }
+  };
+
+  const exportarAtendimento = (a: Atendimento) => {
+    const reg = { id: a.id, nome: a.nome, empresa: a.empresa, modalidade: a.modalidade, data: a.data, hora: a.hora, status: a.status, paciente_id: a.paciente_id, observacoes: a.observacoes, laudo_pdf: a.laudo_pdf, avaliacao_pdf: a.avaliacao_pdf };
+    const blob = new Blob([JSON.stringify(reg, null, 2)], { type: "application/json" });
+    const dl = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    dl.href = url; dl.download = `atendimento-${a.id}.json`; dl.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const salvarStatusManage = async () => {
+    const managed = atendimentos.find(x => x.id === manageId);
+    const tk = localStorage.getItem("token");
+    if (!managed || !tk) return;
+    setPaneBusy("status"); setPaneMsg("");
+    try {
+      const res = await fetch(`${API_BASE}/atendimentos/${managed.id}`, { method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${tk}` }, body: JSON.stringify({ status: manageStatus }) });
+      if (res.ok) { setPaneMsg("Status atualizado."); mutate(); }
+      else setPaneMsg("Erro ao salvar status.");
+    } catch {
+      setPaneMsg("Erro de comunicação.");
+    } finally {
+      setPaneBusy("");
+    }
+  };
+
+  const excluirAtendimento = async (a: Atendimento) => {
+    if (!window.confirm(`Excluir definitivamente o atendimento #${a.id} de ${a.nome}?`)) return;
+    const tk = localStorage.getItem("token");
+    if (!tk) return;
+    setPaneBusy("excluir"); setPaneMsg("");
+    try {
+      const res = await fetch(`${API_BASE}/atendimentos/${a.id}`, { method: "DELETE", headers: { Authorization: `Bearer ${tk}` } });
+      if (res.ok) { setManageId(null); mutate(); }
+      else setPaneMsg("Erro ao excluir.");
+    } catch {
+      setPaneMsg("Erro de comunicação.");
+    } finally {
+      setPaneBusy("");
+    }
+  };
+
+  const openGerenciar = (a: Atendimento) => {
+    setManageId(a.id); setManageStatus(a.status); setPaneMsg(""); setPaneBusy("");
+  };
+
+  const managed = atendimentos.find(x => x.id === manageId) || null;
+
   const handleAI = async () => {
     if (!aiPrompt.trim()) return;
     const tk = localStorage.getItem("token");
     if (!tk) return;
     setAiLoading(true); setAiResult(null);
     try {
-      const res = await fetch(`${API_BASE}/ia/gerar-parecer`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${tk}` }, body: JSON.stringify({ notas: aiPrompt, modalidade: "Psicologia Clínica" }) });
+      const res = await fetch(`${API_BASE}/ia/gerar-parecer`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${tk}` }, body: JSON.stringify({ notas: aiPrompt, modalidade: aiModalidade }) });
       if (res.ok) { const d = await res.json(); setAiResult(d.texto); }
       else setAiResult("Erro ao gerar.");
     } catch { setAiResult("Falha na comunicação."); }
@@ -390,9 +465,14 @@ export default function AtendimentosPage() {
                           <span className="flex items-center gap-1 text-[var(--text-muted)]"><CalendarDays size={10} /> {a.data.split("-").reverse().join("/")} <Clock size={10} className="ml-1" /> {a.hora}</span>
                           <StatusBadge status={a.status} />
                         </div>
-                        <button onClick={(e)=>{ e.stopPropagation(); setAiPrompt(`Gere um parecer para ${a.nome} da empresa ${a.empresa}.`); setAiResult(null); setShowAI(true); }} className="mt-3 w-full py-1.5 rounded-lg bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 border border-violet-500/20 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors">
-                          <Sparkles size={12} /> Parecer IA
-                        </button>
+                        <div className="mt-3 grid grid-cols-2 gap-1.5">
+                          <button onClick={(e)=>{ e.stopPropagation(); openGerenciar(a); }} className="py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-[var(--text-muted)] hover:text-white border border-[var(--border)] text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors">
+                            <Settings2 size={12} /> Gerenciar
+                          </button>
+                          <button onClick={(e)=>{ e.stopPropagation(); setAiPrompt(`Gere um parecer para ${a.nome} da empresa ${a.empresa}.`); setAiModalidade(a.modalidade); setAiResult(null); setShowAI(true); }} className="py-1.5 rounded-lg bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 border border-violet-500/20 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors">
+                            <Sparkles size={12} /> Parecer IA
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
@@ -441,7 +521,8 @@ export default function AtendimentosPage() {
                     </div>
                     <div className="flex items-center justify-between sm:justify-end gap-3">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${s.bg} ${s.text}`}><span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />{a.status}</span>
-                      <button onClick={(e)=>{ e.stopPropagation(); setAiPrompt(`Gere um parecer para ${a.nome} da empresa ${a.empresa}.`); setAiResult(null); setShowAI(true); }} className="hidden sm:inline-flex items-center gap-1 bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 border border-violet-500/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"><Sparkles size={12} /> IA</button>
+                      <button onClick={(e)=>{ e.stopPropagation(); openGerenciar(a); }} className="hidden sm:inline-flex items-center gap-1 bg-white/5 hover:bg-white/10 text-[var(--text-muted)] hover:text-white border border-[var(--border)] px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"><Settings2 size={12} /> Gerenciar</button>
+                      <button onClick={(e)=>{ e.stopPropagation(); setAiPrompt(`Gere um parecer para ${a.nome} da empresa ${a.empresa}.`); setAiModalidade(a.modalidade); setAiResult(null); setShowAI(true); }} className="hidden sm:inline-flex items-center gap-1 bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 border border-violet-500/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"><Sparkles size={12} /> IA</button>
                     </div>
                   </div>
                   <ChevronRight size={14} className="text-[var(--text-muted)] opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all hidden sm:block" />
@@ -663,6 +744,95 @@ export default function AtendimentosPage() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Gerenciar por atendimento (paridade streamlit) */}
+      {managed && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl w-full max-w-xl max-h-[85vh] overflow-y-auto shadow-[0_32px_64px_rgba(0,0,0,0.7)] modal-glass modal-in">
+            <div className="p-5 border-b border-[var(--border)] flex items-start justify-between">
+              <div>
+                <h2 className="text-base font-bold text-white flex items-center gap-2">
+                  <CalendarDays size={17} className="text-[var(--primary)]" /> {managed.nome}
+                </h2>
+                <p className="text-xs text-[var(--text-muted)] mt-1">{managed.empresa} · {managed.data.split("-").reverse().join("/")} às {managed.hora}</p>
+              </div>
+              <button className="text-[var(--text-muted)] hover:text-white"><XCircle size={18} /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="flex items-center gap-2 flex-wrap text-xs">
+                <span className="px-2 py-1 rounded-full bg-white/5 border border-white/10 text-[var(--text-muted)]">ID #{managed.id}</span>
+                <span className="px-2 py-1 rounded-full bg-white/5 border border-white/10 text-[var(--text-muted)]">{managed.modalidade}</span>
+                <StatusBadge status={managed.status} />
+              </div>
+
+              {/* Anexos: visualizar / download */}
+              <div>
+                <span className="block text-[11px] font-bold text-[var(--text-label)] uppercase tracking-wider mb-2">Anexos</span>
+                {managed.laudo_pdf || managed.avaliacao_pdf ? (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {managed.laudo_pdf && (
+                      <span className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs text-blue-300">
+                        <FileText size={11} /> Laudo
+                        <button onClick={() => openAnexo(managed.laudo_pdf, `Laudo — ${managed.nome}`)} className="text-[10px] font-bold hover:text-white">👁</button>
+                        <button onClick={() => baixarAnexo(managed.laudo_pdf, `laudo-${managed.id}.pdf`)} className="text-[10px] font-bold hover:text-white flex items-center gap-0.5"><Download size={10} /> Baixar</button>
+                      </span>
+                    )}
+                    {managed.avaliacao_pdf && (
+                      <span className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-xs text-purple-300">
+                        <StickyNote size={11} /> Avaliação
+                        <button onClick={() => openAnexo(managed.avaliacao_pdf, `Avaliação — ${managed.nome}`)} className="text-[10px] font-bold hover:text-white">👁</button>
+                        <button onClick={() => baixarAnexo(managed.avaliacao_pdf, `avaliacao-${managed.id}.pdf`)} className="text-[10px] font-bold hover:text-white flex items-center gap-0.5"><Download size={10} /> Baixar</button>
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-xs text-[var(--text-muted)]">Nenhum anexo neste atendimento.</p>
+                )}
+              </div>
+
+              {/* Status rápido */}
+              <div>
+                <span className="block text-[11px] font-bold text-[var(--text-label)] uppercase tracking-wider mb-2">Status</span>
+                <div className="flex items-center gap-2">
+                  <select value={manageStatus} onChange={e => setManageStatus(e.target.value)} className="flex-1 bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2 text-sm text-white focus:border-[var(--primary)] focus:outline-none appearance-none">
+                    <option>Agendado</option>
+                    <option>Confirmado</option>
+                    <option>Atendido</option>
+                    <option>Em andamento</option>
+                    <option>Concluído</option>
+                    <option>Cancelado</option>
+                    <option>Faltou</option>
+                    <option>Reagendado</option>
+                  </select>
+                  <button onClick={salvarStatusManage} disabled={paneBusy === "status"} className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 px-3 py-2 rounded-lg text-xs font-bold disabled:opacity-50 flex items-center gap-1.5">
+                    {paneBusy === "status" && <Loader2 size={12} className="animate-spin" />} Salvar status
+                  </button>
+                </div>
+              </div>
+
+              {/* Manutenção de dados */}
+              <div>
+                <span className="block text-[11px] font-bold text-[var(--text-label)] uppercase tracking-wider mb-2">Manutenção de Dados</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={() => { setManageId(null); openEdit(managed); }} className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white border border-[var(--border)] text-xs font-semibold transition-colors">
+                    ✏️ Editar Dados
+                  </button>
+                  <button onClick={() => exportarAtendimento(managed)} className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white border border-[var(--border)] text-xs font-semibold transition-colors">
+                    📝 Exportar (JSON)
+                  </button>
+                  <button onClick={() => { setAiPrompt(`Gere um parecer para ${managed.nome} da empresa ${managed.empresa}.`); setAiModalidade(managed.modalidade); setAiResult(null); setShowAI(true); }} className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 border border-violet-500/20 text-xs font-semibold transition-colors">
+                    🪄 Gerar Parecer IA
+                  </button>
+                  <button onClick={() => excluirAtendimento(managed)} disabled={paneBusy === "excluir"} className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-xs font-semibold transition-colors disabled:opacity-50">
+                    {paneBusy === "excluir" && <Loader2 size={12} className="animate-spin" />} 🗑️ Excluir
+                  </button>
+                </div>
+              </div>
+              {paneMsg && <div className="text-xs text-[var(--text-muted)] bg-white/5 border border-[var(--border)] rounded-lg px-3 py-2">{paneMsg}</div>}
             </div>
           </div>
         </div>
