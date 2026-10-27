@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import useSWR from "swr";
 import {
   CalendarDays, Clock, PlayCircle, Plus, Search,
@@ -77,6 +77,7 @@ export default function AtendimentosPage() {
   // Modern view state
   const [viewMode, setViewMode] = useState<"kanban" | "lista" | "calendario">("kanban");
   const [statusFilter, setStatusFilter] = useState<string>("todos");
+  const [modalidadeFilter, setModalidadeFilter] = useState<string>("todas");
 
   useEffect(() => { const t = setTimeout(() => setDebouncedQ(q), 300); return () => clearTimeout(t); }, [q]);
 
@@ -101,7 +102,15 @@ export default function AtendimentosPage() {
   );
 
   const atendimentos = (paginated?.items ?? []).map(a => ({ ...a, status: a.status || "Agendado" }));
-  const filteredAtendimentos = statusFilter === "todos" ? atendimentos : atendimentos.filter(a => a.status === statusFilter);
+  const modalidadesDisponiveis = useMemo(() => {
+    const set = new Set(atendimentos.map(a => a.modalidade).filter(Boolean));
+    return Array.from(set).sort();
+  }, [atendimentos]);
+
+  const filteredAtendimentos = atendimentos.filter(a =>
+    (statusFilter === "todos" || a.status === statusFilter) &&
+    (modalidadeFilter === "todas" || a.modalidade === modalidadeFilter)
+  );
 
   const resetAnexos = () => {
     setObservacoes(""); setLaudoFile(null); setAvalFile(null);
@@ -374,6 +383,17 @@ export default function AtendimentosPage() {
             />
             {q && <button onClick={() => setQ("")} className="text-[var(--text-muted)] hover:text-white p-1"><XCircle size={14} /></button>}
           </div>
+          <div className="premium-surface rounded-xl p-1.5 flex items-center gap-2 border border-[var(--border)] focus-within:border-[var(--primary)]/30 transition-colors">
+            <span className="text-xs text-[var(--text-muted)] font-semibold ml-1 flex items-center gap-1.5 whitespace-nowrap"><FileText size={14} /> Modalidade</span>
+            <select
+              value={modalidadeFilter}
+              onChange={e => setModalidadeFilter(e.target.value)}
+              className="bg-transparent text-sm text-white outline-none pr-2 py-1.5 cursor-pointer"
+            >
+              <option value="todas" className="bg-[#0e1a13]">Todas</option>
+              {modalidadesDisponiveis.map(m => <option key={m} value={m} className="bg-[#0e1a13]">{m}</option>)}
+            </select>
+          </div>
           <div className="flex items-center gap-2">
             <div className="premium-surface rounded-xl p-1 flex items-center gap-1 border border-[var(--border)]">
               <button onClick={() => setViewMode("kanban")} className={`px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${viewMode==="kanban" ? "bg-[var(--primary)] text-black shadow-md" : "text-[var(--text-muted)] hover:text-white"}`}><Kanban size={14} /> Kanban</button>
@@ -414,7 +434,7 @@ export default function AtendimentosPage() {
       ) : filteredAtendimentos.length === 0 ? (
         <div className="premium-surface rounded-2xl p-16 text-center border border-[var(--border)]">
           <EmptyIllustration variant="appointment" size={100} />
-          <p className="text-white font-semibold mt-4">{q || statusFilter!=="todos" ? "Nenhum resultado para o filtro" : "Nenhum atendimento ainda"}</p>
+          <p className="text-white font-semibold mt-4">{q || statusFilter!=="todos" || modalidadeFilter!=="todas" ? "Nenhum resultado para o filtro" : "Nenhum atendimento ainda"}</p>
           <p className="text-sm text-[var(--text-muted)] mt-1">Ajuste os filtros ou crie um novo agendamento</p>
           <button onClick={openNew} className="mt-6 bg-[var(--primary)] text-black font-bold px-5 py-2.5 rounded-xl text-sm">+ Novo Agendamento</button>
         </div>
