@@ -590,6 +590,12 @@ a:focus-visible {
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* Popup do assistente IA flutuante */
+@keyframes popupIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 /* Typing dots da IA */
 .typing-dots { display: inline-flex; gap: 3px; align-items: center; }
 .typing-dots i {

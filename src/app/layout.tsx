@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Manrope, Inter } from "next/font/google";
 import Sidebar from "@/components/Sidebar";
+import AiChatPopup from "@/components/AiChatPopup";
 import { ToastProvider } from "@/components/Toast";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import TitleSync from "@/components/TitleSync";
@@ -54,6 +55,7 @@ export default function RootLayout({
           <TitleSync />
           <ParallaxBg />
           <Sidebar />
+          <AiChatPopup />
           <main className="flex-1 flex flex-col h-full overflow-hidden pt-14 md:pt-0">
             <ToastProvider>
               <ErrorBoundary>

@@ -6,11 +6,10 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Home, ClipboardList, BarChart2, Upload, Settings, LogOut, FileText, Users,
-  Menu, X, Sparkles, ChevronRight, FileEdit, Bot, Send, Camera, Loader2, Sun, Moon,
+  Menu, X, Sparkles, ChevronRight, FileEdit, Camera, Sun, Moon,
   Command, RefreshCw, Maximize2, Minimize2, Search,
 } from "lucide-react";
 import { buildDisplayName, getLoggedUserProfile, getUserInitials } from "@/lib/auth";
-import AiMarkdown from "@/components/AiMarkdown";
 import { useTheme } from "@/components/ThemeProvider";
 import { useClinicaMarca } from "@/hooks/useClinicaMarca";
 
@@ -44,10 +43,6 @@ export default function Sidebar() {
   const [open, setOpen] = useState(false);
   const [profile, setProfile] = useState({ displayName: "Usuário", role: "" });
   const [photoSrc, setPhotoSrc] = useState<string | null>(null);
-  const [aiQuery, setAiQuery] = useState("");
-  const [aiMessages, setAiMessages] = useState<{ role: "user" | "assistant"; text: string }[]>([]);
-  const [aiLoading, setAiLoading] = useState(false);
-  const aiListRef = useRef<HTMLDivElement>(null);
   const navRef = useRef<HTMLElement>(null);
   const [pill, setPill] = useState<{ top: number; height: number; opacity: number }>({ top: 24, height: 0, opacity: 0 });
   const [collapsed, setCollapsed] = useState(false);
@@ -99,10 +94,6 @@ export default function Sidebar() {
     if (st === "1" || st === "0") setCollapsed(st === "1");
   }, []);
   const toggleCollapsed = () => setCollapsed((c) => { localStorage.setItem("sidebar_collapsed", c ? "0" : "1"); return !c; });
-
-  useEffect(() => {
-    if (aiListRef.current) aiListRef.current.scrollTop = aiListRef.current.scrollHeight;
-  }, [aiMessages, aiLoading]);
 
   useEffect(() => {
     if (clinicLogo) {
@@ -193,47 +184,6 @@ export default function Sidebar() {
 
   const isActive = (href: string) =>
     pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
-
-  /* Mini-chat da IA: envia /api/ia/chat e exibe a conversa no próprio card */
-  const sendAI = async (text?: string) => {
-    const q = (text ?? aiQuery).trim();
-    if (!q || aiLoading) return;
-    setAiQuery("");
-    setAiMessages((prev) => [...prev, { role: "user", text: q }]);
-    setAiLoading(true);
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetch((process.env.NEXT_PUBLIC_API_URL || "/api") + "/ia/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ pergunta: q }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Erro ao consultar IA");
-      const resposta: string = data.resposta ?? "";
-      setAiMessages((prev) => [...prev, { role: "assistant", text: "" }]);
-      const step = Math.max(4, Math.ceil(resposta.length / 70));
-      let i = 0;
-      const int = setInterval(() => {
-        i = Math.min(i + step, resposta.length);
-        setAiMessages((prev) => {
-          const last = prev[prev.length - 1];
-          if (!last || last.role !== "assistant") { clearInterval(int); return prev; }
-          const cp = [...prev];
-          cp[cp.length - 1] = { role: "assistant", text: resposta.slice(0, i) };
-          return cp;
-        });
-        if (i >= resposta.length) clearInterval(int);
-      }, 14);
-    } catch (err: unknown) {
-      setAiMessages((prev) => [
-        ...prev,
-        { role: "assistant", text: `Erro: ${err instanceof Error ? err.message : "falha ao consultar a IA"}` },
-      ]);
-    } finally {
-      setAiLoading(false);
-    }
-  };
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -344,95 +294,6 @@ export default function Sidebar() {
             );
           })}
         </nav>
-
-        {/* Card IA */}
-        <div className="mx-3 mt-4 p-3 sb-hide rounded-2xl bg-[linear-gradient(160deg,rgba(77,167,104,0.28),rgba(0,0,0,0.22))] border border-[rgba(142,227,154,0.28)] shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_10px_26px_rgba(0,0,0,0.28)] backdrop-blur-sm">
-          <div className="flex items-center gap-2 mb-2.5">
-            <div className="w-7 h-7 rounded-[10px] bg-[linear-gradient(135deg,#4DA768,#8ee39a)] flex items-center justify-center shadow-[0_0_14px_rgba(77,167,104,0.4)] flex-shrink-0">
-              <Bot size={14} className="text-[#052417]" strokeWidth={2.5} />
-            </div>
-            <div className="min-w-0">
-              <div className="text-xs font-extrabold text-white leading-none">IA Assistente</div>
-              <div className="text-[9px] text-[#a8e8b7] mt-0.5">Gemini · dados da clínica</div>
-            </div>
-            {aiMessages.length > 0 ? (
-              <button
-                type="button"
-                onClick={() => setAiMessages([])}
-                aria-label="Limpar conversa da IA"
-                className="ml-auto w-5 h-5 rounded-full bg-white/10 border border-white/10 flex items-center justify-center text-[#a8e8b7] hover:text-white hover:bg-white/20 flex-shrink-0 transition-colors"
-              >
-                <X size={10} strokeWidth={3} />
-              </button>
-            ) : (
-              <span className="ml-auto text-[8px] font-black uppercase tracking-[1px] text-[#c8f5d0] bg-white/10 border border-white/10 rounded-full px-1.5 py-[3px] flex-shrink-0">
-                Beta
-              </span>
-            )}
-          </div>
-          {aiMessages.length === 0 && !aiLoading && (
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {[
-                { label: "Resumo do dia", q: "Resumo dos atendimentos de hoje" },
-                { label: "Aguardando hoje", q: "Quais pacientes estão agendados para hoje e aguardam atendimento?" },
-                { label: "Semana cheia?", q: "Qual o dia da semana com mais atendimentos?" },
-                { label: "Ausências", q: "Quantos pacientes faltaram e cancelaram no total?" },
-              ].map((chip) => (
-                <button
-                  key={chip.label}
-                  onClick={() => sendAI(chip.q)}
-                  className="text-[10px] font-bold text-[#d7ece0] bg-white/[0.07] hover:bg-[rgba(142,227,154,0.16)] border border-[rgba(142,227,154,0.22)] hover:border-[rgba(142,227,154,0.45)] rounded-full px-2.5 py-1 transition-all duration-200 hover:-translate-y-px btn-motion"
-                >
-                  {chip.label}
-                </button>
-              ))}
-            </div>
-          )}
-          {aiMessages.length > 0 && (
-            <div
-              ref={aiListRef}
-              className="flex flex-col gap-1.5 mb-2 max-h-44 overflow-y-auto scrollbar-hide"
-            >
-              {aiMessages.map((m, i) => (
-                <div
-                  key={i}
-                  className={`msg-in rounded-lg px-2 py-1.5 break-words ${
-                    m.role === "user"
-                      ? "self-end max-w-[92%] text-[11px] leading-snug whitespace-pre-wrap bg-[rgba(77,167,104,0.32)] text-white border border-[rgba(142,227,154,0.4)]"
-                      : "self-start max-w-[100%] min-w-[70%] bg-[rgba(8,18,13,0.7)] text-[#d7ece0] border border-[rgba(255,255,255,0.1)]"
-                  }`}
-                >
-                  {m.role === "user" ? m.text : <AiMarkdown text={m.text} />}
-                </div>
-              ))}
-              {aiLoading && (
-                <div className="msg-in self-start flex items-center gap-1.5 text-[#a8e8b7] bg-[rgba(8,18,13,0.7)] border border-[rgba(255,255,255,0.1)] rounded-lg px-2.5 py-2">
-                  <span className="typing-dots"><i/><i/><i/></span>
-                </div>
-              )}
-            </div>
-          )}
-          <form
-            onSubmit={(e) => { e.preventDefault(); sendAI(); }}
-            className="flex items-center gap-1.5"
-          >
-            <input
-              value={aiQuery}
-              onChange={(e) => setAiQuery(e.target.value)}
-              placeholder={aiMessages.length ? "Pergunte à IA…" : "Ex: resumo de hoje"}
-              aria-label="Perguntar à IA"
-              className="flex-1 min-w-0 text-xs text-white placeholder:text-[rgba(255,255,255,0.4)] bg-[rgba(8,18,13,0.6)] border border-[rgba(255,255,255,0.14)] rounded-lg px-2.5 py-2 outline-none focus:border-[rgba(142,227,154,0.6)] focus:shadow-[0_0_0_3px_rgba(77,167,104,0.16)] transition-all"
-            />
-            <button
-              type="submit"
-              disabled={!aiQuery.trim() || aiLoading}
-              aria-label="Enviar para a IA"
-              className="w-7 h-7 rounded-lg bg-[linear-gradient(135deg,#4DA768,#1E7A46)] text-[#052417] flex items-center justify-center flex-shrink-0 disabled:opacity-35 hover:shadow-[0_0_12px_rgba(77,167,104,0.5)] transition-all"
-            >
-              {aiLoading ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} strokeWidth={2.5} />}
-            </button>
-          </form>
-        </div>
       </div>
 
       {/* Footer */}
