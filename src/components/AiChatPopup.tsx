@@ -35,7 +35,7 @@ export default function AiChatPopup() {
       const res = await fetch((process.env.NEXT_PUBLIC_API_URL || "/api") + "/ia/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ pergunta: q }),
+        body: JSON.stringify({ pergunta: q, historico: messages.map(m => ({ role: m.role, text: m.text })) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Erro ao consultar IA");

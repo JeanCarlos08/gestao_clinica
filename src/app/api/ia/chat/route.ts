@@ -5,12 +5,14 @@ import { PERM_VIEW_DASHBOARD } from "@/lib/constants";
 import { config } from "@/lib/config";
 import { jsonOk, jsonError, errMessage} from "@/lib/utils";
 
+interface ChatMsg { role: "user" | "assistant"; text: string }
+
 export async function POST(request: NextRequest) {
   const auth = await requirePermission(request, PERM_VIEW_DASHBOARD);
   if (auth instanceof Response) return auth;
 
   const body = await request.json();
-  const { pergunta } = body;
+  const { pergunta, historico } = body as { pergunta?: string; historico?: ChatMsg[] };
 
   if (!pergunta) return jsonError("Pergunta é obrigatória.");
   if (!config.geminiApiKey) return jsonError("IA não configurada.", 503);
@@ -28,7 +30,30 @@ export async function POST(request: NextRequest) {
     const { GoogleGenAI } = await import("@google/genai");
     const genai = new GoogleGenAI({ apiKey: config.geminiApiKey });
 
-    const prompt = `Você é a 'IA Assistente', assistente de gestão clínica. Com base nos dados abaixo (JSON), responda à pergunta do usuário.\n\nDados atuais:\n${context}\n\nPergunta: ${pergunta}\n\nSeja prestativa, use tabelas Markdown se necessário. Cite nomes ou empresas se presentes nos dados. Responda em Português do Brasil.`;
+    const systemPrompt = `Você é a 'IA Assistente', uma assistente inteligente e conversacional, similar ao ChatGPT, dentro de um sistema de gestão clínica (prontuários, agenda e atendimentos de uma clínica de psicologia).
+
+Regras:
+- Você pode conversar sobre QUALQUER assunto (conhecimentos gerais, explicações, redação, resumos, ideias, etc.) como um assistente completo.
+- Quando a pergunta envolver a clínica, pacientes, atendimentos, agenda ou relatórios, use OBRIGATORIAMENTE os dados JSON abaixo e cite nomes/empresas reais presentes neles.
+- Seja prestativa, natural e direta. Use tabelas Markdown quando ajudar.
+- Responda sempre em Português do Brasil.
+- Mantenha a coerência com as mensagens anteriores da conversa (você lembra do histórico).
+
+Dados atuais da clínica:
+${context}`;
+
+    // Histórico da conversa (memória) — só as últimas 20 mensagens
+    const hist = (Array.isArray(historico) ? historico : [])
+      .filter(m => (m.role === "user" || m.role === "assistant") && typeof m.text === "string" && m.text.trim())
+      .slice(-20);
+
+    const contents: { role: string; parts: { text: string }[] }[] = [
+      ...hist.map(m => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: [{ text: m.text }],
+      })),
+      { role: "user", parts: [{ text: pergunta }] },
+    ];
 
     const models = [
       config.geminiModel,
@@ -40,7 +65,8 @@ export async function POST(request: NextRequest) {
       try {
         const response = await genai.models.generateContent({
           model,
-          contents: prompt,
+          contents,
+          config: { systemInstruction: systemPrompt },
         });
         return jsonOk({ resposta: response.text || "Não obtive resposta da IA." });
       } catch (e) {
