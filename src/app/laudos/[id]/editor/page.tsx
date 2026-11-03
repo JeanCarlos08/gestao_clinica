@@ -22,6 +22,7 @@ import {
   AlignJustify, List, ListOrdered, IndentIncrease, IndentDecrease, PaintBucket,
   Code2, Bold, Italic, Underline as UnderlineIcon,
   Strikethrough, Quote, Image as ImageIcon, Table2, Trash2, Eraser, Check,
+  FilePlus2,
 } from "lucide-react";
 import { API as API_BASE } from "@/lib/api";
 
@@ -177,6 +178,8 @@ function NativeEditor({ docId, onBack }: { docId: string; onBack: () => void }) 
   const [palavras, setPalavras] = useState(0);
   const [zoom, setZoom] = useState(100);
   const [downloadOpen, setDownloadOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
   const router = useRouter();
   const API = API_BASE;
 
@@ -250,6 +253,30 @@ function NativeEditor({ docId, onBack }: { docId: string; onBack: () => void }) 
     void persist(ed.getHTML(), titulo);
   };
 
+  const importarDocx = async (file: File) => {
+    if (!ed || ed.isDestroyed) return;
+    setImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(`${API}/laudos/import-docx`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        body: formData,
+      });
+      if (!res.ok) throw new Error("Falha ao importar.");
+      const d = await res.json();
+      const html = d.html || "";
+      ed.commands.setContent(html);
+      setImportOpen(false);
+      setSaveState("ok");
+    } catch {
+      alert("Não foi possível importar o DOCX.");
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const baixarHtml = () => {
     if (!ed || ed.isDestroyed) return;
     const blob = new Blob([`<html><head><meta charset="utf-8"><title>${titulo}</title></head><body>${ed.getHTML()}</body></html>`], { type: "text/html" });
@@ -299,6 +326,18 @@ function NativeEditor({ docId, onBack }: { docId: string; onBack: () => void }) 
           </span>
         </div>
         <div className="docs-top-right">
+          <label className="docs-btn" title="Importar DOCX" style={{ cursor: "pointer" }} onClick={() => setImportOpen(true)}>
+            <FileText size={16} />
+            <input
+              type="file" accept=".docx" style={{ display: "none" }}
+              onChange={ev => {
+                const f = ev.target.files?.[0];
+                if (!f) { ev.target.value = ""; return; }
+                void importarDocx(f);
+                ev.target.value = "";
+              }}
+            />
+          </label>
           <button className="docs-icon-btn" title="Salvar agora" onClick={() => { if (!ed || ed.isDestroyed) return; window.clearTimeout((persistRef.current as unknown as { _t?: number })._t); persist(ed.getHTML(), titulo !== initialTitulo.current ? titulo : undefined); }}><Save size={16} /></button>
           <div className="relative">
             <button className="docs-icon-btn" title="Baixar / Imprimir" onClick={() => setDownloadOpen(v => !v)}><Download size={16} /></button>
@@ -343,6 +382,43 @@ function NativeEditor({ docId, onBack }: { docId: string; onBack: () => void }) 
           <button type="button" onClick={() => setZoom(z => Math.min(200, z + 10))}>+</button>
         </span>
       </div>
+
+      {/* Modal Importar DOCX */}
+      {importOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl w-full max-w-md shadow-[0_32px_64px_rgba(0,0,0,0.7)] p-6">
+            <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <FileText size={18} className="text-amber-400" /> Importar DOCX
+            </h2>
+            <p className="text-sm text-[var(--text-muted)] mb-4">
+              Selecione o arquivo <span className="text-white font-mono">.docx</span> do laudo. O conteúdo será injetado no editor.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setImportOpen(false); }}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-white/[0.04] text-[#9cbbaa] border border-[rgba(255,255,255,0.08)] hover:text-white transition-colors"
+                disabled={importing}
+              >
+                Cancelar
+              </button>
+              <input
+                type="file" accept=".docx" className="hidden"
+                onChange={ev => {
+                  const f = ev.target.files?.[0];
+                  if (!f) { ev.target.value = ""; return; }
+                  void importarDocx(f);
+                  ev.target.value = "";
+                  setImportOpen(false);
+                }}
+              />
+              <label className="flex-1 flex items-center justify-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-[0_0_16px_rgba(77,167,104,0.3)] {importing ? 'opacity-50 pointer-events-none' : ''}" onClick={() => { if (importing) return; }}>
+                {importing ? <Loader2 size={16} className="animate-spin" /> : <FilePlus2 size={16} />}
+                Escolher arquivo
+              </label>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
