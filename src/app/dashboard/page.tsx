@@ -149,6 +149,7 @@ export default function DashboardPage() {
   const taxaPresenca = totalAtendimentos > 0 ? Math.round((presencas / totalAtendimentos) * 100) : 0;
   const taxaFaltas = totalAtendimentos > 0 ? Math.round((faltou / totalAtendimentos) * 100) : 0;
   const taxaConclusao = totalAtendimentos > 0 ? Math.round((concluidos / totalAtendimentos) * 100) : 0;
+  const faturamentoTotal = totalAtendimentos * 50;
   const isFirstLoad = loadingState && !stats && atendimentos.length === 0;
   const insightPatient = upcomingConsultas[0]?.nome || "seus pacientes";
   const agendaHoje = atendimentos
@@ -254,9 +255,9 @@ export default function DashboardPage() {
       )}
 
       {/* ── 4 Cards principais (layout do print) ──────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-5 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-3 sm:gap-5 mb-6">
         {isFirstLoad ? (
-          Array.from({ length: 5 }).map((_, i) => (
+          Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="premium-surface rounded-2xl p-5 animate-pulse">
               <div className="flex justify-between mb-4">
                 <div className="w-12 h-12 rounded-xl skeleton" />
@@ -281,12 +282,6 @@ export default function DashboardPage() {
               hoverClass="metric-card-purple"
             />
             <MetricCard
-              title="Faturamento" value={50} suffix=",00" change="R$"
-              tone="positive" icon={DollarSign}
-              color="text-emerald-400" bgColor="bg-emerald-500/10" borderColor="border-emerald-500/15"
-              hoverClass="metric-card-green"
-            />
-            <MetricCard
               title="Documentos" value={totalDocumentos} suffix="" change="arquivos"
               tone="neutral" icon={FileText}
               color="text-emerald-400" bgColor="bg-emerald-500/10" borderColor="border-emerald-500/15"
@@ -302,8 +297,8 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* ── Segunda linha: métricas de psicologia (mantida) ───── */}
-      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 mb-6">
+      {/* ── Segunda linha: métricas de psicologia + Faturamento ───── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-5 mb-6">
         {isFirstLoad ? null : (
           <>
             <MetricCard
@@ -319,6 +314,12 @@ export default function DashboardPage() {
               tone="neutral" icon={Activity}
               color="text-purple-400" bgColor="bg-purple-500/10" borderColor="border-purple-500/15"
               hoverClass="metric-card-purple"
+            />
+            <MetricCard
+              title="Faturamento" value={faturamentoTotal} suffix=",00" change="R$"
+              tone="positive" icon={DollarSign}
+              color="text-emerald-400" bgColor="bg-emerald-500/10" borderColor="border-emerald-500/15"
+              hoverClass="metric-card-green"
             />
             <MetricCard
               title="Taxa de Presença" value={taxaPresenca} suffix="%" change={taxaFaltas > 15 ? `${taxaFaltas}% faltas` : "Adesão"}
