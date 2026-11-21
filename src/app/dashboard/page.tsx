@@ -8,6 +8,7 @@ import {
   Users, CalendarCheck, TrendingUp, Activity, Bell, Calendar as CalendarIcon,
   Clock, ChevronRight, ArrowUpRight, Sparkles, type LucideIcon, Flame,
   AlertCircle, XCircle, RotateCcw, UserCheck, Home, Database, FileText, ClipboardList,
+  DollarSign,
 } from "lucide-react";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { getLoggedUserProfile } from "@/lib/auth";
@@ -253,9 +254,9 @@ export default function DashboardPage() {
       )}
 
       {/* ── 4 Cards principais (layout do print) ──────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-5 mb-6">
         {isFirstLoad ? (
-          Array.from({ length: 4 }).map((_, i) => (
+          Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="premium-surface rounded-2xl p-5 animate-pulse">
               <div className="flex justify-between mb-4">
                 <div className="w-12 h-12 rounded-xl skeleton" />
@@ -278,6 +279,12 @@ export default function DashboardPage() {
               tone="neutral" icon={ClipboardList}
               color="text-violet-400" bgColor="bg-violet-500/10" borderColor="border-violet-500/15"
               hoverClass="metric-card-purple"
+            />
+            <MetricCard
+              title="Faturamento" value={50} suffix=",00" change="R$"
+              tone="positive" icon={DollarSign}
+              color="text-emerald-400" bgColor="bg-emerald-500/10" borderColor="border-emerald-500/15"
+              hoverClass="metric-card-green"
             />
             <MetricCard
               title="Documentos" value={totalDocumentos} suffix="" change="arquivos"
