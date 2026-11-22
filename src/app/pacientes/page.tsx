@@ -211,6 +211,26 @@ export default function PacientesPage() {
     finally { setTogglingAtivo(false); }
   };
 
+  const baixarPdfAtendimento = async (pacienteId: number, attId: number) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/pacientes/${pacienteId}/atendimentos/${attId}/pdf`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) { alert("Erro ao baixar PDF do atendimento."); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `atendimento_${attId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch { alert("Erro ao baixar PDF do atendimento."); }
+  };
+
   const deletePaciente = async (id: number) => {
     if (!confirm("Tem certeza que deseja excluir este paciente?")) return;
     const token = localStorage.getItem("token");
@@ -796,15 +816,13 @@ export default function PacientesPage() {
                           <span className="text-sm font-semibold text-white truncate">{a.modalidade}</span>
                           <span className="text-xs text-[var(--text-muted)] truncate hidden sm:inline">{a.empresa || "—"} · {a.data ? formatDate(a.data) : "—"} {a.hora || ""}</span>
                           <span className={`ml-auto flex-shrink-0 rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide border ${a.status === "Finalizado" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/25" : a.status === "Cancelado" || a.status === "Faltou" ? "bg-red-500/10 text-red-400 border-red-500/25" : "bg-blue-500/10 text-blue-300 border-blue-500/25"}`}>{a.status || "Agendado"}</span>
-                          <a
-                            href={`${API_BASE}/pacientes/${prontPaciente!.id}/atendimentos/${a.id}/pdf`}
-                            target="_blank"
-                            rel="noreferrer"
+                          <button
+                            onClick={() => baixarPdfAtendimento(prontPaciente!.id, a.id)}
                             className="p-2 rounded-lg bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] border border-[var(--primary)]/20 transition-colors"
                             title="Baixar PDF do atendimento"
                           >
                             <Download size={13} />
-                          </a>
+                          </button>
                         </div>
                       ))}
                       <p className="text-[10px] text-[var(--text-muted)] text-right">Total: {atendimentos.length} atendimento(s).</p>
