@@ -965,21 +965,18 @@ function PatientCard({ paciente, onPhoto, onEdit, onDelete, onViewDocs, onProntu
           className="py-2 px-2.5 rounded-lg text-xs font-semibold border transition-all flex items-center justify-center disabled:opacity-50" style={ativo ? { color: "#fbbf24", borderColor: "rgba(251,191,36,0.25)", background: "rgba(251,191,36,0.06)" } : { color: "#4ade80", borderColor: "rgba(74,222,128,0.25)", background: "rgba(74,222,128,0.08)" }}>
           {toggling ? <Loader2 size={12} className="animate-spin" /> : <Power size={12} />}
         </button>
-        <button onClick={() => onDelete(paciente.id)} title="Excluir"
-          className="py-2 px-2.5 rounded-lg text-xs font-semibold text-red-400 border border-red-500/20 bg-red-500/5 hover:bg-red-500/10 transition-all flex items-center justify-center">
+      </div>
+      <div className="flex gap-2 mt-2">
+        <button onClick={onViewDocs} className="flex-1 py-2 rounded-lg text-xs font-semibold text-violet-400 border border-violet-500/20 bg-violet-500/5 hover:bg-violet-500/10 transition-all flex items-center justify-center gap-1.5">
+          <FileText size={12} /> Documentos
+        </button>
+        <button onClick={() => onDownloadUltimoPdf(paciente.id)} className="flex-1 py-2 rounded-lg text-xs font-semibold text-[var(--primary)] border border-[var(--primary)]/20 bg-[var(--primary)]/5 hover:bg-[var(--primary)]/10 transition-all flex items-center justify-center gap-1.5">
+          <Download size={12} /> Baixar PDF
+        </button>
+        <button onClick={() => onDelete(paciente.id)} title="Excluir" className="flex-1 py-2 rounded-lg text-xs font-semibold text-red-400 border border-red-500/20 bg-red-500/5 hover:bg-red-500/10 transition-all flex items-center justify-center gap-1.5">
           <Trash2 size={12} />
         </button>
       </div>
-      <button onClick={onViewDocs} className="mt-2 w-full py-2 rounded-lg text-xs font-semibold text-violet-400 border border-violet-500/20 bg-violet-500/5 hover:bg-violet-500/10 transition-all flex items-center justify-center gap-1.5">
-        <FileText size={12} /> Documentos
-      </button>
-      <button onClick={() => onDownloadUltimoPdf(paciente.id)} className="mt-2 w-full py-2 rounded-lg text-xs font-semibold text-[var(--primary)] border border-[var(--primary)]/20 bg-[var(--primary)]/5 hover:bg-[var(--primary)]/10 transition-all flex items-center justify-center gap-1.5">
-        <Download size={12} /> Baixar PDF
-      </button>
-      <button onClick={() => onDelete(paciente.id)} title="Excluir"
-        className="py-2 px-2.5 rounded-lg text-xs font-semibold text-red-400 border border-red-500/20 bg-red-500/5 hover:bg-red-500/10 transition-all flex items-center justify-center">
-        <Trash2 size={12} />
-      </button>
     </div>
   );
 }
