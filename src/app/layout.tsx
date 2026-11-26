@@ -36,6 +36,8 @@ export const metadata: Metadata = {
     ],
     apple: "/icons/icon-192.png",
   },
+  themeColor: "#041214",
+  viewport: "width=device-width, initial-scale=1.0",
 };
 
 export const viewport = {

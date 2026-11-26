@@ -382,7 +382,7 @@ export default function LoginPage() {
         /* Canvas de partículas */
         .auth-canvas {
           position: fixed; inset: 0;
-          width: 100vw; height: 100vh;
+          width: 100vw; height: 100dvh;
           display: block;
           pointer-events: none;
           z-index: 0;
