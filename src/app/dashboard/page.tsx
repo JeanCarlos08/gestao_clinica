@@ -880,7 +880,7 @@ function TiltCard({ children }: { children: React.ReactNode }) {
 
 function MetricCard({ title, value, suffix, change, tone = "neutral", icon: Icon, color, bgColor, borderColor, hoverClass = "", spark }: MetricCardProps) {
   return (
-    <div className={`premium-surface rounded-2xl p-4 sm:p-5 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group overflow-hidden relative border ${borderColor} ${hoverClass} fade-up`}>
+    <div className={`premium-surface rounded-2xl p-4 sm:p-5 relative overflow-hidden ${borderColor} ${hoverClass} fade-up`}>
      <TiltCard>
       {/* Top accent line - estética psicologia premium */}
       <div className="absolute top-0 left-4 right-4 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-60 group-hover:via-[var(--primary)]/30 transition-all duration-500" />
@@ -910,6 +910,12 @@ function MetricCard({ title, value, suffix, change, tone = "neutral", icon: Icon
         </div>
       ) : null}
      </TiltCard>
+
+     {/* Pulso respirável usando CSS animation */}
+     <div className="absolute inset-0 rounded-2xl opacity-30 group-hover:opacity-0 transition-opacity duration-500">
+       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-emerald-500/20 border border-emerald-500/10 rounded-full animate-pulse-soft">
+       </div>
+     </div>
     </div>
   );
 }

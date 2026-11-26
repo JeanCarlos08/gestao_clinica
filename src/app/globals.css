@@ -265,6 +265,13 @@ main {
   50%       { box-shadow: 0 0 0 6px rgba(245,158,11,0); }
 }
 
+/* Animação de pulse suave para cards - respiração sutil */
+@keyframes pulseSoft {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(1.05); }
+}
+.animate-pulse-soft { animation: pulseSoft 4s ease-in-out infinite; }
+
 /* Staggered list items */
 .list-item-fade {
   opacity: 0;
