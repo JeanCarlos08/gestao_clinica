@@ -1089,4 +1089,11 @@ body { font-variant-numeric: tabular-nums; }
   body { background: #fff !important; color: #111 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .premium-surface { background: #fff !important; border: 1px solid #ccc !important; box-shadow: none !important; }
   svg rect, .recharts-surface { shape-rendering: crispEdges; }
+
+/* --- Scroll fix desktop --- */
+body { overflow-y: auto !important; }
+main { overflow-y: auto !important; }
+
+/* --- Mobile scroll --- */
+html { overflow-scrolling: touch; }
 }
