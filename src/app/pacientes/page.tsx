@@ -231,6 +231,25 @@ export default function PacientesPage() {
     } catch { alert("Erro ao baixar PDF do atendimento."); }
   };
 
+  const baixarUltimoAtendimentoPdf = async (pacienteId: number) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/pacientes/${pacienteId}/atendimentos`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) { alert("Erro ao buscar atendimentos."); return; }
+      const lista = await res.json();
+      if (!lista || lista.length === 0) { alert("Nenhum atendimento encontrado."); return; }
+      const ultimo = lista.reduce((a: any, b: any) => {
+        const da = new Date(a.data || "").getTime();
+        const db = new Date(b.data || "").getTime();
+        return db > da ? b : a;
+      });
+      await baixarPdfAtendimento(pacienteId, ultimo.id);
+    } catch { alert("Erro ao baixar PDF do atendimento."); }
+  };
+
   const deletePaciente = async (id: number) => {
     if (!confirm("Tem certeza que deseja excluir este paciente?")) return;
     const token = localStorage.getItem("token");
@@ -496,6 +515,7 @@ export default function PacientesPage() {
               onToggle={() => toggleAtivo(paciente)} toggling={togglingAtivo}
               onViewDocs={() => router.push(`/pacientes/${paciente.id}/doc-editor`)}
               onProntuario={() => openProntuario(paciente)}
+              onDownloadUltimoPdf={baixarUltimoAtendimentoPdf}
             />
           ))}
         </div>
@@ -873,7 +893,7 @@ export default function PacientesPage() {
   );
 }
 
-function PatientCard({ paciente, onPhoto, onEdit, onDelete, onViewDocs, onProntuario, onToggle, toggling, delay }: {
+function PatientCard({ paciente, onPhoto, onEdit, onDelete, onViewDocs, onProntuario, onToggle, toggling, delay, onDownloadUltimoPdf }: {
   paciente: PacienteResumo;
   onPhoto: (p: PacienteResumo, f?: File | null) => void;
   onEdit: (p: PacienteResumo) => void;
@@ -881,6 +901,7 @@ function PatientCard({ paciente, onPhoto, onEdit, onDelete, onViewDocs, onProntu
   onViewDocs: () => void;
   onProntuario: () => void;
   onToggle: () => void;
+  onDownloadUltimoPdf: (id: number) => void;
   toggling: boolean;
   delay: number;
 }) {
@@ -950,6 +971,13 @@ function PatientCard({ paciente, onPhoto, onEdit, onDelete, onViewDocs, onProntu
       </div>
       <button onClick={onViewDocs} className="mt-2 w-full py-2 rounded-lg text-xs font-semibold text-violet-400 border border-violet-500/20 bg-violet-500/5 hover:bg-violet-500/10 transition-all flex items-center justify-center gap-1.5">
         <FileText size={12} /> Documentos
+      </button>
+      <button onClick={() => onDownloadUltimoPdf(paciente.id)} className="mt-2 w-full py-2 rounded-lg text-xs font-semibold text-[var(--primary)] border border-[var(--primary)]/20 bg-[var(--primary)]/5 hover:bg-[var(--primary)]/10 transition-all flex items-center justify-center gap-1.5">
+        <Download size={12} /> Baixar PDF
+      </button>
+      <button onClick={() => onDelete(paciente.id)} title="Excluir"
+        className="py-2 px-2.5 rounded-lg text-xs font-semibold text-red-400 border border-red-500/20 bg-red-500/5 hover:bg-red-500/10 transition-all flex items-center justify-center">
+        <Trash2 size={12} />
       </button>
     </div>
   );
