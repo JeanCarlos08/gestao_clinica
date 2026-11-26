@@ -6,7 +6,7 @@ import Image from "next/image";
 import useSWR from "swr";
 import {
   Users, CalendarCheck, TrendingUp, Activity, Bell, Calendar as CalendarIcon,
-  Clock, ChevronRight, ArrowUpRight, Sparkles, type LucideIcon, Flame,
+  Clock, ChevronRight, ChevronLeft, X, ArrowUpRight, Sparkles, type LucideIcon, Flame,
   AlertCircle, XCircle, RotateCcw, UserCheck, Home, Database, FileText, ClipboardList,
   DollarSign,
 } from "lucide-react";
@@ -72,9 +72,35 @@ interface HealthStatus {
   latency_ms?: number;
 }
 
+interface FaturamentoDia {
+  dia: number;
+  data: string;
+  atendimentos: Array<{
+    id: number; nome: string; modalidade: string; data: string; hora: string | null;
+    status: string; empresa: string | null; paciente_id: number | null; foto: string | null;
+  }>;
+  totalAtendimentos: number;
+  faturamento: number;
+}
+
+interface FaturamentoData {
+  ano: number;
+  mes: number;
+  ultimoDiaMes: number;
+  diaHoje: number | null;
+  totalAtendimentos: number;
+  totalFaturamento: number;
+  diasDoMes: FaturamentoDia[];
+  nomeMes: string;
+}
+
 type BadgeTone = "neutral" | "positive" | "warning";
 
 const weekdayOrder = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+const MESES_PT = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+];
 const AttendanceChart = dynamic(() => import("@/components/DashboardChart"), {
   ssr: false,
   loading: () => <div className="h-[280px] w-full flex items-center justify-center"><div className="skeleton w-full h-full rounded-xl" /></div>,
@@ -106,6 +132,15 @@ export default function DashboardPage() {
     `${API_BASE}/health/detail`,
     swrFetcher,
     { revalidateOnFocus: false, dedupingInterval: 30000, shouldRetryOnError: false }
+  );
+
+  const [faturamentoOpen, setFaturamentoOpen] = useState(false);
+  const [fatAno, setFatAno] = useState(() => new Date().getFullYear());
+  const [fatMes, setFatMes] = useState(() => new Date().getMonth() + 1);
+  const { data: fatData, isLoading: fatLoading } = useSWR<FaturamentoData>(
+    `${API_BASE}/faturamento?ano=${fatAno}&mes=${fatMes}`,
+    swrFetcher,
+    { revalidateOnFocus: false, dedupingInterval: 10000 }
   );
 
   const payload = data && !Array.isArray(data) ? data : null;
@@ -149,7 +184,15 @@ export default function DashboardPage() {
   const taxaPresenca = totalAtendimentos > 0 ? Math.round((presencas / totalAtendimentos) * 100) : 0;
   const taxaFaltas = totalAtendimentos > 0 ? Math.round((faltou / totalAtendimentos) * 100) : 0;
   const taxaConclusao = totalAtendimentos > 0 ? Math.round((concluidos / totalAtendimentos) * 100) : 0;
-  const faturamentoTotal = totalAtendimentos * 50;
+  const faturamentoTotal = fatData?.totalFaturamento ?? 0;
+  const mudarMesFat = (delta: number) => {
+    setFatMes(prev => {
+      let novoMes = prev + delta;
+      if (novoMes > 12) { novoMes = 1; setFatAno(a => a + 1); }
+      if (novoMes < 1) { novoMes = 12; setFatAno(a => a - 1); }
+      return novoMes;
+    });
+  };
   const isFirstLoad = loadingState && !stats && atendimentos.length === 0;
   const insightPatient = upcomingConsultas[0]?.nome || "seus pacientes";
   const agendaHoje = atendimentos
@@ -315,12 +358,21 @@ export default function DashboardPage() {
               color="text-purple-400" bgColor="bg-purple-500/10" borderColor="border-purple-500/15"
               hoverClass="metric-card-purple"
             />
-            <MetricCard
-              title="Faturamento" value={faturamentoTotal} suffix=",00" change="R$"
-              tone="positive" icon={DollarSign}
-              color="text-emerald-400" bgColor="bg-emerald-500/10" borderColor="border-emerald-500/15"
-              hoverClass="metric-card-green"
-            />
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => setFaturamentoOpen(true)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setFaturamentoOpen(true); }}
+              className="cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 rounded-2xl"
+              title="Ver detalhes do faturamento mensal"
+            >
+              <MetricCard
+                title="Faturamento" value={faturamentoTotal} suffix=",00" change="R$"
+                tone="positive" icon={DollarSign}
+                color="text-emerald-400" bgColor="bg-emerald-500/10" borderColor="border-emerald-500/15"
+                hoverClass="metric-card-green"
+              />
+            </div>
             <MetricCard
               title="Taxa de Presença" value={taxaPresenca} suffix="%" change={taxaFaltas > 15 ? `${taxaFaltas}% faltas` : "Adesão"}
               tone={taxaFaltas > 15 ? "warning" : "positive"} icon={UserCheck}
@@ -570,6 +622,210 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      {faturamentoOpen && (
+        <FaturamentoModal
+          data={fatData}
+          loading={fatLoading}
+          ano={fatAno}
+          mes={fatMes}
+          onPrev={() => mudarMesFat(-1)}
+          onNext={() => mudarMesFat(1)}
+          onClose={() => setFaturamentoOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── FaturamentoModal ─────────────────────────────────────────
+function fatStatusColor(status: string) {
+  const s = (status || "").toLowerCase();
+  if (s === "finalizado" || s === "concluído" || s === "atendido") return "text-emerald-400";
+  if (s === "cancelado" || s === "faltou") return "text-red-400";
+  if (s === "reagendado") return "text-blue-400";
+  return "text-[var(--text-muted)]";
+}
+
+interface FaturamentoModalProps {
+  data?: FaturamentoData;
+  loading: boolean;
+  ano: number;
+  mes: number;
+  onPrev: () => void;
+  onNext: () => void;
+  onClose: () => void;
+}
+
+function FaturamentoModal({ data, loading, ano, mes, onPrev, onNext, onClose }: FaturamentoModalProps) {
+  const totalAtendimentos = data?.totalAtendimentos ?? 0;
+  const totalFaturamento = data?.totalFaturamento ?? 0;
+  const diasDoMes = data?.diasDoMes ?? [];
+  const nomeMes = data?.nomeMes ?? MESES_PT[mes - 1];
+  const anoAtual = data?.ano ?? ano;
+  const mesAtual = data?.mes ?? mes;
+  const diaHoje = data?.diaHoje ?? null;
+  const primeiroDiaSemana = new Date(anoAtual, mesAtual - 1, 1).getDay();
+  const diasComAtendimento = diasDoMes.filter(d => d.totalAtendimentos > 0).length;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-sm fade-up" onClick={onClose}>
+      <div className="premium-surface rounded-2xl border border-[var(--border)] w-full max-w-3xl max-h-[90dvh] overflow-y-auto scrollbar-hide" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="sticky top-0 z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-5 border-b border-[var(--border)] bg-[var(--card)]">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                <DollarSign size={16} className="text-emerald-400" />
+              </div>
+              <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest">Faturamento</span>
+            </div>
+            <h2 className="text-lg sm:text-xl font-extrabold text-white">Faturamento Mensal</h2>
+            <p className="text-[var(--text-muted)] text-xs mt-0.5">
+              Valor por atendimento: <span className="text-emerald-400 font-bold">R$ 50,00</span>
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 bg-[var(--bg)]/40 border border-[var(--border)] rounded-xl p-1">
+              <button onClick={onPrev} className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-white hover:bg-white/[0.05] transition-colors" aria-label="Mês anterior">
+                <ChevronLeft size={16} />
+              </button>
+              <div className="text-center min-w-[96px]">
+                <div className="text-[10px] font-bold text-[var(--text-label)] uppercase tracking-wider">{MESES_PT[mesAtual - 1]}</div>
+                <div className="text-sm font-extrabold text-white">{anoAtual}</div>
+              </div>
+              <button onClick={onNext} className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-white hover:bg-white/[0.05] transition-colors" aria-label="Próximo mês">
+                <ChevronRight size={16} />
+              </button>
+            </div>
+            <button onClick={onClose} className="p-2 rounded-xl text-[var(--text-muted)] hover:text-white hover:bg-white/[0.05] transition-colors" aria-label="Fechar">
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-5">
+          {/* Resumo */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+            <div className="rounded-xl p-4 border border-emerald-500/15 bg-emerald-500/[0.04]">
+              <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Atendimentos</span>
+              <div className="text-2xl font-extrabold text-white mt-1">{totalAtendimentos}</div>
+            </div>
+            <div className="rounded-xl p-4 border border-[var(--primary)]/15 bg-[var(--primary)]/[0.04]">
+              <span className="text-[10px] font-bold text-[var(--primary)] uppercase tracking-wider">Faturamento</span>
+              <div className="text-2xl font-extrabold text-white mt-1">R$ {totalFaturamento.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
+            </div>
+            <div className="rounded-xl p-4 border border-blue-500/15 bg-blue-500/[0.04]">
+              <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">Dias Ativos</span>
+              <div className="text-2xl font-extrabold text-white mt-1">{diasComAtendimento} / {diasDoMes.length}</div>
+            </div>
+            <div className="rounded-xl p-4 border border-amber-500/15 bg-amber-500/[0.04]">
+              <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">Média / Dia</span>
+              <div className="text-2xl font-extrabold text-white mt-1">{diasDoMes.length > 0 ? (totalAtendimentos / diasDoMes.length).toFixed(1) : "0"}</div>
+            </div>
+          </div>
+
+          {loading && !data ? (
+            <div className="py-16 text-center text-sm text-[var(--text-muted)]">Carregando faturamento…</div>
+          ) : (
+            <>
+              {/* Calendário */}
+              <div className="rounded-xl border border-[var(--border)] overflow-hidden">
+                <div className="grid grid-cols-7 gap-1 p-3 border-b border-[var(--border)] bg-white/[0.02]">
+                  {weekdayOrder.map(dia => (
+                    <div key={dia} className="text-center text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{dia}</div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-7 gap-1 p-2">
+                  {Array.from({ length: primeiroDiaSemana }).map((_, i) => (
+                    <div key={`vazio-${i}`} className="h-16" />
+                  ))}
+                  {diasDoMes.map(dia => {
+                    const temAtendimento = dia.totalAtendimentos > 0;
+                    const ehHoje = diaHoje !== null && dia.dia === diaHoje;
+                    return (
+                      <div key={dia.data}
+                        className={`flex flex-col items-center justify-start gap-0.5 h-16 rounded-lg px-1 py-1.5 border transition-all ${temAtendimento ? "bg-emerald-500/10 border-emerald-500/20" : "bg-white/[0.02] border-transparent"} ${ehHoje ? "ring-2 ring-emerald-400" : ""}`}
+                        title={temAtendimento ? `${dia.totalAtendimentos} atendimento(s) • R$ ${dia.faturamento.toFixed(2)}` : undefined}>
+                        <span className={`text-xs font-bold ${temAtendimento ? "text-emerald-400" : ehHoje ? "text-white" : "text-[var(--text-muted)]"}`}>{dia.dia}</span>
+                        {temAtendimento && (
+                          <>
+                            <span className="text-[10px] font-bold text-emerald-400">{dia.totalAtendimentos}</span>
+                            <span className="text-[8px] text-emerald-300 leading-none">R$ {dia.faturamento.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}</span>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex flex-wrap gap-4 px-4 py-3 border-t border-[var(--border)] bg-[var(--card)]/30 text-[10px] text-[var(--text-muted)]">
+                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400" /> Atendido / Concluído</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-500/40" /> Cancelado / Faltou</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-500/40" /> Reagendado</span>
+                  <span className="flex items-center gap-1.5 ml-auto"><span className="w-2 h-2 rounded-full ring-2 ring-emerald-400" /> Hoje</span>
+                </div>
+              </div>
+
+              {/* Detalhe */}
+              <div className="mt-5 rounded-xl border border-[var(--border)] overflow-hidden">
+                <div className="px-4 py-3 border-b border-[var(--border)] bg-[var(--card)]/50">
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <CalendarIcon size={14} className="text-[var(--primary)]" />
+                    Detalhe — {nomeMes} de {anoAtual}
+                  </h3>
+                </div>
+                <div className="divide-y divide-[var(--border)] max-h-[320px] overflow-y-auto scrollbar-hide">
+                  {diasDoMes.filter(d => d.totalAtendimentos > 0).map(dia => (
+                    <div key={dia.data} className="p-3">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-xs font-bold text-white">{dia.data}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2 py-0.5">
+                            {dia.totalAtendimentos} atend.
+                          </span>
+                          <span className="text-[9px] font-bold text-[var(--primary)] bg-[var(--primary)]/10 border border-[var(--primary)]/20 rounded-full px-2 py-0.5">
+                            R$ {dia.faturamento.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        {dia.atendimentos.map(a => (
+                          <div key={a.id} className="flex items-center justify-between gap-2 px-1 py-0.5">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-semibold text-white truncate">{a.nome}</span>
+                                <span className={`text-[9px] font-bold ${fatStatusColor(a.status)}`}>{a.status || "Agendado"}</span>
+                              </div>
+                              <div className="text-[9px] text-[var(--text-muted)] flex items-center gap-1">
+                                <span>{a.modalidade}</span>
+                                {a.empresa && <span>· {a.empresa}</span>}
+                                {a.hora && <span>· {a.hora.slice(0, 5)}</span>}
+                              </div>
+                            </div>
+                            <span className="text-xs font-bold text-emerald-400 shrink-0">R$ 50,00</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  {diasComAtendimento === 0 && (
+                    <div className="p-8 text-center">
+                      <CalendarIcon size={28} className="text-[var(--text-muted)] opacity-50 mx-auto mb-2" />
+                      <p className="text-sm text-[var(--text-muted)]">Nenhum atendimento neste mês.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

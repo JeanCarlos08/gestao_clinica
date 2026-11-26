@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       nome: string;
       modalidade: string;
       data: string;
-      hora: string | null;
+      hora: string;
       status: string;
       empresa: string | null;
       paciente_id: number | null;
