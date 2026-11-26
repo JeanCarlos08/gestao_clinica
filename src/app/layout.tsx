@@ -49,14 +49,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" className={`${manrope.variable} ${inter.variable}`}>
-      <body className={`font-sans bg-[var(--background)] text-[var(--foreground)] antialiased flex h-dvh overflow-hidden app-premium-bg`} style={{ fontFamily: "var(--font-inter), var(--font-manrope), system-ui, sans-serif" }}>
+      <body className={`font-sans bg-[var(--background)] text-[var(--foreground)] antialiased flex h-dvh overflow-y-auto app-premium-bg sm:overflow-hidden`} style={{ fontFamily: "var(--font-inter), var(--font-manrope), system-ui, sans-serif" }}>
         <script dangerouslySetInnerHTML={{ __html: "(function(){try{var t=localStorage.getItem('theme');if(!t){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}document.documentElement.setAttribute('data-theme',t);var a=localStorage.getItem('accent');if(a)document.documentElement.setAttribute('data-accent',a);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();" }} />
         <ThemeProvider>
           <TitleSync />
           <ParallaxBg />
           <Sidebar />
           <AiChatPopup />
-          <main className="flex-1 flex flex-col h-full overflow-hidden pt-14 md:pt-0">
+          <main className="flex-1 flex flex-col h-full overflow-y-auto sm:overflow-hidden pt-14 md:pt-0">
             <ToastProvider>
               <ErrorBoundary>
                 <PageTransition>{children}</PageTransition>
