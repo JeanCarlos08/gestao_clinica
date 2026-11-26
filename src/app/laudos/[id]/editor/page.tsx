@@ -386,7 +386,7 @@ function NativeEditor({ docId, onBack }: { docId: string; onBack: () => void }) 
       {/* Modal Importar DOCX */}
       {importOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl w-full max-w-md shadow-[0_32px_64px_rgba(0,0,0,0.7)] p-6">
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl w-full max-w-md max-h-[85dvh] shadow-[0_32px_64px_rgba(0,0,0,0.7)] p-6 overflow-y-auto">
             <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
               <FileText size={18} className="text-amber-400" /> Importar DOCX
             </h2>
@@ -456,7 +456,10 @@ const DOC_CSS = `
 .docs-ruler span { width:1px; height:6px; background:var(--text-muted); }
 .docs-ruler span:nth-child(4n) { height:10px; }
 .docs-canvas { flex:1; overflow:auto; background:#171b18; padding:32px 24px 96px; }
-.doc-sheet { width:794px; min-height:1123px; margin:0 auto; background:#fff; color:#1c1e21; border-radius:2px; box-shadow:0 2px 8px rgba(0,0,0,.30),0 12px 40px rgba(0,0,0,.35); box-sizing:border-box; padding:96px 96px 120px; font-family:Arial,Helvetica,sans-serif; font-size:11pt; line-height:1.54; }
+.doc-sheet { width:794px; max-width:100%; min-height:1123px; margin:0 auto; background:#fff; color:#1c1e21; border-radius:2px; box-shadow:0 2px 8px rgba(0,0,0,.30),0 12px 40px rgba(0,0,0,.35); box-sizing:border-box; padding:96px 96px 120px; font-family:Arial,Helvetica,sans-serif; font-size:11pt; line-height:1.54; }
+@media (max-width: 640px) {
+  .doc-sheet { padding:40px 16px 60px; font-size:10pt; }
+}
 .doc-prose { outline:none !important; min-height:180px; }
 .doc-prose p { margin:0 0 10px; }
 .doc-prose h1 { font-size:20pt; font-weight:600; margin:18px 0 10px; color:#1c1e21; }

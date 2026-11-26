@@ -76,6 +76,15 @@ export default function Sidebar() {
 
   useEffect(() => { setCmdSel(0); }, [cmdQuery]);
 
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [open]);
+
 
 
   const runCmd = (item: (typeof cmdItems)[number]) => {

@@ -78,7 +78,7 @@ export default function AiChatPopup() {
 
       {/* Popup */}
       {open && (
-        <div className="fixed bottom-24 right-5 z-[90] w-[min(400px,calc(100vw-2.5rem))] h-[min(560px,calc(100vh-7rem))] flex flex-col rounded-2xl border border-[rgba(142,227,154,0.25)] bg-[#0a1810]/95 backdrop-blur-xl shadow-[0_24px_80px_rgba(0,0,0,0.55),0_0_0_1px_rgba(255,255,255,0.04)] overflow-hidden animate-[popupIn_0.25s_ease]">
+        <div className="fixed bottom-24 right-5 z-[90] w-[min(400px,calc(100vw-2.5rem))] max-h-[min(560px,calc(100dvh-7rem))] flex flex-col rounded-2xl border border-[rgba(142,227,154,0.25)] bg-[#0a1810]/95 backdrop-blur-xl shadow-[0_24px_80px_rgba(0,0,0,0.55),0_0_0_1px_rgba(255,255,255,0.04)] overflow-hidden animate-[popupIn_0.25s_ease]">
           {/* Header */}
           <div className="flex items-center gap-3 px-4 py-3 border-b border-[rgba(142,227,154,0.18)] bg-[linear-gradient(135deg,rgba(77,167,104,0.22),transparent)] flex-shrink-0">
             <div className="w-9 h-9 rounded-xl bg-[linear-gradient(135deg,#4DA768,#8ee39a)] flex items-center justify-center shadow-[0_0_16px_rgba(77,167,104,0.4)] flex-shrink-0">

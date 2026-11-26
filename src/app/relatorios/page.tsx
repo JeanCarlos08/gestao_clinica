@@ -105,7 +105,7 @@ export default function RelatoriosPage() {
   const total = stats ? Object.values(stats.por_status).reduce((a, b) => a + b, 0) : 0;
 
   return (
-    <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-8 scrollbar-hide">
+    <div className="flex-1 overflow-y-auto overflow-x-auto p-4 sm:p-8 scrollbar-hide">
 
       {/* Header */}
       <div className="flex items-start justify-between mb-8">

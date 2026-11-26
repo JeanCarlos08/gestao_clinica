@@ -120,7 +120,7 @@ export default function UploadPage() {
   const totalKB = arquivos.reduce((s, a) => s + (a.size_kb ?? 0), 0);
 
   return (
-    <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-8 scrollbar-hide fade-up">
+    <div className="flex-1 overflow-y-auto overflow-x-auto p-4 sm:p-8 scrollbar-hide fade-up">
       {/* Header */}
       <div className="flex items-start justify-between mb-8">
         <div>

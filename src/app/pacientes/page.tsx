@@ -420,7 +420,7 @@ export default function PacientesPage() {
   const totalAtendimentos = pacientes.reduce((s, p) => s + p.total_atendimentos, 0);
 
   return (
-    <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-8 scrollbar-hide fade-up">
+    <div className="flex-1 overflow-y-auto overflow-x-auto p-4 sm:p-8 scrollbar-hide fade-up">
       {/* Header */}
       <div className="flex items-start justify-between gap-4 mb-8">
         <div>
@@ -694,7 +694,7 @@ export default function PacientesPage() {
       {/* Modal Prontuário / Evoluções - reaproveita tabela notas */}
       {showProntuario && prontPaciente && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-[0_32px_64px_rgba(0,0,0,0.7)] animate-in fade-in zoom-in duration-200 modal-glass modal-in">
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl w-full max-w-2xl max-h-[85dvh] flex flex-col shadow-[0_32px_64px_rgba(0,0,0,0.7)] animate-in fade-in zoom-in duration-200 modal-glass modal-in">
             <div className="p-5 border-b border-[var(--border)] flex items-center justify-between sticky top-0 bg-[var(--card)] z-10 rounded-t-2xl">
               <h2 className="text-lg font-bold text-white flex items-center gap-2 min-w-0">
                 <NotebookPen size={18} className="text-emerald-400 flex-shrink-0" />
@@ -876,7 +876,7 @@ export default function PacientesPage() {
       {/* Modal Prévia do Timbrado */}
       {previewTimbrado && (
         <div className="fixed inset-0 z-[60] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl w-full max-w-4xl h-[88vh] flex flex-col modal-glass modal-in overflow-hidden">
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl w-full max-w-4xl max-h-[85dvh] flex flex-col modal-glass modal-in overflow-y-auto">
             <div className="p-4 border-b border-[var(--border)] flex items-center justify-between">
               <h2 className="text-base font-bold text-white flex items-center gap-2"><Eye size={16} className="text-emerald-400" /> Prévia do papel timbrado</h2>
               <div className="flex items-center gap-2">
