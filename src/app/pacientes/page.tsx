@@ -95,24 +95,6 @@ export default function PacientesPage() {
   const [formMsg, setFormMsg] = useState<{ type: "error"; text: string } | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "lista">("grid");
 
-  // ── Download PDF de atendimentos na grid ──
-  const [attModalPaciente, setAttModalPaciente] = useState<PacienteResumo | null>(null);
-  const [attModalLista, setAttModalLista] = useState<AtendimentoItem[]>([]);
-  const [attModalLoading, setAttModalLoading] = useState(false);
-
-  const abrirAtendimentosPaciente = async (p: PacienteResumo) => {
-    setAttModalPaciente(p);
-    setAttModalLista([]);
-    setAttModalLoading(true);
-    const token = localStorage.getItem("token");
-    if (!token) { setAttModalLoading(false); return; }
-    try {
-      const res = await fetch(`${API_BASE}/pacientes/${p.id}/atendimentos`, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) setAttModalLista(await res.json());
-    } catch { setAttModalLista([]); }
-    finally { setAttModalLoading(false); }
-  };
-
   // ── Prontuário / Evolução (reaproveita tabela `notas`) ──
   const [showProntuario, setShowProntuario] = useState(false);
   const [prontPaciente, setProntPaciente] = useState<PacienteResumo | null>(null);
@@ -514,7 +496,6 @@ export default function PacientesPage() {
               onToggle={() => toggleAtivo(paciente)} toggling={togglingAtivo}
               onViewDocs={() => router.push(`/pacientes/${paciente.id}/doc-editor`)}
               onProntuario={() => openProntuario(paciente)}
-              onAtendimentos={abrirAtendimentosPaciente}
             />
           ))}
         </div>
@@ -830,11 +811,20 @@ export default function PacientesPage() {
                   ) : (
                     <>
                       {atendimentos.map(a => (
-                        <div key={a.id} className="flex items-center gap-3 bg-[var(--background)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 hover:border-[var(--primary)]/30 transition-colors">
-                          <span className="text-[10px] font-bold text-[var(--text-muted)]">#{a.id}</span>
-                          <span className="text-sm font-semibold text-white truncate">{a.modalidade}</span>
-                          <span className="text-xs text-[var(--text-muted)] truncate hidden sm:inline">{a.empresa || "—"} · {a.data ? formatDate(a.data) : "—"} {a.hora || ""}</span>
-                          <span className={`ml-auto flex-shrink-0 rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide border ${a.status === "Finalizado" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/25" : a.status === "Cancelado" || a.status === "Faltou" ? "bg-red-500/10 text-red-400 border-red-500/25" : "bg-blue-500/10 text-blue-300 border-blue-500/25"}`}>{a.status || "Agendado"}</span>
+                        <div key={a.id} className="flex items-center justify-between gap-3 bg-[var(--background)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 hover:border-[var(--primary)]/30 transition-colors">
+                          <div className="flex-1 min-w-0">
+                            <span className="text-[10px] font-bold text-[var(--text-muted)]">#{a.id}</span>
+                            <span className="text-sm font-semibold text-white truncate">{a.modalidade}</span>
+                            <span className="text-xs text-[var(--text-muted)] truncate hidden sm:inline">{a.empresa || "—"} · {a.data ? formatDate(a.data) : "—"} {a.hora || ""}</span>
+                          </div>
+                          <div className={`ml-auto flex-shrink-0 rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide border ${a.status === "Finalizado" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/25" : a.status === "Cancelado" || a.status === "Faltou" ? "bg-red-500/10 text-red-400 border-red-500/25" : "bg-blue-500/10 text-blue-300 border-blue-500/25"}`}>{a.status || "Agendado"}</div>
+                          <button
+                            onClick={() => baixarPdfAtendimento(prontPaciente!.id, a.id)}
+                            className="p-2 rounded-lg bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] border border-[var(--primary)]/20 transition-colors"
+                            title="Baixar PDF do atendimento"
+                          >
+                            <Download size={13} />
+                          </button>
                         </div>
                       ))}
                       <p className="text-[10px] text-[var(--text-muted)] text-right">Total: {atendimentos.length} atendimento(s).</p>
@@ -862,50 +852,6 @@ export default function PacientesPage() {
           </div>
         </div>
       )}
-      {/* Modal Atendimentos do Paciente (download PDF) */}
-      {attModalPaciente && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl w-full max-w-md max-h-[90vh] flex flex-col shadow-[0_32px_64px_rgba(0,0,0,0.7)] animate-in fade-in zoom-in duration-200 modal-glass modal-in">
-            <div className="p-5 border-b border-[var(--border)] flex items-center justify-between sticky top-0 bg-[var(--card)] z-10 rounded-t-2xl">
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <Download size={18} className="text-[var(--primary)]" />
-                <span className="truncate">Atendimentos — {attModalPaciente.nome}</span>
-              </h2>
-              <button onClick={() => { setAttModalPaciente(null); setAttModalLista([]); }} className="text-[var(--text-muted)] hover:text-white flex-shrink-0"><XCircle size={20} /></button>
-            </div>
-            <div className="p-5 overflow-y-auto flex-1">
-              {attModalLoading ? (
-                <div className="text-center py-8 text-sm text-[var(--text-muted)] flex flex-col items-center gap-2"><Loader2 size={20} className="animate-spin text-emerald-400" /> Carregando atendimentos...</div>
-              ) : attModalLista.length === 0 ? (
-                <div className="premium-surface rounded-xl p-8 text-center border border-dashed border-[var(--border)]">
-                  <CalendarClock size={28} className="mx-auto text-[var(--text-muted)] mb-2 opacity-50" />
-                  <p className="text-sm text-[var(--text-muted)]">Nenhum atendimento vinculado a este paciente.</p>
-                </div>
-              ) : (
-                <>
-                  {attModalLista.map(a => (
-                    <div key={a.id} className="flex items-center justify-between gap-3 bg-[var(--background)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 hover:border-[var(--primary)]/30 transition-colors">
-                      <div className="flex-1 min-w-0">
-                        <span className="text-[10px] font-bold text-[var(--text-muted)]">#{a.id}</span>
-                        <span className="text-sm font-semibold text-white truncate block">{a.modalidade}</span>
-                        <span className="text-xs text-[var(--text-muted)] truncate block">{a.empresa || "—"} · {a.data ? formatDate(a.data) : "—"} {a.hora || ""}</span>
-                      </div>
-                      <button
-                        onClick={() => baixarPdfAtendimento(attModalPaciente.id, a.id)}
-                        className="p-2 rounded-lg bg-[var(--primary)]/10 hover:bg-[var(--primary)]/20 text-[var(--primary)] border border-[var(--primary)]/20 transition-colors"
-                        title="Baixar PDF do atendimento"
-                      >
-                        <Download size={14} />
-                      </button>
-                    </div>
-                  ))}
-                  <p className="text-[10px] text-[var(--text-muted)] text-right mt-3">Total: {attModalLista.length} atendimento(s).</p>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
       {/* Modal Prévia do Timbrado */}
       {previewTimbrado && (
         <div className="fixed inset-0 z-[60] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
@@ -927,7 +873,7 @@ export default function PacientesPage() {
   );
 }
 
-function PatientCard({ paciente, onPhoto, onEdit, onDelete, onViewDocs, onProntuario, onToggle, toggling, delay, onAtendimentos }: {
+function PatientCard({ paciente, onPhoto, onEdit, onDelete, onViewDocs, onProntuario, onToggle, toggling, delay }: {
   paciente: PacienteResumo;
   onPhoto: (p: PacienteResumo, f?: File | null) => void;
   onEdit: (p: PacienteResumo) => void;
@@ -935,7 +881,6 @@ function PatientCard({ paciente, onPhoto, onEdit, onDelete, onViewDocs, onProntu
   onViewDocs: () => void;
   onProntuario: () => void;
   onToggle: () => void;
-  onAtendimentos: (p: PacienteResumo) => void;
   toggling: boolean;
   delay: number;
 }) {
@@ -993,10 +938,6 @@ function PatientCard({ paciente, onPhoto, onEdit, onDelete, onViewDocs, onProntu
         <button onClick={() => onEdit(paciente)}
           className="flex-1 py-2 rounded-lg text-xs font-semibold text-[var(--primary)] border border-[var(--primary)]/20 bg-[var(--primary)]/5 hover:bg-[var(--primary)]/10 transition-all flex items-center justify-center gap-1.5">
           <Edit3 size={12} /> Editar
-        </button>
-        <button onClick={() => onAtendimentos(paciente)}
-          className="flex-1 py-2 rounded-lg text-xs font-semibold text-[var(--primary)] border border-[var(--primary)]/20 bg-[var(--primary)]/5 hover:bg-[var(--primary)]/10 transition-all flex items-center justify-center gap-1.5">
-          <Download size={12} /> Atendimentos
         </button>
         <button onClick={onToggle} title={ativo ? "Inativar paciente" : "Ativar paciente"} disabled={toggling}
           className="py-2 px-2.5 rounded-lg text-xs font-semibold border transition-all flex items-center justify-center disabled:opacity-50" style={ativo ? { color: "#fbbf24", borderColor: "rgba(251,191,36,0.25)", background: "rgba(251,191,36,0.06)" } : { color: "#4ade80", borderColor: "rgba(74,222,128,0.25)", background: "rgba(74,222,128,0.08)" }}>
